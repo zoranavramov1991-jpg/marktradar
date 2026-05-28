@@ -1,44 +1,63 @@
-# 4. Analyse Logik - REPARIERTE STRUKTUR
-if st.button("🚀 EXPERTEN-ANALYSE STARTEN"):
-    with st.spinner("Sachverständige prüfen Marktdaten..."):
-        try:
-            client = Groq(api_key=GROQ_API_KEY)
-            
-            # 1. Den Text-Teil vorbereiten
-            expert_prompt = (
-                f"Du bist ein unerbittlicher Gutachter für Resale-Ware. Schrott-Anteil: {defekt_prozent}%.\n"
-                f"Analysiere die Bilder und den Kontext extrem konservativ.\n\n"
-                f"Aufgabe:\n"
-                f"1. Tabelle: [Artikel] | [Zustand] | [Flohmarkt-Preis (Min)] | [Sicherheits-Gebot].\n"
-                f"2. Berechne den 'SICHEREN ANKAUFS-WERT': Marktpreis minus 70% Risiko-Abschlag.\n"
-                f"3. Nenne das absolute Maximalgebot für den gesamten Posten.\n"
-                f"4. Nenne die 3 größten Risiken dieses Deals."
-            )
-            
-            # 2. Die exakt korrekte Struktur für die Groq Vision API
-            # WICHTIG: Das Bild MUSS innerhalb des 'content' als Teil der Liste stehen
-            message_content = [{"type": "text", "text": expert_prompt}]
-            
-            if uploaded_files:
-                for f in uploaded_files:
-                    f.seek(0)
-                    image_data = base64.b64encode(f.read()).decode('utf-8')
-                    # Bild-Objekt korrekt einfügen
-                    message_content.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
-                    })
+import streamlit as st
+from groq import Groq
+import base64
 
-            # 3. API-Aufruf
-            # Wir verwenden 'llama-3.2-11b-vision-preview', da dies das Standard-Modell für Bilder ist
-            response = client.chat.completions.create(
-                model="llama-3.2-11b-vision-preview",
-                messages=[{"role": "user", "content": message_content}]
-            )
+# --- SEITEN-KONFIGURATION ---
+st.set_page_config(page_title="MarktRadar OS Stabil", layout="wide")
+st.title("⚡ MARKTRADAR – STABIL-VERSION")
+
+# --- 1. FUNKTIONEN (Logik vom UI getrennt) ---
+def analysiere_daten(api_key, prompt, uploaded_files):
+    client = Groq(api_key=api_key)
+    
+    # Text-Inhalt
+    content = [{"type": "text", "text": prompt}]
+    
+    # Bild-Inhalt sicher hinzufügen
+    if uploaded_files:
+        for f in uploaded_files:
+            f.seek(0)
+            b64_image = base64.b64encode(f.read()).decode('utf-8')
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}
+            })
             
-            st.success("Analyse erfolgreich abgeschlossen.")
+    # Wir nutzen ein universelles Modell, das Text und (wenn verfügbar) Bilder verarbeitet
+    # 'llama-3.3-70b-versatile' ist sehr stabil für Analyse
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": content}]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Fehler bei der Anfrage: {e}"
+
+# --- 2. UI-ELEMENTE ---
+try:
+    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+except:
+    st.error("API-Key fehlt in den Secrets!")
+    st.stop()
+
+link = st.text_input("Auktions-Link:")
+defekt_prozent = st.slider("Schrott-Regler (%):", 0, 100, 20)
+uploaded_files = st.file_uploader("Artikelbilder:", accept_multiple_files=True)
+
+# --- 3. DIE BEREINIGTE ANALYSE-LOGIK ---
+# Erst hier unten, in einer kontrollierten Umgebung, wird der Button abgefragt
+if st.button("🚀 EXPERTEN-ANALYSE STARTEN"):
+    if not link and not uploaded_files:
+        st.warning("Bitte gib einen Link ein oder lade ein Bild hoch.")
+    else:
+        with st.spinner("Experten-Gutachten wird erstellt..."):
+            prompt = f"""
+            Du bist ein Gutachter für Resale. Analysiere den Posten (Schrott: {defekt_prozent}%).
+            Erstelle eine Tabelle mit: [Artikel] | [Zustand] | [Flohmarkt-Preis] | [Sicherheits-Gebot].
+            Nenne das Maximalgebot für den Gesamtposten und die 3 größten Risiken.
+            """
+            
+            ergebnis = analysiere_daten(GROQ_API_KEY, prompt, uploaded_files)
             st.markdown("---")
-            st.write(response.choices[0].message.content)
-            
-        except Exception as e:
-            st.error(f"Technischer Fehler: {e}")
+            st.write(ergebnis)
