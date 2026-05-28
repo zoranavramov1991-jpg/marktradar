@@ -93,44 +93,50 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
             Abschlussurteil: Lohnt sich dieser Deal bei einem Einkauf von {einkaufspreis} €? (Klares JA oder NEIN mit 1-Satz-Begründung).
             """
 
-            client = Groq(api_key=GROQ_API_KEY)
+            try:
+                client = Groq(api_key=GROQ_API_KEY)
+                
+                # Bilddaten aufbereiten
+                content_list = [{"type": "text", "text": prompt}]
+                if uploaded_files:
+                    for uploaded_file in uploaded_files:
+                        bytes_data = uploaded_file.read()
+                        base64_image = base64.b64encode(bytes_data).decode('utf-8')
+                        content_list.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                        })
+
+                # Krisensichere Schleife
+                erfolgreich = False
+                modelle_zum_testen = [
+                    "llama-3.2-90b-vision-preview",
+                    "llama-3.2-11b-vision-preview",
+                    "llama-3.1-8b-instant"
+                ]
+
+                for modell in modelle_zum_testen:
+                    try:
+                        messages_content = content_list if "vision" in modell else [{"role": "user", "content": prompt}]
+                        
+                        response = client.chat.completions.create(
+                            model=modell,
+                            messages=[{"role": "user", "content": messages_content}]
+                        )
+                        
+                        st.markdown("---")
+                        st.success(f"✔️ Analyse erfolgreich durchgeführt mit Modell: {modell}")
+                        st.info("### 🕵️‍♂️ Das detaillierte Sachverständigen-Gutachten:")
+                        st.write(response.choices[0].message.content)
+                        erfolgreich = True
+                        break 
+                    except Exception:
+                        continue 
+
+                if not erfolgreich:
+                    st.error("Kritischer Fehler: Derzeit kann keine Verbindung zu den Groq-Servern hergestellt werden. Bitte überprüfe deine Secrets.")
             
-            # Bilddaten aufbereiten
-            content_list = [{"type": "text", "text": prompt}]
-            if uploaded_files:
-                for uploaded_file in uploaded_files:
-                    bytes_data = uploaded_file.read()
-                    base64_image = base64.b64encode(bytes_data).decode('utf-8')
-                    content_list.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
-                    })
-
-            # Krisensichere Schleife: Testet verschiedene Groq-Modelle durch
-            erfolgreich = False
-            modelle_zum_testen = [
-                "llama-3.2-90b-vision-preview",
-                "llama-3.2-11b-vision-preview",
-                "llama-3.1-8b-instant"  # Sicherer Text-Fallback falls Groq-Vision komplett down ist
-            ]
-
-            for modell in modelle_zum_testen:
-                try:
-                    # Falls es das Text-Modell ist, übergeben wir nur den Text-Prompt
-                    messages_content = content_list if "vision" in modell else [{"role": "user", "content": prompt}]
-                    
-                    response = client.chat.completions.create(
-                        model=modell,
-                        messages=[{"role": "user", "content": messages_content}]
-                    )
-                    
-                    st.markdown("---")
-                    st.success(f"✔️ Analyse erfolgreich durchgeführt mit Modell: {modell}")
-                    st.info("### 🕵️‍♂️ Das detaillierte Sachverständigen-Gutachten:")
-                    st.write(response.choices[0].message.content)
-                    erfolgreich = True
-                    break # Schleife abbrechen, da wir ein Ergebnis haben!
-                except Exception as e:
-                    continue # Falls das Modell einen Fehler wirft, teste das nächste
-
-            if not erfolgreich:
+            except Exception as system_error:
+                st.error(f"Systemfehler aufgetreten: {system_error}")
+    else:
+        st.warning("Bitte gib mindestens einen Link, Text oder Bilder ein.")
