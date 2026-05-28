@@ -1,51 +1,51 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
 from groq import Groq
 import base64
 
-st.set_page_config(page_title="MarktRadar OS v6.0", layout="wide")
-st.title("⚡ MARKTRADAR – DIREKT-ANALYSE")
+st.set_page_config(page_title="MarktRadar OS v6.1", layout="wide")
+st.title("⚡ MARKTRADAR – STABILE ANALYSE")
 
-# 1. API-Key laden
+# API-Key laden
 try:
     GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 except:
     st.error("API-Key fehlt!")
     st.stop()
 
-# 2. UI
 link = st.text_input("Auktions-Link:")
 defekt_prozent = st.slider("Schrott-Regler (%):", 0, 100, 20)
 uploaded_files = st.file_uploader("Bilder:", accept_multiple_files=True)
 
-# 3. Analyse starten
-if st.button("🚀 ANALYSE JETZT STARTEN"):
-    with st.spinner("Verbinde zu Groq..."):
+if st.button("🚀 ANALYSE STARTEN"):
+    with st.spinner("Analysiere..."):
         try:
             client = Groq(api_key=GROQ_API_KEY)
             
-            # Prompt direkt hier definieren
-            prompt = f"Analysiere diesen Artikel-Posten (Schrott-Anteil {defekt_prozent}%). Erstelle eine Tabelle mit Flohmarkt-Preis, Sicherheits-Gebot und Kanal-Empfehlung. Sei extrem konservativ."
+            # Aufbau der Content-Liste
+            content_list = []
             
-            # Message-Payload vorbereiten
-            messages = [{"role": "user", "content": prompt}]
+            # 1. Text-Prompt hinzufügen
+            prompt_text = f"Analysiere diesen Posten (Schrott-Anteil {defekt_prozent}%). Erstelle eine Tabelle mit Flohmarkt-Preis, Sicherheits-Gebot und Kanal-Empfehlung. Sei extrem konservativ."
+            content_list.append({"type": "text", "text": prompt_text})
             
-            # Falls Bilder da sind, anfügen
+            # 2. Bilder hinzufügen (korrektes Format für die API)
             if uploaded_files:
                 for f in uploaded_files:
                     f.seek(0)
                     b64 = base64.b64encode(f.read()).decode('utf-8')
-                    messages.append({"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]})
+                    content_list.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
+                    })
 
-            # DIREKT auf ein stabiles Modell schießen (ohne Suche)
+            # API-Aufruf
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile", 
-                messages=messages
+                messages=[{"role": "user", "content": content_list}]
             )
             
             st.success("Analyse erfolgreich!")
             st.write(response.choices[0].message.content)
             
         except Exception as e:
-            st.error(f"Fehler: {str(e)}")
+            st.error(f"Fehler bei der Anfrage: {e}")
