@@ -45,23 +45,20 @@ if st.button("🚀 KANAL-ANALYSE STARTEN"):
         web_text = extrahiere_webseiten_text(link)
         
         prompt = f"""
-        Du bist ein Experte für Reseller-Logistik. Deine Aufgabe ist es, jeden erkannten Artikel einer Verkaufs-Strategie zuzuordnen.
-        Gehe extrem konservativ vor (Worst-Case).
+        Du bist ein knallharter Resale-Stratege. Deine Aufgabe ist es, mich vor Fehlkäufen zu schützen.
+        Gehe EXTREM KONSERVATIV vor. Bewerte jeden Artikel NUR nach dem, was er an einem schlechten Tag auf einem Flohmarkt bringt.
 
         Input:
-        - Schrott-Anteil: {defekt_prozent}%
+        - Schrott-Anteil (Risiko): {defekt_prozent}%
         - Manuelle Infos: {gegenstaende}
         - Auktions-Text: {web_text}
 
-        Aufgabe (Erstelle eine Tabelle):
-        1. Inventur: Jeder Artikel mit geschätztem 'Sicherheits-Mindestwert'.
-        2. Kanal-Matrix: Sortiere jeden Artikel in einen dieser Kanäle:
-           - [FLOHMARKT]: Schneller Abverkauf, niedrige Marge.
-           - [KLEINANZEIGEN]: Lokaler Verkauf, keine Versandkosten, mittlere Marge.
-           - [VINTED]: Fokus auf Kleidung/Accessoires, einfache Abwicklung.
-           - [SPEZIAL-PLATTFORMEN]: (z.B. Discogs, Foren, Fachbörsen) nur für Kenner-Ware.
-        3. Risiko-Check: Welcher Wert bleibt nach Abzug von {defekt_prozent}% Schrott?
-        4. Sicherheits-Gebot: Was ist der absolute Maximalpreis für den ganzen Posten, damit ich bei dieser Verteilung garantiert Gewinn mache?
+        Aufgabe:
+        1. Erstelle eine Tabelle mit den Spalten: [Artikel] | [Kanal: FLOHMARKT/KLEINANZEIGEN/VINTED/SPEZIAL] | [ECHTER SCHNELLVERKAUFS-PREIS].
+           - WICHTIG: Der 'ECHTER SCHNELLVERKAUFS-PREIS' darf maximal 30% des Neupreises oder eBay-Durchschnitts betragen.
+        2. Risiko-Check: Welcher Gesamtwert bleibt nach Abzug des {defekt_prozent}% Schrott-Anteils sicher übrig?
+        3. Sicherheits-Gebot: Was ist der absolute Maximalpreis für den ganzen Posten, damit ich bei einem Verkauf zum 'Schnellverkaufs-Preis' noch mindestens 20% Gewinn mache?
+        4. Warnung: Nenne die 3 größten Risiken dieses Deals.
         """
 
         client = Groq(api_key=GROQ_API_KEY)
@@ -85,7 +82,7 @@ if st.button("🚀 KANAL-ANALYSE STARTEN"):
                 msg = [{"role": "user", "content": content_list}] if (is_vision_model and uploaded_files) else [{"role": "user", "content": prompt}]
                 response = client.chat.completions.create(model=modell, messages=msg)
                 
-                st.success(f"✔️ Analyse via {modell}")
+                st.success(f"✔️ Analyse erfolgreich via {modell}")
                 st.markdown("---")
                 st.write(response.choices[0].message.content)
                 break
