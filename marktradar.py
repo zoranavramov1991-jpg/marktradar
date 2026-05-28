@@ -93,6 +93,20 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
             try:
                 client = Groq(api_key=GROQ_API_KEY)
                 
+                # 🔍 LIVE-ABFRAGE: Welche Modelle hat Groq JETZT GERADE für dich aktiv?
+                try:
+                    groq_models = client.models.list()
+                    all_model_ids = [m.id for m in groq_models.data]
+                    
+                    # Sortierung: Jedes Modell mit "vision" im Namen wandert nach ganz oben!
+                    vision_models = [m for m in all_model_ids if "vision" in m.lower()]
+                    text_models = [m for m in all_model_ids if "vision" not in m.lower()]
+                    modelle_zum_testen = vision_models + text_models
+                except Exception as e:
+                    # Notfall-Fallback-Liste, falls die Live-Liste blockiert wird
+                    modelle_zum_testen = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+                    all_model_ids = []
+                
                 # Bilddaten vorbereiten
                 content_list = [{"type": "text", "text": prompt}]
                 if uploaded_files:
@@ -105,19 +119,13 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
                         })
 
                 erfolgreich = False
-                modelle_zum_testen = [
-                    "llama-3.2-11b-vision",
-                    "llama-3.2-90b-vision",
-                    "llama-3.3-70b-versatile",
-                    "llama-3.1-8b-instant"
-                ]
-                
                 gesammelte_fehler = []
 
                 for modell in modelle_zum_testen:
                     try:
                         unterstuetzt_vision = "vision" in modell.lower()
                         
+                        # Bild-Modelle bekommen das Bild-Paket, reine Text-Modelle nur den Text
                         if unterstuetzt_vision and uploaded_files:
                             messages = [{"role": "user", "content": content_list}]
                         else:
@@ -131,12 +139,12 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
                         st.markdown("---")
                         st.success(f"✔️ Analyse erfolgreich durchgeführt mit Modell: {modell}")
                         
-                        # Wenn wir auf ein Textmodell zurückgreifen mussten, zeigen wir die Vision-Fehler loggen
                         if not unterstuetzt_vision and uploaded_files:
                             st.warning("⚠️ Hinweis: Das genutzte Modell unterstützt keine direkten Bild-Scans. Die Analyse basiert auf den Textdaten & Beschreibungen.")
                             with st.expander("🔍 Fehler-Details: Warum wurden die Bild-Modelle übersprungen?"):
                                 for msg in gesammelte_fehler:
                                     st.write(msg)
+                                st.write(f"**Deine verfügbaren Groq-Modelle:** {all_model_ids}")
                             
                         st.info("### 🕵️‍♂️ Das detaillierte Sachverständigen-Gutachten:")
                         st.write(response.choices[0].message.content)
