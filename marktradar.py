@@ -3,70 +3,67 @@ from groq import Groq
 import base64
 
 # --- SEITEN-KONFIGURATION ---
-st.set_page_config(page_title="MarktRadar OS Unbreakable", layout="wide")
-st.title("⚡ MARKTRADAR – UNBREAKABLE VERSION")
+st.set_page_config(page_title="MarktRadar OS Ultimate", layout="wide")
+st.title("⚡ MARKTRADAR – ULTIMATE CONTROL")
 
 # 1. API-Key laden
 try:
     GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 except:
-    st.error("API-Key fehlt!")
+    st.error("API-Key fehlt in den Secrets!")
     st.stop()
 
-# 2. UI
+# 2. UI-EINSTELLUNGEN
+col1, col2 = st.columns(2)
+with col1:
+    # Hier kannst du das Modell ändern, wenn es nicht mehr existiert!
+    model_input = st.text_input("Modell-Name (z.B. llama-3.3-70b-versatile):", value="llama-3.3-70b-versatile")
+with col2:
+    defekt_prozent = st.slider("Schrott-Regler (%):", 0, 100, 20)
+
 link = st.text_input("Auktions-Link:")
-defekt_prozent = st.slider("Schrott-Regler (%):", 0, 100, 20)
 uploaded_files = st.file_uploader("Artikelbilder hochladen:", accept_multiple_files=True)
 
-# 3. Logik mit SELBSTHEILUNG
-if st.button("🚀 EXPERTEN-ANALYSE STARTEN"):
-    with st.spinner("Analyse läuft..."):
-        try:
-            client = Groq(api_key=GROQ_API_KEY)
-            prompt_text = (
-                f"Du bist ein unerbittlicher Gutachter für Resale-Ware. Schrott-Anteil: {defekt_prozent}%.\n"
-                f"Erstelle eine Tabelle: [Artikel] | [Zustand] | [Flohmarkt-Preis (Min)] | [Sicherheits-Gebot].\n"
-                f"Nenne das absolute Maximalgebot für den gesamten Posten und 3 Risiken."
-            )
-            
-            # Modelle definieren
-            vision_model = "llama-3.2-11b-vision-instruct"
-            text_model = "llama-3.3-70b-versatile"
-            
-            messages = []
-            final_model = text_model # Default
-            
-            # Bilder-Logik
-            if uploaded_files:
-                content_list = [{"type": "text", "text": prompt_text}]
-                for f in uploaded_files:
-                    f.seek(0)
-                    image_data = base64.b64encode(f.read()).decode('utf-8')
-                    content_list.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
-                    })
-                messages = [{"role": "user", "content": content_list}]
-                final_model = vision_model
-            else:
-                messages = [{"role": "user", "content": prompt_text}]
-                final_model = text_model
-
-            # VERSUCH 1: Vision-Modell (falls Bilder da sind)
+# 3. ANALYSE-LOGIK
+if st.button("🚀 ANALYSE STARTEN"):
+    if not GROQ_API_KEY:
+        st.error("API-Key nicht gefunden.")
+    else:
+        with st.spinner("Experten-Analyse läuft..."):
             try:
-                response = client.chat.completions.create(model=final_model, messages=messages)
-                st.success("Analyse erfolgreich!")
-                st.write(response.choices[0].message.content)
-            
-            # FALLBACK: Falls Vision scheitert, nutze Text-Modell
-            except Exception as e:
-                st.warning("Vision-Modell nicht verfügbar. Wechsle auf reinen Text-Modus...")
-                response = client.chat.completions.create(
-                    model=text_model, 
-                    messages=[{"role": "user", "content": prompt_text}]
+                client = Groq(api_key=GROQ_API_KEY)
+                
+                prompt_text = (
+                    f"Du bist ein unerbittlicher Gutachter für Resale-Ware. Schrott-Anteil: {defekt_prozent}%.\n"
+                    f"Analysiere den Posten basierend auf dem Link: {link}.\n"
+                    f"Erstelle eine Tabelle: [Artikel] | [Zustand] | [Flohmarkt-Preis (Min)] | [Sicherheits-Gebot].\n"
+                    f"Nenne das absolute Maximalgebot für den gesamten Posten und 3 Risiken."
                 )
-                st.write("*(Hinweis: Analyse erfolgte ohne Bild-Support, da Vision-Modell nicht aktiv)*")
+
+                # Vorbereitung der Nachricht
+                if uploaded_files:
+                    # Multimodal-Modus
+                    messages = [{"role": "user", "content": [{"type": "text", "text": prompt_text}]}]
+                    for f in uploaded_files:
+                        f.seek(0)
+                        b64 = base64.b64encode(f.read()).decode('utf-8')
+                        messages[0]["content"].append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
+                        })
+                else:
+                    # Text-Modus (einfacher String)
+                    messages = [{"role": "user", "content": prompt_text}]
+
+                # API-Aufruf
+                response = client.chat.completions.create(
+                    model=model_input,
+                    messages=messages
+                )
+                
+                st.success("Erfolg!")
                 st.write(response.choices[0].message.content)
 
-        except Exception as e:
-            st.error(f"Kritischer Fehler: {e}")
+            except Exception as e:
+                st.error(f"Fehler: {e}")
+                st.info("Tipp: Wenn 'model_not_found' erscheint, ändere den Namen im Feld oben (z.B. auf 'llama-3.3-70b-versatile').")
