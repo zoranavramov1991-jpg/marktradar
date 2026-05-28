@@ -4,9 +4,9 @@ from bs4 import BeautifulSoup
 from groq import Groq
 import base64
 
-st.set_page_config(page_title="MarktRadar OS v3.0", layout="wide")
-st.title("⚡ MARKTRADAR – EXPERTEN-VERTRIEBS-STRATEGIE")
-st.subheader("Konservative Inventur & Kanal-Matrix")
+st.set_page_config(page_title="MarktRadar OS v4.0", layout="wide")
+st.title("⚡ MARKTRADAR – EXPERTEN-PREIS-CHECKER PRO")
+st.subheader("Echtzeit-Markt-Analyse & Konservative Kalkulation")
 
 # 1. API-Key laden
 try:
@@ -23,7 +23,7 @@ def extrahiere_webseiten_text(url):
         response = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
         for script in soup(["script", "style"]): script.extract()
-        return soup.get_text()[:2000]
+        return soup.get_text()[:3000] # Erhöht für bessere Datenbasis
     except: return "Fehler beim Web-Scraping."
 
 # 3. UI
@@ -40,25 +40,25 @@ with col2:
     uploaded_files = st.file_uploader("Artikelbilder hochladen:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
 
 # 4. Analyse
-if st.button("🚀 KANAL-ANALYSE STARTEN"):
-    with st.spinner("Sachverständige sortieren deine Artikel in die profitabelsten Kanäle..."):
+if st.button("🚀 EXPERTEN-CHECK STARTEN"):
+    with st.spinner("Sachverständige prüfen aktuelle Marktdaten und kalkulieren das Sicherheits-Gebot..."):
         web_text = extrahiere_webseiten_text(link)
         
         prompt = f"""
-        Du bist ein knallharter Resale-Stratege. Deine Aufgabe ist es, mich vor Fehlkäufen zu schützen.
-        Gehe EXTREM KONSERVATIV vor. Bewerte jeden Artikel NUR nach dem, was er an einem schlechten Tag auf einem Flohmarkt bringt.
-
-        Input:
-        - Schrott-Anteil (Risiko): {defekt_prozent}%
-        - Manuelle Infos: {gegenstaende}
-        - Auktions-Text: {web_text}
-
+        Du bist der leitende Gutachter für Gebrauchtwaren-Ankäufe. Deine Expertise ist entscheidend für meine Profitabilität.
+        
         Aufgabe:
-        1. Erstelle eine Tabelle mit den Spalten: [Artikel] | [Kanal: FLOHMARKT/KLEINANZEIGEN/VINTED/SPEZIAL] | [ECHTER SCHNELLVERKAUFS-PREIS].
-           - WICHTIG: Der 'ECHTER SCHNELLVERKAUFS-PREIS' darf maximal 30% des Neupreises oder eBay-Durchschnitts betragen.
-        2. Risiko-Check: Welcher Gesamtwert bleibt nach Abzug des {defekt_prozent}% Schrott-Anteils sicher übrig?
-        3. Sicherheits-Gebot: Was ist der absolute Maximalpreis für den ganzen Posten, damit ich bei einem Verkauf zum 'Schnellverkaufs-Preis' noch mindestens 20% Gewinn mache?
-        4. Warnung: Nenne die 3 größten Risiken dieses Deals.
+        1. Markt-Recherche: Basierend auf den Informationen und Bildern, schätze die aktuellen, realen Verkaufspreise für jeden Artikel. Nutze dafür dein gesamtes Wissen über Plattformen (Kleinanzeigen, Vinted, Fachbörsen).
+        2. Kanal-Optimierung: Ordne jeden Artikel dem Kanal zu, auf dem er am sichersten und schnellsten zu einem fairen Preis weggeht.
+        3. Konservative Kalkulation: 
+           - Berechne den Gesamtwert unter Berücksichtigung von {defekt_prozent}% Schrott-Anteil.
+           - Wende einen Sicherheitsabschlag von 60% auf den Markt-Durchschnittspreis an, um den 'Sicheren Verkaufswert' zu ermitteln (Worst-Case).
+        4. Empfehlung: Was ist mein maximales Gebot für diesen Posten, um bei einer Kalkulationsbasis von 20% Gewinnmarge sicher zu bleiben?
+        
+        Ausgabe als Tabelle:
+        [Artikel] | [Kanal] | [Marktpreis (Optisch)] | [Sicherer Verkaufswert (konservativ)]
+        
+        Schließe mit einer Risiko-Bewertung der 3 kritischsten Punkte ab.
         """
 
         client = Groq(api_key=GROQ_API_KEY)
@@ -82,7 +82,7 @@ if st.button("🚀 KANAL-ANALYSE STARTEN"):
                 msg = [{"role": "user", "content": content_list}] if (is_vision_model and uploaded_files) else [{"role": "user", "content": prompt}]
                 response = client.chat.completions.create(model=modell, messages=msg)
                 
-                st.success(f"✔️ Analyse erfolgreich via {modell}")
+                st.success(f"✔️ Experten-Analyse durchgeführt mit {modell}")
                 st.markdown("---")
                 st.write(response.choices[0].message.content)
                 break
