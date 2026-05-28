@@ -6,7 +6,7 @@ import base64
 
 st.set_page_config(page_title="MarktRadar OS v2.0", layout="wide")
 st.title("⚡ MARKTRADAR – EXTREM-EXPERTEN MULTIPLIER OS")
-st.subheader("99% präzise Einzelteil-Inventur & KI-Bewertung")
+st.subheader("99% präzise Einzelteil-Inventur & Konservative KI-Bewertung")
 
 # 1. API-Key laden
 try:
@@ -41,29 +41,32 @@ with col2:
 
 # 4. Analyse
 if st.button("🔥 EXPERTEN-ANALYSE STARTEN"):
-    with st.spinner("Sachverständige analysieren Bilder und Daten..."):
+    with st.spinner("Sachverständige analysieren Bilder und Daten (Worst-Case-Modus)..."):
         web_text = extrahiere_webseiten_text(link)
         
         prompt = f"""
-        Du bist ein unbarmherziges Experten-Gremium. Analysiere die Bilder und Infos extrem präzise.
-        
+        Du bist ein unbarmherziger Resale-Stratege. Deine Schätzungen müssen extrem konservativ (Worst-Case) sein.
+        Gehe immer vom 'Schnell-Verkauf'-Szenario aus (Flohmarkt-Niveau oder absolute Preisuntergrenze).
+
         Input:
-        - Schrott-Anteil: {defekt_prozent}%
+        - Schrott-Anteil (Risiko-Faktor): {defekt_prozent}%
         - Manuelle Infos: {gegenstaende}
         - Auktions-Text: {web_text}
 
         Aufgabe:
-        1. Inventur: Liste alle Artikel auf dem Bild/Text einzeln auf mit geschätztem Marktwert (Flohmarkt vs. Online).
-        2. Risiko: Berücksichtige den Schrott-Anteil von {defekt_prozent}%.
-        3. Empfehlung: Lohnt sich der Erwerb basierend auf dem Warenwert?
+        1. Inventur & Konservative Schätzung: Liste alle Artikel auf. Gib für jeden einen 'Absoluten Mindestwert' an (Betrag, den man fast immer erzielt).
+        2. Risiko-Check: Berücksichtige den Schrott-Anteil von {defekt_prozent}%. Welcher Gesamtwert bleibt nach Abzug des Risikos sicher übrig?
+        3. Kauf-Empfehlung: Nenne mir den 'Maximalen Sicherheitspreis' (den Betrag, bei dem du das Gebot noch abgeben würdest, um bei einem Worst-Case-Verkauf nicht draufzuzahlen).
         """
 
         client = Groq(api_key=GROQ_API_KEY)
         
-        # Modellwahl: Bevorzuge Vision-Modelle
+        # Modellwahl: Bevorzuge Vision/Multimodal-Modelle (Scout, Vision, Maverick)
         groq_models = client.models.list()
         all_model_ids = [m.id for m in groq_models.data]
         vision_keywords = ["vision", "scout", "maverick"]
+        
+        # Sortierung: Erst Vision/Multimodal, dann Text
         modelle_zum_testen = [m for m in all_model_ids if any(k in m.lower() for k in vision_keywords)] + \
                              [m for m in all_model_ids if not any(k in m.lower() for k in vision_keywords)]
 
@@ -71,14 +74,24 @@ if st.button("🔥 EXPERTEN-ANALYSE STARTEN"):
         content_list = [{"type": "text", "text": prompt}]
         if uploaded_files:
             for f in uploaded_files:
+                # Datei neu lesen, falls sie bereits gelesen wurde
+                f.seek(0)
                 base64_image = base64.b64encode(f.read()).decode('utf-8')
                 content_list.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}})
 
+        # Analyse-Loop
         for modell in modelle_zum_testen:
             try:
-                msg = [{"role": "user", "content": content_list}] if any(k in modell.lower() for k in vision_keywords) else [{"role": "user", "content": prompt}]
+                # Bild-Modelle bekommen das volle Paket, Text-Modelle nur den Text
+                is_vision_model = any(k in modell.lower() for k in vision_keywords)
+                msg = [{"role": "user", "content": content_list}] if (is_vision_model and uploaded_files) else [{"role": "user", "content": prompt}]
+                
                 response = client.chat.completions.create(model=modell, messages=msg)
-                st.success(f"✔️ Analyse via {modell}")
+                
+                st.success(f"✔️ Analyse erfolgreich durchgeführt mit Modell: {modell}")
+                st.markdown("---")
                 st.write(response.choices[0].message.content)
                 break
-            except: continue
+            except Exception as e:
+                # Bei Fehlern (wie Terms Acceptance) einfach das nächste Modell versuchen
+                continue
