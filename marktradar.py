@@ -29,7 +29,7 @@ def extrahiere_webseiten_text(url):
     except Exception as e:
         return f"Fehler beim Web-Scraping: {e}"
 
-# 3. Benutzeroberfläche (Optimiert für maximale Präzision)
+# 3. Benutzeroberfläche
 col1, col2 = st.columns([1, 1])
 
 with col1:
@@ -52,7 +52,6 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
             
             web_text = extrahiere_webseiten_text(link)
             
-            # Der ultimative Präzisions-Prompt
             prompt = f"""
             Du bist ein unbarmherziges, hochpräzises Gremium aus 3 Reseller-Experten (1x vereidigter Sachverständiger für Gebrauchtwaren, 1x Plattform-Stratege, 1x Chef-Finanzprüfer).
             Deine Aufgabe ist eine 99% genaue Einzelteil-Analyse der hochgeladenen Bilder und Artikellisten. Ignoriere jeden Werbe-Text der Webseite, fokussiere dich NUR auf die physischen Artikel.
@@ -63,40 +62,37 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
             - Manuelle Artikelliste: {gegenstaende}
             - Gefundener Auktions-Text: {web_text}
 
-            Kosten-Struktur der Auktion (Zwingend mathematisch korrekt berechnen!):
+            Kosten-Struktur der Auktion:
             - Echte Gesamtkosten = Einkaufspreis + 20% Aufgeld, und auf diese Zwischensumme nochmals +19% USt.
 
             Bitte liefere dein Gutachten exakt in dieser Struktur:
 
-            ### 📋 1. Stück-für-Stück Inventur & Zustand (Aus Bildern & Text extrahiert)
+            ### 📋 1. Stück-für-Stück Inventur & Zustand
             List oder tabelliere JEDEN einzelnen erkannten Gegenstand separat auf:
             - **Gegenstand:** [Genaue Bezeichnung]
-            - **Visueller Zustand:** [Gebrauchsspuren, Kratzer, Vollständigkeit laut Foto]
-            - **Flohmarkt-Preis:** [Sofort-Cash-Wert bei schnellem Abverkauf]
+            - **Visueller Zustand:** [Gebrauchsspuren, Vollständigkeit]
+            - **Flohmarkt-Preis:** [Sofort-Cash-Wert]
             - **Kleinanzeigen-Preis:** [Realistischer lokaler Festpreis]
-            - **Spezial-Plattform (eBay/Discogs/Zoxs):** [Maximaler Online-Wert für Sammler]
+            - **Spezial-Plattform:** [Maximaler Online-Wert]
             - **Empfohlene Route:** [Wo bringt dieses Teil am meisten Sinn?]
 
             ### 📉 2. Risiko- & Schrott-Abzug
-            - Ziehe sofort {defekt_prozent}% vom Gesamtwert ab (Sicherheitsabschlag für defekte Ware).
-            - Welche versteckten Risiken (z.B. tiefe Kratzer auf Platten, fehlende Kabel bei Technik) sind auf den Bildern zu vermuten?
+            - Ziehe sofort {defekt_prozent}% vom Gesamtwert ab.
+            - Welche versteckten Risiken sind zu vermuten?
 
-            ### 📊 3. Finanz-Matrix (Wo bleibt am meisten hängen?)
-            Berechne den echten Netto-Gewinn (Ertrag abzüglich deiner echten Gesamtkosten und abzüglich 10% Online-Gebührenpuffer):
-            - **Szenario A (Reiner Flohmarkt-Abverkauf):** Wie viel Reingewinn bleibt am Ende auf dem Konto?
-            - **Szenario B (Strategischer Online-Mix - Kleinanzeigen & eBay):** Wie viel Reingewinn bleibt am Ende auf dem Konto?
+            ### 📊 3. Finanz-Matrix
+            Berechne den echten Netto-Gewinn (Ertrag abzüglich Gesamtkosten und 10% Online-Gebührenpuffer):
+            - **Szenario A (Reiner Flohmarkt):** Reingewinn?
+            - **Szenario B (Online-Mix):** Reingewinn?
 
             ### 🏁 PROFIT-ENDZIFFER
-            Gib hier die finale, bereinigte Netto-Gewinnspanne an:
             "PROFIT-ENDZIFFER: [Gewinn Szenario A] € bis [Gewinn Szenario B] € Netto-Reingewinn"
-
-            Abschlussurteil: Lohnt sich dieser Deal bei einem Einkauf von {einkaufspreis} €? (Klares JA oder NEIN mit 1-Satz-Begründung).
+            Abschlussurteil: Lohnt sich dieser Deal bei einem Einkauf von {einkaufspreis} €? (JA oder NEIN mit kurzer Begründung).
             """
 
             try:
                 client = Groq(api_key=GROQ_API_KEY)
                 
-                # Bilddaten aufbereiten
                 content_list = [{"type": "text", "text": prompt}]
                 if uploaded_files:
                     for uploaded_file in uploaded_files:
@@ -107,13 +103,16 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
                             "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
                         })
 
-                # Krisensichere Schleife
                 erfolgreich = False
                 modelle_zum_testen = [
                     "llama-3.2-90b-vision-preview",
                     "llama-3.2-11b-vision-preview",
+                    "llama-3.3-70b-versatile",
                     "llama-3.1-8b-instant"
                 ]
+                
+                # Wir speichern die Fehlermeldungen jetzt ab!
+                gesammelte_fehler = []
 
                 for modell in modelle_zum_testen:
                     try:
@@ -130,11 +129,15 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
                         st.write(response.choices[0].message.content)
                         erfolgreich = True
                         break 
-                    except Exception:
+                    except Exception as fehler:
+                        gesammelte_fehler.append(f"Fehler bei Modell **{modell}**: {str(fehler)}")
                         continue 
 
                 if not erfolgreich:
-                    st.error("Kritischer Fehler: Derzeit kann keine Verbindung zu den Groq-Servern hergestellt werden. Bitte überprüfe deine Secrets.")
+                    st.error("Kritischer Fehler: Derzeit kann keine Verbindung zu den Groq-Servern hergestellt werden.")
+                    st.warning("🚨 **System-Log für die Fehlersuche:**")
+                    for msg in gesammelte_fehler:
+                        st.write(msg)
             
             except Exception as system_error:
                 st.error(f"Systemfehler aufgetreten: {system_error}")
