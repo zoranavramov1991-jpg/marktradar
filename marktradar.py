@@ -2,9 +2,9 @@ import streamlit as st
 from groq import Groq
 import base64
 
-# --- KONFIGURATION ---
-st.set_page_config(page_title="MarktRadar OS Final", layout="wide")
-st.title("⚡ MARKTRADAR – STABILE VERSION")
+# --- SEITEN-KONFIGURATION ---
+st.set_page_config(page_title="MarktRadar OS Unbreakable", layout="wide")
+st.title("⚡ MARKTRADAR – UNBREAKABLE VERSION")
 
 # 1. API-Key laden
 try:
@@ -13,14 +13,14 @@ except:
     st.error("API-Key fehlt!")
     st.stop()
 
-# 2. UI-Elemente
+# 2. UI
 link = st.text_input("Auktions-Link:")
 defekt_prozent = st.slider("Schrott-Regler (%):", 0, 100, 20)
 uploaded_files = st.file_uploader("Artikelbilder hochladen:", accept_multiple_files=True)
 
-# 3. Logik
+# 3. Logik mit SELBSTHEILUNG
 if st.button("🚀 EXPERTEN-ANALYSE STARTEN"):
-    with st.spinner("Experten-Analyse läuft..."):
+    with st.spinner("Analyse läuft..."):
         try:
             client = Groq(api_key=GROQ_API_KEY)
             prompt_text = (
@@ -29,12 +29,15 @@ if st.button("🚀 EXPERTEN-ANALYSE STARTEN"):
                 f"Nenne das absolute Maximalgebot für den gesamten Posten und 3 Risiken."
             )
             
-            # --- FALLUNTERSCHEIDUNG ---
+            # Modelle definieren
+            vision_model = "llama-3.2-11b-vision-instruct"
+            text_model = "llama-3.3-70b-versatile"
+            
+            messages = []
+            final_model = text_model # Default
+            
+            # Bilder-Logik
             if uploaded_files:
-                # VISION-PFAD (Bilder vorhanden)
-                # Wir nutzen 'llama-3.2-11b-vision-instruct' (Aktueller Standard)
-                model_name = "llama-3.2-11b-vision-instruct"
-                
                 content_list = [{"type": "text", "text": prompt_text}]
                 for f in uploaded_files:
                     f.seek(0)
@@ -44,21 +47,26 @@ if st.button("🚀 EXPERTEN-ANALYSE STARTEN"):
                         "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
                     })
                 messages = [{"role": "user", "content": content_list}]
+                final_model = vision_model
             else:
-                # TEXT-PFAD (Keine Bilder)
-                # Wir nutzen 'llama-3.3-70b-versatile' (Der Fels in der Brandung)
-                model_name = "llama-3.3-70b-versatile"
                 messages = [{"role": "user", "content": prompt_text}]
+                final_model = text_model
 
-            # API-Aufruf
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages
-            )
+            # VERSUCH 1: Vision-Modell (falls Bilder da sind)
+            try:
+                response = client.chat.completions.create(model=final_model, messages=messages)
+                st.success("Analyse erfolgreich!")
+                st.write(response.choices[0].message.content)
             
-            st.success(f"Analyse erfolgreich mit {model_name}!")
-            st.write(response.choices[0].message.content)
-            
+            # FALLBACK: Falls Vision scheitert, nutze Text-Modell
+            except Exception as e:
+                st.warning("Vision-Modell nicht verfügbar. Wechsle auf reinen Text-Modus...")
+                response = client.chat.completions.create(
+                    model=text_model, 
+                    messages=[{"role": "user", "content": prompt_text}]
+                )
+                st.write("*(Hinweis: Analyse erfolgte ohne Bild-Support, da Vision-Modell nicht aktiv)*")
+                st.write(response.choices[0].message.content)
+
         except Exception as e:
-            st.error(f"Fehler: {e}")
-            st.info("TIPP: Wenn hier 'model_decommissioned' steht, ist das Vision-Modell wieder veraltet. Lade in diesem Fall KEINE Bilder hoch, dann nutzt das Tool das stabile Text-Modell.")
+            st.error(f"Kritischer Fehler: {e}")
