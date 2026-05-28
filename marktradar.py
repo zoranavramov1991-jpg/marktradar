@@ -116,14 +116,11 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
 
                 for modell in modelle_zum_testen:
                     try:
-                        # Prüfen, ob das aktuelle Modell Bilder verarbeiten kann
                         unterstuetzt_vision = "vision" in modell.lower()
                         
-                        # Absolut saubere Kanaltrennung der Payloads:
                         if unterstuetzt_vision and uploaded_files:
                             messages = [{"role": "user", "content": content_list}]
                         else:
-                            # Reiner Text-Modus (auch Fallback für Textmodelle, falls Bilder geladen sind)
                             messages = [{"role": "user", "content": prompt}]
                         
                         response = client.chat.completions.create(
@@ -134,8 +131,12 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
                         st.markdown("---")
                         st.success(f"✔️ Analyse erfolgreich durchgeführt mit Modell: {modell}")
                         
+                        # Wenn wir auf ein Textmodell zurückgreifen mussten, zeigen wir die Vision-Fehler loggen
                         if not unterstuetzt_vision and uploaded_files:
                             st.warning("⚠️ Hinweis: Das genutzte Modell unterstützt keine direkten Bild-Scans. Die Analyse basiert auf den Textdaten & Beschreibungen.")
+                            with st.expander("🔍 Fehler-Details: Warum wurden die Bild-Modelle übersprungen?"):
+                                for msg in gesammelte_fehler:
+                                    st.write(msg)
                             
                         st.info("### 🕵️‍♂️ Das detaillierte Sachverständigen-Gutachten:")
                         st.write(response.choices[0].message.content)
