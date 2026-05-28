@@ -28,7 +28,7 @@ def extrahiere_webseiten_text(url):
     except Exception as e:
         return f"Fehler beim Web-Scraping: {e}"
 
-# 3. Benutzeroberfläche (Exakt wie in deinem Design-Plan)
+# 3. Benutzeroberfläche
 col1, col2 = st.columns([1, 1])
 
 with col1:
@@ -78,7 +78,7 @@ if st.button("Cloud-KI Analyse starten"):
             - Wie viel Euro reiner Netto-Gewinn bleibt am Ende MINDESTENS auf dem Bankkonto übrig?
 
             ### 👁️ EXPERTE 3: Der Bildprüfer (KI-Vision-Analyse)
-            - Analysiere die beigefügten Fotos (falls vorhanden) ganz genau auf den Zustand der Ware (Kratzer, sichtbare Schäden, Vollständigkeit, Originalverpackung). 
+            - Analysiere die beigefügten Fotos ganz genau auf den Zustand der Ware (Kratzer, sichtbare Schäden, Vollständigkeit, Originalverpackung). 
             - Wenn du Mängel siehst, korrigiere den Wert weiter nach unten! Falls keine Fotos hochgeladen wurden, nenne dem User die 3 wichtigsten optischen Schwachstellen, auf die er vor Ort achten muss.
 
             FAZIT: Klares Urteil abgeben: Lohnt sich dieser Deal bei einem geschätzten Einkaufspreis? JA oder NEIN?
@@ -103,9 +103,9 @@ if st.button("Cloud-KI Analyse starten"):
             try:
                 client = Groq(api_key=GROQ_API_KEY)
                 
-                # Wir nutzen hier das offizielle Llama 3.2 Vision Modell für die Bildverarbeitung!
+                # Hier nutzen wir das finale, stabile Llama 3.2 Vision Modell
                 response = client.chat.completions.create(
-                    model="llama-3.2-11b-vision-preview",
+                    model="llama-3.2-11b-vision-instruct",
                     messages=[{"role": "user", "content": content_list}]
                 )
                 
