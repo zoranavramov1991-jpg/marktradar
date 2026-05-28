@@ -93,6 +93,7 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
             try:
                 client = Groq(api_key=GROQ_API_KEY)
                 
+                # Bilddaten vorbereiten
                 content_list = [{"type": "text", "text": prompt}]
                 if uploaded_files:
                     for uploaded_file in uploaded_files:
@@ -105,26 +106,37 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
 
                 erfolgreich = False
                 modelle_zum_testen = [
-                    "llama-3.2-90b-vision-preview",
-                    "llama-3.2-11b-vision-preview",
+                    "llama-3.2-11b-vision",
+                    "llama-3.2-90b-vision",
                     "llama-3.3-70b-versatile",
                     "llama-3.1-8b-instant"
                 ]
                 
-                # Wir speichern die Fehlermeldungen jetzt ab!
                 gesammelte_fehler = []
 
                 for modell in modelle_zum_testen:
                     try:
-                        messages_content = content_list if "vision" in modell else [{"role": "user", "content": prompt}]
+                        # Prüfen, ob das aktuelle Modell Bilder verarbeiten kann
+                        unterstuetzt_vision = "vision" in modell.lower()
+                        
+                        # Absolut saubere Kanaltrennung der Payloads:
+                        if unterstuetzt_vision and uploaded_files:
+                            messages = [{"role": "user", "content": content_list}]
+                        else:
+                            # Reiner Text-Modus (auch Fallback für Textmodelle, falls Bilder geladen sind)
+                            messages = [{"role": "user", "content": prompt}]
                         
                         response = client.chat.completions.create(
                             model=modell,
-                            messages=[{"role": "user", "content": messages_content}]
+                            messages=messages
                         )
                         
                         st.markdown("---")
                         st.success(f"✔️ Analyse erfolgreich durchgeführt mit Modell: {modell}")
+                        
+                        if not unterstuetzt_vision and uploaded_files:
+                            st.warning("⚠️ Hinweis: Das genutzte Modell unterstützt keine direkten Bild-Scans. Die Analyse basiert auf den Textdaten & Beschreibungen.")
+                            
                         st.info("### 🕵️‍♂️ Das detaillierte Sachverständigen-Gutachten:")
                         st.write(response.choices[0].message.content)
                         erfolgreich = True
@@ -134,7 +146,7 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
                         continue 
 
                 if not erfolgreich:
-                    st.error("Kritischer Fehler: Derzeit kann keine Verbindung zu den Groq-Servern hergestellt werden.")
+                    st.error("Kritischer Fehler: Keine Verbindung zu Groq möglich.")
                     st.warning("🚨 **System-Log für die Fehlersuche:**")
                     for msg in gesammelte_fehler:
                         st.write(msg)
