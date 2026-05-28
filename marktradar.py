@@ -93,18 +93,20 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
             try:
                 client = Groq(api_key=GROQ_API_KEY)
                 
-                # 🔍 LIVE-ABFRAGE: Welche Modelle hat Groq JETZT GERADE für dich aktiv?
+                # 🔍 LIVE-ABFRAGE: Modelle holen und smarte Sortierung
                 try:
                     groq_models = client.models.list()
                     all_model_ids = [m.id for m in groq_models.data]
                     
-                    # Sortierung: Jedes Modell mit "vision" im Namen wandert nach ganz oben!
-                    vision_models = [m for m in all_model_ids if "vision" in m.lower()]
-                    text_models = [m for m in all_model_ids if "vision" not in m.lower()]
+                    # NEU: Wir jagen jetzt gezielt die neuen Llama 4 Multimodal-Modelle!
+                    vision_keywords = ["vision", "scout", "maverick"]
+                    vision_models = [m for m in all_model_ids if any(k in m.lower() for k in vision_keywords)]
+                    text_models = [m for m in all_model_ids if not any(k in m.lower() for k in vision_keywords)]
+                    
                     modelle_zum_testen = vision_models + text_models
                 except Exception as e:
-                    # Notfall-Fallback-Liste, falls die Live-Liste blockiert wird
-                    modelle_zum_testen = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+                    # Notfall-Fallback
+                    modelle_zum_testen = ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.3-70b-versatile"]
                     all_model_ids = []
                 
                 # Bilddaten vorbereiten
@@ -123,9 +125,10 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
 
                 for modell in modelle_zum_testen:
                     try:
-                        unterstuetzt_vision = "vision" in modell.lower()
+                        # Prüfen, ob das Modell Bilder frisst
+                        unterstuetzt_vision = any(k in modell.lower() for k in ["vision", "scout", "maverick"])
                         
-                        # Bild-Modelle bekommen das Bild-Paket, reine Text-Modelle nur den Text
+                        # Bild-Modelle bekommen das volle Paket, Text-Modelle nur den Text
                         if unterstuetzt_vision and uploaded_files:
                             messages = [{"role": "user", "content": content_list}]
                         else:
@@ -155,7 +158,7 @@ if st.button("🔥 KNALLHARTE EXPERTEN-ANALYSE STARTEN"):
                         continue 
 
                 if not erfolgreich:
-                    st.error("Kritischer Fehler: Keine Verbindung zu Groq möglich.")
+                    st.error("Kritischer Fehler: Keine Verbindung zu Groq möglich oder alle Modelle haben blockiert.")
                     st.warning("🚨 **System-Log für die Fehlersuche:**")
                     for msg in gesammelte_fehler:
                         st.write(msg)
