@@ -46,47 +46,49 @@ with col2:
 # 4. Das Experten-Gremium starten
 if st.button("Cloud-KI Analyse starten"):
     if link or gegenstaende or uploaded_files:
-        with st.spinner("Das Experten-Gremium analysiert Text, Gebühren und Bilder..."):
+        with st.spinner("Das Experten-Gremium analysiert die Artikel und kalkuliert die 3 Varianten..."):
             
             # Webseite auslesen
             web_text = extrahiere_webseiten_text(link)
             
-            # Knallharter Experten-Prompt
+            # Exakt angepasster Experten-Prompt nach User-Vorgabe
             prompt = f"""
             Du bist ein Gremium aus 3 extrem erfahrenen, skeptischen Reseller-Experten. 
-            Der User hält die bisherige Schätzung von 4.200 € für völlig unrealistisch hoch. 
-            Deine Aufgabe ist es, den Deal KNALLHART zu hinterfragen und den echten MINDEST-Netto-Verdienst zu berechnen.
+            Deine Aufgabe ist es, die hochgeladenen Bilder und Artikellisten KNALLHART zu analysieren. 
+            Ignoriere allgemeinen Webseiten-Spam und konzentriere dich zu 100% nur auf die tatsächlichen Gegenstände/Artikel!
 
             User-Eingaben:
             - Liste der Gegenstände: {gegenstaende}
             - Erwarteter Schrott-Anteil: {defekt_prozent}%
             - Gefundener Auktions-Text: {web_text}
 
-            Kosten-Regeln der Auktion (Zwingend beachten!):
+            Kosten-Regeln der Auktion (Zwingend vom Gewinn abziehen!):
             - Zum Zuschlagspreis kommen immer +20% Aufgeld hinzu.
             - Auf die Gesamtsumme kommen nochmals +19% Umsatzsteuer oben drauf!
 
-            Bitte gib deine Analyse strukturiert in diesen 3 Experten-Berichten aus:
+            Bitte berechne den echten Netto-Gewinn (nach Abzug aller Gebühren, Steuern und des {defekt_prozent}% Schrott-Anteils) in genau diesen 3 Schritten/Varianten:
 
-            ### 🕵️‍♂️ EXPERTE 1: Der pessimistische Reseller (Realistischer Marktwert)
-            - Schätze den absolut niedrigsten Marktwert bei schnellem Weiterverkauf (eBay 'Verkaufte Artikel' / Kleinanzeigen). Keine Traumpreise!
-            - Ziehe sofort {defekt_prozent}% des Wertes ab, da dieser Teil als Schrott deklariert ist.
+            ### 🏃‍♂️ SCHRITT 1: Schnellverkauf (z.B. Flohmarkt / Sofort-Ankaufportale)
+            - Sehr niedrige Preise, extrem schneller Warenumschlag (Geld sofort auf der Hand).
+            - Wie hoch ist hier der geschätzte Mindest-Reingewinn?
 
-            ### 📊 EXPERTE 2: Der scharfkalkulierende Finanzchef (Echte Netto-Gewinn-Kalkulation)
-            - Erstelle eine Beispiel-Rechnung: Wenn der User die Auktion für z.B. 100 € oder 300 € ersteigert, wie hoch sind die echten Gesamtkosten inklusive der 20% Aufgeld und 19% USt?
-            - Ziehe vom Wiederverkaufserlös ca. 10% Plattformgebühren (eBay etc.) und Versandpuffer ab.
-            - Wie viel Euro reiner Netto-Gewinn bleibt am Ende MINDESTENS auf dem Bankkonto übrig?
+            ### ⚖️ SCHRITT 2: Normalverkauf (z.B. eBay Kleinanzeigen / Standard-Onlinepreise)
+            - Realistische Marktpreise bei mittlerer Wartezeit (ca. 1-4 Wochen).
+            - Ziehe ca. 10% Plattformgebühren/Puffer ab. Wie hoch ist hier der Reingewinn?
 
-            ### 👁️ EXPERTE 3: Der Bildprüfer (Optische Analyse)
-            - Wenn Bilder ausgewertet werden konnten: Analysiere sie ganz genau auf den Zustand der Ware (Kratzer, sichtbare Schäden, Vollständigkeit).
-            - Wenn keine direkte Bildübertragung möglich war: Nenne dem User die 3 wichtigsten optischen Schwachstellen bei Platten und Technik, auf die er auf den Fotos manuell achten muss!
+            ### 🐢 SCHRITT 3: Langsamverkauf (z.B. Spezialisierte Sammlerbörsen / eBay Festpreis)
+            - Absoluter Spitzenpreis für Liebhaber und Sammler, kann aber Monate dauern.
+            - Wie hoch ist das maximale Gewinn-Potenzial?
 
-            FAZIT: Klares Urteil abgeben: Lohnt sich dieser Deal bei einem geschätzten Einkaufspreis? JA oder NEIN?
+            ---
+            ### 🏁 PROFIT-ENDZIFFER
+            Gib hier ganz am Ende eine unmissverständliche, klare Reingewinn-Spanne von Schritt 1 bis Schritt 3 als finale Zahl an (z.B. "PROFIT-ENDZIFFER: 150 € - 650 € Netto-Gewinn").
+            Beende mit einem klaren Urteil: Lohnt sich dieser Deal bei einem normalen Einkaufspreis? JA oder NEIN?
             """
 
             client = Groq(api_key=GROQ_API_KEY)
 
-            # VERSUCH 1: Analyse mit dem Vision-Modell
+            # VERSUCH 1: Analyse mit dem brandneuen Llama 4 Scout Vision-Modell
             try:
                 content_list = [{"type": "text", "text": prompt}]
                 
@@ -99,22 +101,21 @@ if st.button("Cloud-KI Analyse starten"):
                             "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
                         })
                 
-                # Wir testen die Basis-Variante des Llama 3.2 Vision-Modells
+                # Nutzung des offiziell unterstützten Llama 4 Multimodal-Modells
                 response = client.chat.completions.create(
-                    model="llama-3.2-11b-vision",
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
                     messages=[{"role": "user", "content": content_list}]
                 )
                 
                 st.markdown("---")
-                st.info("### 📋 Das Gutachten des Experten-Gremiums (Inklusive Bild-Scan):")
+                st.info("### 📋 Das Gutachten des Experten-Gremiums (Inklusive visuellem Bild-Scan):")
                 st.write(response.choices[0].message.content)
 
-            # FALLBACK: Falls Groq das Vision-Modell blockiert, springt sofort das Text-Modell ein!
+            # FALLBACK: Falls die Bilder-API unerwartet hakt, springt sofort die Text-KI ein
             except Exception as vision_error:
-                st.warning("⚠️ Groq-Bild-Modell antwortet nicht. Starte automatischen Text-Sicherheitsmodus...")
+                st.warning("⚠️ Bild-Modell temporär überlastet. Starte automatischen Text-Sicherheitsmodus...")
                 
                 try:
-                    # Wir nutzen das garantiert aktive Llama-3.1-Modell
                     response = client.chat.completions.create(
                         model="llama-3.1-8b-instant",
                         messages=[{"role": "user", "content": prompt}]
@@ -127,4 +128,4 @@ if st.button("Cloud-KI Analyse starten"):
                 except Exception as fallback_error:
                     st.error(f"Kritischer Systemfehler: {fallback_error}")
     else:
-        st.warning("Bitte fülle mindestens ein Feld aus.")
+        st.warning("Bitte füge einen Link, Text oder Bilder hinzu!")
