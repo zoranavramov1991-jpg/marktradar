@@ -41,7 +41,7 @@ with col2:
     st.markdown("### 📸 Bilder-Galerie (Für genaue KI-Foto-Analyse)")
     uploaded_files = st.file_uploader("Bilder hochladen:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
     if uploaded_files:
-        st.success(f"{len(uploaded_files)} Bild(er) erfolgreich für die KI-Analyse geladen!")
+        st.success(f"{len(uploaded_files)} Bild(er) erfolgreich geladen!")
 
 # 4. Das Experten-Gremium starten
 if st.button("Cloud-KI Analyse starten"):
@@ -77,43 +77,54 @@ if st.button("Cloud-KI Analyse starten"):
             - Ziehe vom Wiederverkaufserlös ca. 10% Plattformgebühren (eBay etc.) und Versandpuffer ab.
             - Wie viel Euro reiner Netto-Gewinn bleibt am Ende MINDESTENS auf dem Bankkonto übrig?
 
-            ### 👁️ EXPERTE 3: Der Bildprüfer (KI-Vision-Analyse)
-            - Analysiere die beigefügten Fotos ganz genau auf den Zustand der Ware (Kratzer, sichtbare Schäden, Vollständigkeit, Originalverpackung). 
-            - Wenn du Mängel siehst, korrigiere den Wert weiter nach unten! Falls keine Fotos hochgeladen wurden, nenne dem User die 3 wichtigsten optischen Schwachstellen, auf die er vor Ort achten muss.
+            ### 👁️ EXPERTE 3: Der Bildprüfer (Optische Analyse)
+            - Wenn Bilder ausgewertet werden konnten: Analysiere sie ganz genau auf den Zustand der Ware (Kratzer, sichtbare Schäden, Vollständigkeit).
+            - Wenn keine direkte Bildübertragung möglich war: Nenne dem User die 3 wichtigsten optischen Schwachstellen bei Platten und Technik, auf die er auf den Fotos manuell achten muss!
 
             FAZIT: Klares Urteil abgeben: Lohnt sich dieser Deal bei einem geschätzten Einkaufspreis? JA oder NEIN?
             """
 
-            # Inhalt für das Groq-Vision-Modell vorbereiten
-            content_list = [{"type": "text", "text": prompt}]
-            
-            # Bilder in Base64 umwandeln und an die KI anhängen
-            if uploaded_files:
-                for uploaded_file in uploaded_files:
-                    bytes_data = uploaded_file.read()
-                    base64_image = base64.b64encode(bytes_data).decode('utf-8')
-                    content_list.append({
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
-                        }
-                    })
+            client = Groq(api_key=GROQ_API_KEY)
 
-            # Anfrage an Groq absenden
+            # VERSUCH 1: Analyse mit dem Vision-Modell
             try:
-                client = Groq(api_key=GROQ_API_KEY)
+                content_list = [{"type": "text", "text": prompt}]
                 
-                # Hier nutzen wir das finale, stabile Llama 3.2 Vision Modell
+                if uploaded_files:
+                    for uploaded_file in uploaded_files:
+                        bytes_data = uploaded_file.read()
+                        base64_image = base64.b64encode(bytes_data).decode('utf-8')
+                        content_list.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                        })
+                
+                # Wir testen die Basis-Variante des Llama 3.2 Vision-Modells
                 response = client.chat.completions.create(
-                    model="llama-3.2-11b-vision-instruct",
+                    model="llama-3.2-11b-vision",
                     messages=[{"role": "user", "content": content_list}]
                 )
                 
                 st.markdown("---")
-                st.info("### 📋 Das Gutachten des Experten-Gremiums:")
+                st.info("### 📋 Das Gutachten des Experten-Gremiums (Inklusive Bild-Scan):")
                 st.write(response.choices[0].message.content)
+
+            # FALLBACK: Falls Groq das Vision-Modell blockiert, springt sofort das Text-Modell ein!
+            except Exception as vision_error:
+                st.warning("⚠️ Groq-Bild-Modell antwortet nicht. Starte automatischen Text-Sicherheitsmodus...")
                 
-            except Exception as e:
-                st.error(f"Fehler bei der Experten-Analyse: {e}")
+                try:
+                    # Wir nutzen das garantiert aktive Llama-3.1-Modell
+                    response = client.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    
+                    st.markdown("---")
+                    st.info("### 📋 Das Gutachten des Experten-Gremiums (Text- & Datenanalyse):")
+                    st.write(response.choices[0].message.content)
+                    
+                except Exception as fallback_error:
+                    st.error(f"Kritischer Systemfehler: {fallback_error}")
     else:
-        st.warning("Bitte fülle mindestens ein Feld aus oder lade ein Foto hoch!")
+        st.warning("Bitte fülle mindestens ein Feld aus.")
