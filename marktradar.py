@@ -38,19 +38,33 @@ for k, v in {"verkaufe": [], "lager": [], "umsatz": 0.0, "anzahl": 0}.items():
 # ───────────────────────────────────────────────────────────────
 # KI ENGINE — OpenRouter Credits
 # ───────────────────────────────────────────────────────────────
-def ki(prompt, bild_b64=None):
+def ki(prompt, bild_b64=None, alle_bilder=None):
+    """KI-Analyse - unterstützt 1 oder mehrere Bilder"""
     try:
         if not OPENROUTER_KEY:
             return "❌ Kein API-Key konfiguriert!"
         client = OpenAI(api_key=OPENROUTER_KEY, base_url="https://openrouter.ai/api/v1")
-        if bild_b64:
+
+        # Mehrere Bilder
+        if alle_bilder and len(alle_bilder) > 0:
+            model = "openai/gpt-4o"
+            inhalt = []
+            for b64 in alle_bilder:
+                inhalt.append({"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}","detail":"high"}})
+            inhalt.append({"type":"text","text":prompt})
+            msgs = [{"role":"user","content":inhalt}]
+
+        # Ein Bild
+        elif bild_b64:
             model = "openai/gpt-4o"
             msgs  = [{"role":"user","content":[
                 {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{bild_b64}","detail":"high"}},
                 {"type":"text","text":prompt}]}]
+        # Nur Text
         else:
             model = "openai/gpt-4o-mini"
             msgs  = [{"role":"user","content":prompt}]
+
         r = client.chat.completions.create(model=model, messages=msgs, max_tokens=2000)
         return r.choices[0].message.content
     except Exception as e:
@@ -138,10 +152,16 @@ with t1:
 
     if eingabe_typ in ["📸 Foto hochladen", "📸 + 🔗 Beides"]:
         bild_input = st.file_uploader(
-            "📷 Artikel-Foto hochladen (auch mehrere möglich)",
+            "📷 Fotos hochladen (mehrere möglich — alle bleiben!)",
             type=["jpg","jpeg","png","webp"],
-            accept_multiple_files=False
+            accept_multiple_files=True
         )
+        if bild_input:
+            st.success(f"✅ {len(bild_input)} Foto(s) geladen")
+            cols = st.columns(min(len(bild_input), 4))
+            for idx, img in enumerate(bild_input):
+                with cols[idx % 4]:
+                    st.image(img, caption=f"Foto {idx+1}", use_column_width=True)
 
     if eingabe_typ in ["🔗 Link eingeben", "📸 + 🔗 Beides"]:
         url_input = st.text_input(
@@ -200,7 +220,9 @@ with t1:
 Analysiere das Bild mit maximaler Präzision. Erkenne JEDEN sichtbaren Gegenstand.
 Antworte IMMER vollständig auf Deutsch. Nie auf Englisch. Nie verweigern.
 Bei Screenshots: extrahiere alle Produkt- und Preisinformationen.
-Bei Fotos: scanne jeden einzelnen Artikel von links nach rechts, oben nach unten.{kontext_text}{zusatz}
+Bei Fotos: scanne jeden einzelnen Artikel von links nach rechts, oben nach unten.
+Bei mehreren Fotos: alle Fotos zusammen analysieren, Artikel nicht doppelt zählen.
+Foto 1, Foto 2 usw. wenn nötig unterscheiden.{kontext_text}{zusatz}
 
 WICHTIG FÜR PREISBERECHNUNG: Der Händler hat den Defektgrad mit {defekt}% angegeben ({defekt_beschr}).
 Berücksichtige das bei allen Preisschätzungen — ein höherer Defektgrad = niedrigere Preise!
@@ -266,8 +288,8 @@ ARTIKEL [N]: [NAME IN GROSSBUCHSTABEN]
 • Ältester Artikel: [Name] (ca. [Jahr])
 • Seltenster Fund: [Name + warum selten]"""
 
-                with st.spinner("🔬 Scanne jeden Artikel..."):
-                    scan_ergebnis = ki(prompt_scan, bild_b64=bild_b64)
+                with st.spinner(f"🔬 Scanne {len(alle_bilder) if alle_bilder else 0} Foto(s)..."):
+                    scan_ergebnis = ki(prompt_scan, bild_b64=bild_b64, alle_bilder=alle_bilder if alle_bilder else None)
 
                 st.markdown(scan_ergebnis)
                 st.session_state["letzte_analyse"] = scan_ergebnis
