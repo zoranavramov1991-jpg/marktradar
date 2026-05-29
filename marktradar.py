@@ -602,3 +602,341 @@ st.markdown(
     f"{datetime.now().strftime('%d.%m.%Y')}</p>",
     unsafe_allow_html=True
 )
+
+# ══════════════════════════════════════════════════════════════
+# TAB 8 — VERHANDLUNGS-SIMULATOR
+# ══════════════════════════════════════════════════════════════
+with t8:
+    st.header("🎭 KI-Verhandlungs-Simulator")
+    st.markdown("Üben Sie Verhandlungen — KI spielt den Verkäufer!")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        sim_artikel   = st.text_input("Artikel", placeholder="z.B. Vintage Kamera", key="sim_art")
+        sim_preis_vk  = st.number_input("Verkäufer-Preis (€)", min_value=1.0, value=80.0, key="sim_vk")
+        sim_ziel      = st.number_input("Ihr Ziel-Preis (€)", min_value=1.0, value=40.0, key="sim_ziel")
+    with col2:
+        sim_typ = st.selectbox("Verkäufer-Typ", [
+            "Sturköpfig — gibt kaum nach",
+            "Freundlich — aber realistisch",
+            "Gestresst — will schnell verkaufen",
+            "Unentschlossen — unsicher über Wert",
+            "Professioneller Händler — kennt Preise"
+        ], key="sim_typ")
+        sim_plattform = st.selectbox("Wo?", ["Flohmarkt persönlich", "Kleinanzeigen Chat", "Facebook"], key="sim_pl")
+
+    if "sim_verlauf" not in st.session_state:
+        st.session_state.sim_verlauf = []
+
+    if st.button("🎭 Neue Simulation starten", type="primary", use_container_width=True):
+        st.session_state.sim_verlauf = []
+        if sim_artikel:
+            start_msg = ki(f"""Du spielst einen deutschen Verkäufer auf {sim_plattform}.
+Du verkaufst: {sim_artikel} für €{sim_preis_vk}.
+Dein Typ: {sim_typ}
+Schreibe NUR deine erste Verkäufer-Antwort (2-3 Sätze) wenn ein Käufer fragt ob der Preis verhandelbar ist.
+Auf Deutsch. Bleib in der Rolle!""")
+            st.session_state.sim_verlauf.append({"rolle": "🏪 Verkäufer", "text": start_msg})
+
+    if st.session_state.sim_verlauf:
+        st.markdown("---")
+        st.markdown("### 💬 Verhandlungs-Verlauf:")
+        for msg in st.session_state.sim_verlauf:
+            if msg["rolle"] == "🏪 Verkäufer":
+                st.info(f"**{msg['rolle']}:** {msg['text']}")
+            else:
+                st.success(f"**{msg['rolle']}:** {msg['text']}")
+
+        mein_angebot = st.text_input("✍️ Ihre Antwort:", placeholder="z.B. 'Würden Sie €45 akzeptieren?'", key="sim_input")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📤 Senden", type="primary", use_container_width=True):
+                if mein_angebot:
+                    st.session_state.sim_verlauf.append({"rolle": "🛒 Sie", "text": mein_angebot})
+                    verlauf_text = "\n".join([f"{m['rolle']}: {m['text']}" for m in st.session_state.sim_verlauf])
+                    antwort = ki(f"""Du spielst Verkäufer ({sim_typ}) von {sim_artikel} (Preis: €{sim_preis_vk}).
+Verlauf bisher:\n{verlauf_text}
+Antworte als Verkäufer (2-3 Sätze). Auf Deutsch. In der Rolle bleiben!
+Dein Minimalpreis intern: €{sim_ziel + (sim_preis_vk - sim_ziel) * 0.3:.0f}""")
+                    st.session_state.sim_verlauf.append({"rolle": "🏪 Verkäufer", "text": antwort})
+                    st.rerun()
+
+        with col2:
+            if st.button("🧠 KI-Strategie anzeigen", use_container_width=True):
+                verlauf_text = "\n".join([f"{m['rolle']}: {m['text']}" for m in st.session_state.sim_verlauf])
+                strategie = ki(f"""Analysiere diese Verhandlung als Experte.
+Artikel: {sim_artikel} | Verkäufer-Preis: €{sim_preis_vk} | Ziel: €{sim_ziel}
+Verlauf:\n{verlauf_text}
+
+Gib auf Deutsch:
+1. Was lief gut?
+2. Was hätte besser sein können?
+3. Optimale nächste Nachricht um €{sim_ziel} zu erreichen""")
+                st.markdown("### 🧠 KI-Strategie:")
+                st.markdown(strategie)
+
+# ══════════════════════════════════════════════════════════════
+# TAB 9 — FOTO-COACH
+# ══════════════════════════════════════════════════════════════
+with t9:
+    st.header("📸 Profi-Foto-Coach")
+    st.markdown("Foto hochladen → KI sagt wie Sie es besser machen für maximalen Verkaufspreis!")
+
+    foto_coach = st.file_uploader("📷 Ihr aktuelles Foto hochladen", type=["jpg","jpeg","png"], key="foto_coach")
+    foto_plattform = st.selectbox("Für welche Plattform?", ["Kleinanzeigen", "Vinted", "Facebook", "Alle"], key="foto_pl")
+
+    if st.button("📸 Foto analysieren & verbessern", type="primary", use_container_width=True):
+        if foto_coach:
+            with st.spinner("🔍 Analysiere Ihr Foto..."):
+                b64 = base64.b64encode(foto_coach.read()).decode()
+                col1, col2 = st.columns(2)
+                with col1:
+                    foto_coach.seek(0)
+                    st.image(foto_coach, caption="Ihr aktuelles Foto", use_column_width=True)
+
+                analyse_foto = ki(f"""Du bist Experte für Produkt-Fotografie auf deutschen Secondhand-Plattformen.
+Analysiere dieses Verkaufsfoto für {foto_plattform}.
+Antworte auf Deutsch.
+
+## 📊 FOTO-BEWERTUNG (Note 1-10):
+- Helligkeit: X/10
+- Hintergrund: X/10
+- Schärfe: X/10
+- Winkel: X/10
+- Gesamteindruck: X/10
+
+## ❌ PROBLEME:
+[Was ist schlecht am aktuellen Foto?]
+
+## ✅ SOFORT-VERBESSERUNGEN (konkret):
+1. [Verbesserung]
+2. [Verbesserung]
+3. [Verbesserung]
+
+## 📱 PERFEKTES FOTO - So machen Sie es:
+- Hintergrund: [Was nehmen?]
+- Licht: [Wie aufstellen?]
+- Winkel: [Von wo fotografieren?]
+- Extras: [Was noch zeigen? Stempel, Details etc.]
+- Tageszeit: [Wann am besten?]
+
+## 💰 PREIS-AUSWIRKUNG:
+Mit perfektem Foto könnten Sie X% mehr erzielen.""", bild_b64=b64)
+
+                st.markdown(analyse_foto)
+        else:
+            st.info("💡 Laden Sie ein Foto hoch das Sie verbessern möchten!")
+
+# ══════════════════════════════════════════════════════════════
+# TAB 10 — BERLIN FLOHMARKT-KALENDER
+# ══════════════════════════════════════════════════════════════
+with t10:
+    st.header("🗺️ Berlin Flohmarkt-Kalender")
+    st.markdown("Alle wichtigen Flohmärkte in Berlin — immer aktuell!")
+
+    flohmärkte = [
+        {
+            "name": "Mauerpark Flohmarkt",
+            "adresse": "Bernauer Str. 63-64, 13355 Berlin",
+            "wann": "Jeden Sonntag, 9:00 - 18:00 Uhr",
+            "typ": "🎭 Gemischt — Vintage, Kleidung, Kuriositäten",
+            "bewertung": "⭐⭐⭐⭐⭐",
+            "tipp": "Früh kommen! Beste Funde vor 10 Uhr",
+            "maps": "https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"
+        },
+        {
+            "name": "Flohmarkt am Boxhagener Platz",
+            "adresse": "Boxhagener Platz, 10245 Berlin",
+            "wann": "Jeden Sonntag, 10:00 - 18:00 Uhr",
+            "typ": "🏺 Antiquitäten, Porzellan, Bücher",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Ideal für Porzellan und alte Bücher",
+            "maps": "https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"
+        },
+        {
+            "name": "Treptower Flohmarkt",
+            "adresse": "Treptower Park, Alt-Treptow, 12435 Berlin",
+            "wann": "Jeden Sonntag, 8:00 - 16:00 Uhr",
+            "typ": "🔧 Werkzeug, Elektronik, DDR-Artikel",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Gut für Elektronik und DDR-Sammlerstücke",
+            "maps": "https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"
+        },
+        {
+            "name": "RAW Flohmarkt",
+            "adresse": "Revaler Str. 99, 10245 Berlin",
+            "wann": "Jeden Samstag & Sonntag, 10:00 - 18:00 Uhr",
+            "typ": "🕶️ Vintage Mode, Vinyl, Streetwear",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Beste Quelle für Vintage-Kleidung in Berlin",
+            "maps": "https://maps.google.com/?q=RAW+Gelände+Berlin"
+        },
+        {
+            "name": "Nowkoelln Flowmarkt",
+            "adresse": "Maybachufer, 12047 Berlin",
+            "wann": "Jeden 2. & 4. Sonntag, 11:00 - 18:00 Uhr",
+            "typ": "🎨 Design, Handmade, Vintage",
+            "bewertung": "⭐⭐⭐",
+            "tipp": "Kreativ & künstlerisch — gute Preise",
+            "maps": "https://maps.google.com/?q=Maybachufer+Berlin"
+        },
+        {
+            "name": "Arkonaplatz Flohmarkt",
+            "adresse": "Arkonaplatz, 10435 Berlin",
+            "wann": "Jeden Sonntag, 10:00 - 16:00 Uhr",
+            "typ": "🏛️ Antiquitäten, Bücher, Kunst",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Klein aber fein — echte Raritäten möglich",
+            "maps": "https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"
+        },
+        {
+            "name": "Flohmarkt Ostbahnhof",
+            "adresse": "Erich-Steinfurth-Str., 10243 Berlin",
+            "wann": "Jeden Samstag & Sonntag, 9:00 - 16:00 Uhr",
+            "typ": "🛍️ Gemischt — Haushalt, Kleidung, Elektronik",
+            "bewertung": "⭐⭐⭐",
+            "tipp": "Groß und günstig — viel Auswahl",
+            "maps": "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"
+        },
+        {
+            "name": "Flohmarkt Alexanderplatz",
+            "adresse": "Alexanderplatz, 10178 Berlin",
+            "wann": "Täglich, 10:00 - 19:00 Uhr",
+            "typ": "🏙️ Gemischt, Souvenirs, Vintage",
+            "bewertung": "⭐⭐⭐",
+            "tipp": "Täglich verfügbar — gute Lage für spontane Käufe",
+            "maps": "https://maps.google.com/?q=Alexanderplatz+Flohmarkt+Berlin"
+        }
+    ]
+
+    # Filter
+    col1, col2 = st.columns(2)
+    with col1:
+        filter_tag = st.selectbox("📅 Tag filtern", ["Alle", "Samstag", "Sonntag", "Täglich"], key="floh_tag")
+    with col2:
+        filter_typ = st.selectbox("🏷️ Typ filtern", ["Alle", "Antiquitäten", "Vintage Mode", "Elektronik", "Gemischt"], key="floh_typ")
+
+    st.markdown("---")
+
+    for markt in flohmärkte:
+        with st.expander(f"{markt['bewertung']} **{markt['name']}** — {markt['wann'].split(',')[0]}"):
+            col1, col2 = st.columns([2,1])
+            with col1:
+                st.markdown(f"📍 **Adresse:** {markt['adresse']}")
+                st.markdown(f"🕐 **Wann:** {markt['wann']}")
+                st.markdown(f"🏷️ **Typ:** {markt['typ']}")
+                st.markdown(f"💡 **Tipp:** {markt['tipp']}")
+            with col2:
+                st.markdown(f"**Bewertung:** {markt['bewertung']}")
+                st.link_button("🗺️ Google Maps", markt['maps'], use_container_width=True)
+
+    st.markdown("---")
+    st.markdown("### 🤖 Flohmarkt-Tipps vom KI")
+    floh_frage = st.text_input("Frage stellen:", placeholder="Welcher Flohmarkt ist gut für Porzellan?", key="floh_frage")
+    if st.button("Fragen", key="floh_btn"):
+        if floh_frage:
+            with st.spinner("🤖 Analysiere..."):
+                st.markdown(ki(f"Berliner Flohmarkt-Experte. Kurze Antwort auf Deutsch: {floh_frage}"))
+
+# ══════════════════════════════════════════════════════════════
+# TAB 11 — LOT-KALKULATOR
+# ══════════════════════════════════════════════════════════════
+with t11:
+    st.header("🧮 Lot-Kalkulator")
+    st.markdown("Ganze Kiste oder Lot kaufen? Berechnen Sie ob es sich lohnt!")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        lot_preis     = st.number_input("💸 Preis für das Lot (€)", min_value=0.0, value=50.0, key="lot_preis")
+        lot_transport = st.number_input("🚗 Transportkosten (€)", min_value=0.0, value=0.0, key="lot_transport")
+        lot_zeit      = st.number_input("⏰ Geschätzte Arbeitszeit (Std.)", min_value=0.5, value=2.0, step=0.5, key="lot_zeit")
+    with col2:
+        lot_beschr    = st.text_area("📦 Was ist im Lot?", placeholder="z.B. Kiste mit 20 Büchern, 5 CDs, altes Geschirr, Küchenutensilien", height=100, key="lot_beschr")
+
+    st.markdown("### ➕ Artikel im Lot eintragen:")
+
+    if "lot_artikel" not in st.session_state:
+        st.session_state.lot_artikel = []
+
+    col1, col2, col3 = st.columns([3,1,1])
+    with col1:
+        neu_artikel = st.text_input("Artikel-Name", placeholder="z.B. Rosenthal Teller", key="lot_art_neu")
+    with col2:
+        neu_preis_min = st.number_input("Min €", min_value=0.0, value=5.0, key="lot_min")
+    with col3:
+        neu_preis_max = st.number_input("Max €", min_value=0.0, value=20.0, key="lot_max")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("➕ Artikel hinzufügen", use_container_width=True):
+            if neu_artikel:
+                st.session_state.lot_artikel.append({
+                    "name": neu_artikel,
+                    "min": neu_preis_min,
+                    "max": neu_preis_max,
+                    "schnitt": (neu_preis_min + neu_preis_max) / 2
+                })
+                st.rerun()
+    with col2:
+        if st.button("🗑️ Liste leeren", use_container_width=True):
+            st.session_state.lot_artikel = []
+            st.rerun()
+
+    if st.session_state.lot_artikel:
+        st.markdown("---")
+        st.markdown("### 📋 Artikel im Lot:")
+
+        gesamt_min = 0
+        gesamt_max = 0
+
+        for i, artikel in enumerate(st.session_state.lot_artikel):
+            col1, col2, col3, col4 = st.columns([3,1,1,1])
+            col1.markdown(f"**{artikel['name']}**")
+            col2.markdown(f"Min: €{artikel['min']:.0f}")
+            col3.markdown(f"Max: €{artikel['max']:.0f}")
+            col4.markdown(f"Ø €{artikel['schnitt']:.0f}")
+            gesamt_min += artikel['min']
+            gesamt_max += artikel['max']
+
+        gesamt_schnitt = (gesamt_min + gesamt_max) / 2
+        gesamtkosten   = lot_preis + lot_transport
+        gewinn_min     = gesamt_min - gesamtkosten
+        gewinn_max     = gesamt_max - gesamtkosten
+        gewinn_schnitt = gesamt_schnitt - gesamtkosten
+        stundenlohn    = gewinn_schnitt / lot_zeit if lot_zeit > 0 else 0
+
+        st.markdown("---")
+        st.markdown("### 💰 KALKULATION:")
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Lot-Kosten", f"€{gesamtkosten:.2f}")
+        col2.metric("Verkaufswert", f"€{gesamt_min:.0f} – €{gesamt_max:.0f}")
+        col3.metric("Gewinn", f"€{gewinn_min:.0f} – €{gewinn_max:.0f}")
+        col4.metric("Stundenlohn", f"€{stundenlohn:.2f}/h")
+
+        st.markdown("---")
+
+        if gewinn_schnitt > 20 and stundenlohn > 10:
+            st.success(f"🟢 **LOHNT SICH!** Ø Gewinn: €{gewinn_schnitt:.0f} | Stundenlohn: €{stundenlohn:.2f}/h")
+        elif gewinn_schnitt > 0:
+            st.warning(f"🟡 **GRENZFALL** Ø Gewinn: €{gewinn_schnitt:.0f} | Stundenlohn: €{stundenlohn:.2f}/h")
+        else:
+            st.error(f"🔴 **LOHNT NICHT** Verlust: €{abs(gewinn_schnitt):.0f}")
+
+        # KI Analyse des Lots
+        if lot_beschr and st.button("🤖 KI analysiert das Lot", use_container_width=True, key="lot_ki"):
+            with st.spinner("🤖 Analysiere Lot..."):
+                artikel_liste = "\n".join([f"- {a['name']}: €{a['min']}-€{a['max']}" for a in st.session_state.lot_artikel])
+                ki_lot = ki(f"""Analysiere dieses Lot für einen deutschen Reseller.
+Lot-Inhalt: {lot_beschr}
+Eingetragene Artikel:\n{artikel_liste}
+Lot-Preis: €{lot_preis} | Transport: €{lot_transport}
+
+Bewerte auf Deutsch:
+1. Welche Artikel im Lot sind am wertvollsten?
+2. Welche Artikel fehlen vielleicht noch im Lot?
+3. Beste Verkaufsstrategie (Einzeln / Sets / Flohmarkt)?
+4. Ampel: 🟢/🟡/🔴 — lohnt sich das Lot?""")
+                st.markdown(ki_lot)
+
