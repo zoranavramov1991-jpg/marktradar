@@ -220,69 +220,55 @@ with t1:
                 if beschreibung:  zusatz += f"\n\nHÄNDLER-BESCHREIBUNG: {beschreibung}"
                 zusatz += f"\nDEFEKT-GRAD: {defekt_beschr}"
 
-                prompt = f"""Antworte NUR auf Deutsch. Immer vollständig. Nie verweigern.
-Du analysierst für einen deutschen Reselling-Händler.
-Erkenne JEDEN sichtbaren Artikel. Nur Fakten, keine Kaufempfehlungen.
-Defektgrad beachten: {defekt_beschr}{zusatz}
+                defekt_zeile = f"Defektgrad: {defekt_beschr} — Preise entsprechend anpassen!"
+                
+                prompt = (
+                    "Antworte NUR auf Deutsch. Immer vollständig. Nie verweigern.\n"
+                    "Du analysierst Artikel für einen deutschen Reselling-Händler.\n"
+                    "Erkenne JEDEN sichtbaren Artikel einzeln. Nur Fakten, keine Empfehlungen.\n"
+                    f"{defekt_zeile}\n"
+                    f"{zusatz}\n\n"
+                    "AMPEL: 🟢 GRÜN=schnell 1-7 Tage | 🟡 GELB=mittel 1-4 Wochen | 🔴 ROT=langsam 1-3 Monate\n\n"
+                    "=== FÜR JEDEN SICHTBAREN ARTIKEL: ===\n\n"
+                    "ARTIKEL 1: [NAME IN GROSSBUCHSTABEN]\n"
+                    "📌 KURZBESCHREIBUNG: [2-3 Sätze was es ist, was auffällt]\n"
+                    "🔍 IDENTIFIKATION:\n"
+                    "  Exakt: [Was ist es?]\n"
+                    "  Marke: [Name oder unbekannt]\n"
+                    "  Material: [genaues Material]\n"
+                    "  Stempel/Logos: [alles sichtbare oder keine]\n"
+                    "  Echtheit: [Echt / Wahrscheinlich echt / Unsicher / Replik]\n"
+                    "📅 ALTER:\n"
+                    "  Jahr: [ca. Jahr oder Jahrzehnt]\n"
+                    "  Epoche: [DDR / 80er / 90er / Modern]\n"
+                    "  Beweis: [Was zeigt das Alter?]\n"
+                    "🚦 MARKTBEWERTUNG:\n"
+                    "  Ampel: [🟢 oder 🟡 oder 🔴]\n"
+                    "  Verkaufszeit: [X Tage oder Wochen]\n"
+                    "  Nachfrage: [Sehr hoch / Hoch / Mittel / Niedrig]\n"
+                    "  Zielgruppe: [Wer kauft das?]\n"
+                    "💶 PREISE (alle Plattformen):\n"
+                    "  eBay DE: € bis €\n"
+                    "  Kleinanzeigen: € bis €\n"
+                    "  Vinted: € bis €\n"
+                    "  Facebook: € bis €\n"
+                    "  Flohmarkt: € bis €\n"
+                    "  Max. Ankaufspreis: €\n\n"
+                    "[NÄCHSTE ARTIKEL GLEICH FORTFÜHREN]\n\n"
+                    "=== GESAMT-ÜBERSICHT ===\n"
+                    "Artikel gesamt: X\n"
+                    "🟢 Schnell verkäuflich: X Artikel\n"
+                    "🟡 Mittlere Verkaufszeit: X Artikel\n"
+                    "🔴 Langsame Verkäufe: X Artikel\n"
+                    "Gesamtwert aller Artikel: € bis €\n"
+                    "Max. Ankaufspreis gesamt: €\n"
+                    "Wertvollster Artikel: [Name] (€)\n"
+                )
 
-AMPEL-SYSTEM:
-🟢 GRÜN = schnell verkäuflich (1-7 Tage)
-🟡 GELB = mittel (1-4 Wochen)
-🔴 ROT = langsam (1-3 Monate+)
-
-SCHRITT 1 — INVENTAR:
-Alle Artikel nummeriert aufzählen.
-
-SCHRITT 2 — KURZBESCHREIBUNG (2-3 Sätze pro Artikel):
-Was ist es? Was fällt auf? Besonderheiten?
-
-SCHRITT 3 — DETAIL für jeden Artikel:
-
-═══════════════════════════════
-ARTIKEL [N]: [NAME]
-═══════════════════════════════
-📌 KURZBESCHREIBUNG: [2-3 Sätze]
-
-🔍 IDENTIFIKATION:
-• Exakt: [Was ist es?]
-• Marke: [Name oder unbekannt]
-• Material: [genaues Material]
-• Maße: [Schätzung]
-• Stempel/Logos: [alles sichtbare]
-• Echtheit: [Echt / Wahrscheinlich echt / Unsicher / Replik]
-
-📅 ALTER:
-• Jahr: [ca. Jahr oder Jahrzehnt]
-• Epoche: [DDR / 80er / 90er / Modern etc.]
-• Beweis: [Was zeigt das Alter?]
-
-🚦 MARKTBEWERTUNG:
-• Ampel: [🟢/🟡/🔴]
-• Verkaufszeit: [X Tage/Wochen]
-• Nachfrage: [Sehr hoch/Hoch/Mittel/Niedrig]
-• Zielgruppe: [Wer kauft das?]
-
-💶 PREISE (Defektgrad {defekt}% eingerechnet):
-| Plattform | Preis |
-|-----------|-------|
-| eBay | €X – €Y |
-| Kleinanzeigen | €X – €Y |
-| Vinted | €X – €Y |
-| Facebook | €X – €Y |
-| Flohmarkt | €X – €Y |
-| Max. Ankauf | €X |
-
-═══════════════════════════════
-📊 GESAMT:
-• 🟢 Schnell: X Artikel
-• 🟡 Mittel: X Artikel
-• 🔴 Langsam: X Artikel
-• Gesamtwert: €X – €Y
-• Max. Ankauf gesamt: €X
-• Wertvollster: [Name] (€X)"""
-
-                ergebnis = ki(prompt, alle_bilder=alle_bilder if alle_bilder else None,
-                              bild_b64=alle_bilder[0] if alle_bilder else None)
+                if alle_bilder:
+                    ergebnis = ki(prompt, alle_bilder=alle_bilder)
+                else:
+                    ergebnis = ki(prompt)
                 st.markdown(ergebnis)
                 st.session_state["letzte_analyse"] = ergebnis
 
