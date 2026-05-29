@@ -268,7 +268,14 @@ def secret(k):
 OR_KEY = secret("OPENROUTER_API_KEY")
 
 # ── SESSION STATE ────────────────────────────────────────────
-for k,v in {"lager":[],"sim":[],"lot":[],"gwlog":[],"fotos":[],"fcnt":0}.items():
+for k,v in {
+    "lager":[],"sim":[],"lot":[],"gwlog":[],"fotos":[],"fcnt":0,
+    # Lern-System
+    "feedback_log":[],       # Alle Korrekturen gespeichert
+    "analyse_history":[],    # Alle Analysen gespeichert
+    "mein_wissen":[],        # Persönliches Preis-Wissen
+    "preis_korrekturen":{},  # Echte Verkaufspreise
+}.items():
     if k not in st.session_state: st.session_state[k]=v
 
 # ── KI ENGINE ────────────────────────────────────────────────
@@ -398,10 +405,25 @@ def mache_prompt(defekt, beschreibung, url_text):
     if url_text.strip() and not url_text.startswith("[URL"):
         extra += f"\n\nInformationen von der Webseite:\n{url_text[:2000]}"
 
+    # Gelerntes Wissen aus früheren Analysen
+    lern_kontext = ""
+    if st.session_state.get("mein_wissen"):
+        lern_kontext += "\n\nMein persönliches Wissen aus Erfahrung:\n"
+        for w in st.session_state.mein_wissen[-5:]:
+            lern_kontext += f"- {w}\n"
+    if st.session_state.get("preis_korrekturen"):
+        lern_kontext += "\nEchte Verkaufspreise die ich erzielt habe:\n"
+        for art, preis in list(st.session_state.preis_korrekturen.items())[-5:]:
+            lern_kontext += f"- {art}: €{preis}\n"
+    if st.session_state.get("feedback_log"):
+        lern_kontext += "\nMeine Korrekturen aus früheren Analysen:\n"
+        for fb in st.session_state.feedback_log[-5:]:
+            lern_kontext += f"- {fb}\n"
+
     return (
         f"Ich bin ein Händler auf deutschen Flohmärkten und verkaufe auf "
         f"Kleinanzeigen, Vinted, Facebook und eBay.\n"
-        f"Der Artikel ist im Zustand: {zustand} ({defekt}% Defekt).{extra}\n\n"
+        f"Der Artikel ist im Zustand: {zustand} ({defekt}% Defekt).{extra}{lern_kontext}\n\n"
         f"Bitte analysiere den/die Artikel im Bild und beantworte auf Deutsch:\n\n"
         f"Für JEDEN sichtbaren Artikel:\n"
         f"**Artikel: [Name]**\n"
@@ -687,6 +709,14 @@ with T[0]:
                     st.markdown(f"👥 [Facebook →]({fb_url})")
 
             # STUFE 4 — Zusammenfassung
+            # ── ANALYSE SPEICHERN ──
+            if ergebnis and len(ergebnis) > 200:
+                st.session_state.analyse_history.append({
+                    "datum": datetime.now().strftime("%d.%m.%Y %H:%M"),
+                    "analyse": ergebnis[:300],
+                    "defekt": defekt
+                })
+
             with st.status("✅ Stufe 4: Zusammenfassung...", expanded=True):
                 ana_text = st.session_state.get("ana_ergebnis","")
                 # Nur zusammenfassen wenn echte Analyse vorhanden
