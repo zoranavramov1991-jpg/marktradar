@@ -579,20 +579,26 @@ Kleinanzeigen · Vinted · Facebook · eBay · Flohmärkte · Auktionen
 
 # ── TABS ─────────────────────────────────────────────────────
 T = st.tabs([
-    "🔍 Analyse","💬 Anschreib","📦 Lager","📚 OCR",
-    "🔧 Reparatur","📦 Post","📈 Trends","🎭 Verhandlung",
-    "📸 Foto-Coach","🗺️ Flohmärkte","🧮 Lot",
-    "✉️ Nachrichten","📉 Preissenker","🔬 Marken",
-    "📦 Bundle","🛡️ Reklamation","📅 Timing",
-    "💰 Gewinn","✨ Anzeigen-KI","🗓️ Tagesplan",
-    "🤖 Reselling-Chat","🔎 Konkurrenz","📊 Business-Coach",
-    "📦 Lager-KI","📰 Markt-News","✍️ Profi-Text",
-    "🛒 Einkaufs-Planer","🔔 Preisalarm"
+    "🔍 Analyse",
+    "💬 Anschreib-Bot",
+    "📦 Lager",
+    "📚 OCR Scanner",
+    "🔧 Reparatur",
+    "📈 Trends",
+    "🎭 Verhandlung",
+    "📸 Foto-Coach",
+    "🗺️ Flohmärkte",
+    "🔬 Marken-Scanner",
+    "📅 Timing",
+    "✨ Anzeigen-KI",
+    "🤖 Reselling-Chat",
+    "🔎 Konkurrenz",
+    "📊 Business-Coach",
+    "📦 Lager-KI",
+    "📰 Markt-News",
+    "✍️ Profi-Text",
 ])
 
-# ════════════════════════════════════════════════════════════
-# TAB 1 — ANALYSE
-# ════════════════════════════════════════════════════════════
 with T[0]:
     st.header("🔍 Artikel-Analyse")
     st.markdown("Fotos + Links werden **vollständig** analysiert — jeder Artikel einzeln mit Preisen!")
@@ -744,6 +750,7 @@ with T[0]:
 # ════════════════════════════════════════════════════════════
 # TAB 2 — ANSCHREIB-BOT
 # ════════════════════════════════════════════════════════════
+
 with T[1]:
     st.header("💬 Anschreib-Bot")
     c1,c2 = st.columns(2)
@@ -755,18 +762,23 @@ with T[1]:
         ab_stil = st.selectbox("Stil", ["Freundlich & charmant","Bestimmt & direkt",
             "Dringend (heute)","Paket-Deal","Letztes Angebot"], key="ab_stil")
         ab_pl   = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Facebook","Vinted","Flohmarkt"], key="ab_pl")
-    if st.button("✍️ Nachricht", type="primary", use_container_width=True, key="ab_btn"):
+    ab_kunde = st.text_area("📩 Nachricht des Kunden (optional):",
+        placeholder="Fügen Sie die Nachricht des Kunden ein — KI antwortet darauf!",
+        height=80, key="ab_kunde")
+    if st.button("✍️ Nachricht generieren", type="primary", use_container_width=True, key="ab_btn"):
         if ab_art:
             with st.spinner("✍️ ..."):
+                kunden_text = f"\nKunden-Nachricht: '{ab_kunde}'" if ab_kunde.strip() else ""
                 r = ki(f"Schreibe eine Verhandlungs-Nachricht auf Deutsch.\n"
                        f"Stil: {ab_stil} | Plattform: {ab_pl}\n"
-                       f"Artikel: {ab_art} | Angebot: EUR{ab_mp} | Verkäufer: EUR{ab_vk}\n"
+                       f"Artikel: {ab_art} | Angebot: EUR{ab_mp} | Verkäufer: EUR{ab_vk}{kunden_text}\n"
                        f"Max 5 Saetze, psychologisch optimiert, NUR die fertige Nachricht!")
                 st.text_area("📩 Kopieren:", value=r, height=180, key="ab_r")
 
 # ════════════════════════════════════════════════════════════
 # TAB 3 — LAGER
 # ════════════════════════════════════════════════════════════
+
 with T[2]:
     st.header("📦 Lagerbestand")
     c1,c2 = st.columns(2)
@@ -803,6 +815,7 @@ with T[2]:
 # ════════════════════════════════════════════════════════════
 # TAB 4 — OCR SCANNER
 # ════════════════════════════════════════════════════════════
+
 with T[3]:
     st.header("📚 OCR Medien-Scanner")
     ocr_b = st.file_uploader("📷 Stapel fotografieren",type=["jpg","jpeg","png"],key="ocr_b")
@@ -819,8 +832,15 @@ with T[3]:
 # ════════════════════════════════════════════════════════════
 # TAB 5 — REPARATUR
 # ════════════════════════════════════════════════════════════
+
 with T[4]:
     st.header("🔧 Reparatur-Rechner")
+    rep_fotos = st.file_uploader("📷 Fotos hochladen (mehrere möglich)",
+        type=["jpg","jpeg","png"], accept_multiple_files=True, key="rep_fotos")
+    if rep_fotos:
+        cols = st.columns(min(len(rep_fotos),4))
+        for i,f in enumerate(rep_fotos):
+            with cols[i%4]: st.image(f, caption=f"Foto {i+1}", use_column_width=True)
     c1,c2 = st.columns(2)
     with c1:
         ra = st.text_input("Artikel",key="ra")
@@ -851,35 +871,8 @@ with T[4]:
 # ════════════════════════════════════════════════════════════
 # TAB 6 — POST-DUELL
 # ════════════════════════════════════════════════════════════
-with T[5]:
-    st.header("📦 DHL vs. Hermes")
-    c1,c2 = st.columns(2)
-    with c1:
-        pg = st.number_input("Gewicht (kg)",min_value=0.1,value=1.0,step=0.1,key="pg")
-    with c2:
-        pv = st.checkbox("Versicherung?",key="pv")
-    dhl_t = [(0.5,3.99,"S"),(1.0,4.99,"M"),(2.0,6.99,"L"),(5.0,9.49,"5kg"),(10.0,12.49,"10kg"),(31.5,18.49,"31kg")]
-    her_t = [(0.5,3.70,"XS"),(1.0,4.50,"S"),(2.0,5.50,"M"),(5.0,7.90,"L"),(10.0,10.90,"XL"),(25.0,15.90,"XXL")]
-    if st.button("⚡ Vergleichen",type="primary",use_container_width=True,key="p_btn"):
-        dp,dn = dhl_t[-1][1],dhl_t[-1][2]
-        for mx,p,n in dhl_t:
-            if pg<=mx: dp,dn=p,n; break
-        hp,hn = her_t[-1][1],her_t[-1][2]
-        for mx,p,n in her_t:
-            if pg<=mx: hp,hn=p,n; break
-        if pv: dp+=2.5; hp+=1.99
-        c1,c2 = st.columns(2)
-        c1.markdown(f"### 🟡 DHL\n**€{dp:.2f}** — {dn}")
-        c2.markdown(f"### 🟢 Hermes\n**€{hp:.2f}** — {hn}")
-        st.markdown("---")
-        if dp<hp: st.success(f"🏆 DHL günstiger! Ersparnis €{hp-dp:.2f}")
-        elif hp<dp: st.success(f"🏆 Hermes günstiger! Ersparnis €{dp-hp:.2f}")
-        else: st.info("🤝 Gleicher Preis!")
 
-# ════════════════════════════════════════════════════════════
-# TAB 7 — TRENDS
-# ════════════════════════════════════════════════════════════
-with T[6]:
+with T[5]:
     st.header("📈 Trends")
     c1,c2 = st.columns(2)
     with c1:
@@ -906,7 +899,8 @@ with T[6]:
 # ════════════════════════════════════════════════════════════
 # TAB 8 — VERHANDLUNG
 # ════════════════════════════════════════════════════════════
-with T[7]:
+
+with T[6]:
     st.header("🎭 Verhandlungs-Simulator")
     c1,c2 = st.columns(2)
     with c1:
@@ -928,14 +922,18 @@ with T[7]:
         for m in st.session_state.sim:
             if m["r"]=="🏪": st.info(f"**{m['r']} Verkäufer:** {m['t']}")
             else: st.success(f"**{m['r']} Sie:** {m['t']}")
-        ai  = st.text_input("Ihre Antwort:",key="v_inp")
+        kunden_msg = st.text_area("📩 Nachricht des Kunden (optional):",
+            placeholder="Nachricht des Kunden einfügen — KI antwortet darauf",
+            height=70, key="v_kunde")
+        ai = st.text_input("Ihre Antwort:", key="v_inp")
         c1,c2 = st.columns(2)
         with c1:
             if st.button("📤 Senden",type="primary",use_container_width=True,key="v_send"):
-                if ai:
-                    st.session_state.sim.append({"r":"🛒","t":ai})
+                eingabe = kunden_msg.strip() if kunden_msg.strip() else ai
+                if eingabe:
+                    st.session_state.sim.append({"r":"🛒","t":eingabe})
                     verl = "\n".join([f"{m['r']}: {m['t']}" for m in st.session_state.sim])
-                    r = ki(f"Verkäufer ({vt}) von {va} (EUR{vvk}). Verlauf:\n{verl}\nAntwort (2-3 Saetze, Deutsch, in Rolle)!")
+                    r = ki(f"Verkäufer ({vt}) von {va} (EUR{vvk}). Verlauf:\n{verl}\nAntworte als Verkäufer (2-3 Sätze, Deutsch, in Rolle bleiben)!")
                     st.session_state.sim.append({"r":"🏪","t":r})
                     st.rerun()
         with c2:
@@ -947,7 +945,8 @@ with T[7]:
 # ════════════════════════════════════════════════════════════
 # TAB 9 — FOTO-COACH
 # ════════════════════════════════════════════════════════════
-with T[8]:
+
+with T[7]:
     st.header("📸 Foto-Coach")
     fc_b = st.file_uploader("Foto hochladen",type=["jpg","jpeg","png"],key="fc_b")
     fc_p = st.selectbox("Plattform",["Kleinanzeigen","Vinted","eBay","Facebook","Alle"],key="fc_p")
@@ -968,7 +967,8 @@ with T[8]:
 # ════════════════════════════════════════════════════════════
 # TAB 10 — FLOHMÄRKTE BERLIN
 # ════════════════════════════════════════════════════════════
-with T[9]:
+
+with T[8]:
     st.header("🗺️ Berliner Flohmärkte Mo–So")
     maerkte = [
         ("Montag","Flohmarkt am Rathaus Steglitz","Schloßstraße 37, 12163","Mo–Sa 9–18h","+49 30 79706820","🏠 Haushalt, Bücher","⭐⭐⭐","Günstige Alltagsartikel","https://maps.google.com/?q=Rathaus+Steglitz+Berlin"),
@@ -1018,107 +1018,30 @@ with T[9]:
                     st.markdown(m[6])
                     st.link_button("🗺️ Maps",m[8],use_container_width=True)
     st.markdown("---")
-    fq = st.text_input("🤖 Frage:",key="fq")
-    if st.button("Fragen",key="f_btn"):
+    st.markdown("### 🤖 KI-Flohmarkt-Assistent")
+    fq = st.text_input("Frage stellen:", placeholder="z.B. Wo finde ich heute gute Antiquitäten?", key="fq")
+    if st.button("🗺️ KI fragen", type="primary", use_container_width=True, key="f_btn"):
         if fq:
-            with st.spinner("..."): st.markdown(ki(f"Berliner Flohmarkt-Experte. Kurz auf Deutsch: {fq}"))
+            with st.spinner("🤖 Analysiere..."):
+                r = ki(f"""Berliner Flohmarkt-Experte mit aktuellen Informationen ({datetime.now().strftime('%B %Y')}).
+Beantworte auf Deutsch konkret und aktuell: {fq}
+Berücksichtige: Mauerpark(So), Boxhagener Platz(So), RAW(Sa+So),
+Fehrbelliner Platz(Di+Fr), Treptower Park(So), Winterfeldtmarkt(Sa),
+Ostbahnhof(Fr-So), Arkonaplatz(So)""")
+                st.markdown(r)
+    if st.button("📊 Aktuelle Marktlage Berlin", use_container_width=True, key="f_markt"):
+        with st.spinner("🤖 Analysiere aktuelle Lage..."):
+            r = ki(f"""Berliner Flohmarkt-Experte. Aktuelle Analyse {datetime.now().strftime('%B %Y')}.
+Was ist gerade besonders auf Berliner Flohmärkten gefragt?
+Welche Märkte sind gerade besonders gut?
+Insider-Tipps für diese Woche. Auf Deutsch.""")
+            st.markdown(r)
 
 # ════════════════════════════════════════════════════════════
 # TAB 11 — LOT
 # ════════════════════════════════════════════════════════════
-with T[10]:
-    st.header("🧮 Lot-Kalkulator")
-    c1,c2 = st.columns(2)
-    with c1:
-        lop = st.number_input("Lot-Preis (€)",min_value=0.0,value=50.0,key="lop")
-        lot = st.number_input("Transport (€)",min_value=0.0,value=0.0,key="lot2")
-        los = st.number_input("Stunden",min_value=0.5,value=2.0,step=0.5,key="los")
-    with c2:
-        lob = st.text_area("Was ist im Lot?",height=90,key="lob")
-    c1,c2,c3 = st.columns([3,1,1])
-    with c1: nla = st.text_input("Artikel",key="nla")
-    with c2: nmin = st.number_input("Min€",min_value=0.0,value=5.0,key="nmin")
-    with c3: nmax = st.number_input("Max€",min_value=0.0,value=20.0,key="nmax")
-    c1,c2 = st.columns(2)
-    with c1:
-        if st.button("➕ Hinzufügen",use_container_width=True,key="lo_add"):
-            if nla:
-                st.session_state.lot.append({"name":nla,"min":nmin,"max":nmax,"s":(nmin+nmax)/2})
-                st.rerun()
-    with c2:
-        if st.button("🗑️ Leeren",use_container_width=True,key="lo_clr"):
-            st.session_state.lot=[]; st.rerun()
-    if st.session_state.lot:
-        gmin=gmax=0
-        for a in st.session_state.lot:
-            c1,c2,c3,c4=st.columns([3,1,1,1])
-            c1.markdown(f"**{a['name']}**"); c2.markdown(f"€{a['min']:.0f}")
-            c3.markdown(f"€{a['max']:.0f}"); c4.markdown(f"Ø€{a['s']:.0f}")
-            gmin+=a['min']; gmax+=a['max']
-        gs=(gmin+gmax)/2; kosten=lop+lot; gws=gs-kosten; sl=gws/los if los>0 else 0
-        st.markdown("---")
-        c1,c2,c3,c4=st.columns(4)
-        c1.metric("Kosten",f"€{kosten:.0f}"); c2.metric("Wert",f"€{gmin:.0f}–€{gmax:.0f}")
-        c3.metric("Gewinn",f"€{gws:.0f}"); c4.metric("Stundenlohn",f"€{sl:.2f}/h")
-        if gws>20 and sl>10: st.success(f"🟢 LOHNT! €{gws:.0f} / €{sl:.2f}/h")
-        elif gws>0: st.warning(f"🟡 Grenzfall: €{gws:.0f}")
-        else: st.error(f"🔴 Lohnt nicht: Verlust €{abs(gws):.0f}")
-        if lob and st.button("🤖 KI-Analyse",use_container_width=True,key="lo_ki"):
-            with st.spinner("..."):
-                al="\n".join([f"- {a['name']}: EUR{a['min']}–EUR{a['max']}" for a in st.session_state.lot])
-                st.markdown(ki(f"Lot-Analyse fuer deutschen Reseller.\nInhalt: {lob}\nArtikel:\n{al}\nPreis: EUR{lop}\n1.Wertvollste? 2.Strategie? 3.Ampel? Auf Deutsch."))
 
-# ════════════════════════════════════════════════════════════
-# TAB 12 — KUNDENNACHRICHTEN
-# ════════════════════════════════════════════════════════════
-with T[11]:
-    st.header("✉️ Kundennachrichten-KI")
-    st.markdown("Käufer schreibt → KI schreibt perfekte Antwort!")
-    c1,c2 = st.columns(2)
-    with c1:
-        kn_pl = st.selectbox("Plattform",["Kleinanzeigen","Vinted","eBay","Facebook"],key="kn_pl")
-        kn_a  = st.text_input("Ihr Artikel",key="kn_a")
-        kn_p  = st.number_input("Ihr Preis (€)",min_value=0.0,value=50.0,key="kn_p")
-    with c2:
-        kn_z  = st.selectbox("Ziel",["Verkauf abschließen","Preis verteidigen","Auf Mängel antworten",
-            "Termin vereinbaren","Kleinen Nachlass anbieten"],key="kn_z")
-    kn_m = st.text_area("📩 Käufer-Nachricht:",height=80,key="kn_m")
-    if st.button("✉️ Antwort generieren",type="primary",use_container_width=True,key="kn_btn"):
-        if kn_m:
-            with st.spinner("✍️ ..."):
-                r = ki(f"Verkäufer auf {kn_pl}. Artikel: {kn_a} fuer EUR{kn_p}.\n"
-                       f"Käufer: '{kn_m}'\nZiel: {kn_z}\n"
-                       f"Schreibe perfekte Antwort (max 4 Saetze, professionell, freundlich). NUR die Nachricht!")
-                st.text_area("📩 Ihre Antwort:",value=r,height=150,key="kn_r")
-                st.success("✅ Kopieren & senden!")
-
-# ════════════════════════════════════════════════════════════
-# TAB 13 — PREISSENKER
-# ════════════════════════════════════════════════════════════
-with T[12]:
-    st.header("📉 Preissenkung-Planer")
-    c1,c2 = st.columns(2)
-    with c1:
-        ps_a = st.text_input("Artikel",key="ps_a")
-        ps_p = st.number_input("Aktueller Preis (€)",min_value=1.0,value=45.0,key="ps_p")
-        ps_e = st.number_input("Ihr EK (€)",min_value=0.0,value=10.0,key="ps_e")
-    with c2:
-        ps_t = st.number_input("Liegezeit (Tage)",min_value=0,value=14,key="ps_t")
-        ps_l = st.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook"],key="ps_l")
-        ps_v = st.number_input("Aufrufe",min_value=0,value=25,key="ps_v")
-    if st.button("📉 Strategie",type="primary",use_container_width=True,key="ps_btn"):
-        with st.spinner("🤖 ..."):
-            r = ki(f"Preisoptimierung fuer: {ps_a}, EUR{ps_p}, EK EUR{ps_e}, {ps_l}, {ps_t} Tage, {ps_v} Aufrufe.\n"
-                   f"Erstelle auf Deutsch:\n"
-                   f"ANALYSE: Warum kein Verkauf?\n"
-                   f"PREISPLAN: Tabelle mit Datum, neuem Preis, Aktion\n"
-                   f"TIPPS: Neuer Titel, bester Wochentag, Min-Preis EUR{ps_e*1.1:.0f}")
-            st.markdown(r)
-
-# ════════════════════════════════════════════════════════════
-# TAB 14 — MARKEN-SCANNER
-# ════════════════════════════════════════════════════════════
-with T[13]:
+with T[9]:
     st.header("🔬 Marken-Scanner")
     st.markdown("Stempel/Punze/Logo fotografieren → KI identifiziert Marke!")
     ms_b = st.file_uploader("📷 Stempel/Logo fotografieren",type=["jpg","jpeg","png"],key="ms_b")
@@ -1140,53 +1063,8 @@ with T[13]:
 # ════════════════════════════════════════════════════════════
 # TAB 15 — BUNDLE
 # ════════════════════════════════════════════════════════════
-with T[14]:
-    st.header("📦 Bundle-KI")
-    st.markdown("KI schlägt vor welche Artikel zusammen mehr Gewinn bringen!")
-    if st.session_state.lager:
-        st.success(f"✅ {len(st.session_state.lager)} Artikel aus Lager verfügbar")
-        for i in st.session_state.lager:
-            st.markdown(f"- **{i['artikel']}** → €{i['vk']:.0f}")
-    else:
-        st.info("💡 Erst Artikel im Lager-Tab eintragen!")
-    bu_extra = st.text_area("Weitere Artikel:",height=80,key="bu_extra")
-    bu_ziel  = st.selectbox("Ziel",["Max. Gewinn","Schneller Verkauf","Beste Plattform"],key="bu_ziel")
-    if st.button("📦 Bundle-Strategie",type="primary",use_container_width=True,key="bu_btn"):
-        al = "\n".join([f"- {i['artikel']} (EUR{i['vk']:.0f})" for i in st.session_state.lager])
-        if bu_extra: al += f"\n{bu_extra}"
-        if al:
-            with st.spinner("🤖 ..."):
-                r = ki(f"Bundle-Strategie fuer deutschen Reseller. Ziel: {bu_ziel}\nArtikel:\n{al}\n"
-                       f"Schlage 3 optimale Bundles vor. Fuer jedes: Name, Inhalt, Einzelpreis, Bundle-Preis, Mehrgewinn, Plattform, Titel. Auf Deutsch.")
-                st.markdown(r)
 
-# ════════════════════════════════════════════════════════════
-# TAB 16 — REKLAMATION
-# ════════════════════════════════════════════════════════════
-with T[15]:
-    st.header("🛡️ Reklamations-Helfer")
-    c1,c2 = st.columns(2)
-    with c1:
-        rk_a = st.text_input("Artikel",key="rk_a")
-        rk_p = st.number_input("VK-Preis (€)",min_value=0.0,value=50.0,key="rk_p")
-        rk_l = st.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook"],key="rk_l")
-    with c2:
-        rk_t = st.selectbox("Art",["Nicht wie beschrieben","Beschädigt angekommen","Will zurückgeben",
-            "Behauptet Fälschung","Versand zu langsam","Preis-Beschwerde"],key="rk_t")
-    rk_m = st.text_area("📩 Käufer-Nachricht:",height=80,key="rk_m")
-    if st.button("🛡️ Antwort erstellen",type="primary",use_container_width=True,key="rk_btn"):
-        if rk_m:
-            with st.spinner("✍️ ..."):
-                r = ki(f"Experte fuer Kaeufer-Verkaeufer-Kommunikation auf {rk_l}.\n"
-                       f"Artikel: {rk_a} EUR{rk_p}. Problem: {rk_t}. Kaeufer: '{rk_m}'\n"
-                       f"Schreibe: 1. Professionelle Antwort (beruhigt Kaeufer, rechtssicher, keine Rueckgabe provozieren)\n"
-                       f"2. Rechtliche Lage (Pflichten & Rechte) 3. Beste Strategie. Auf Deutsch.")
-                st.markdown(r)
-
-# ════════════════════════════════════════════════════════════
-# TAB 17 — TIMING
-# ════════════════════════════════════════════════════════════
-with T[16]:
+with T[10]:
     st.header("📅 Saisonaler Timing-Planer")
     ti_a = st.text_input("Artikel",placeholder="z.B. Winterjacke, Weihnachtsdeko, Gartenmöbel",key="ti_a")
     ti_m = st.selectbox("Monat",["Januar","Februar","März","April","Mai","Juni",
@@ -1205,41 +1083,8 @@ with T[16]:
 # ════════════════════════════════════════════════════════════
 # TAB 18 — GEWINN-BUCH
 # ════════════════════════════════════════════════════════════
-with T[17]:
-    st.header("💰 Gewinn-Tagebuch")
-    c1,c2,c3,c4 = st.columns(4)
-    with c1: gb_a = st.text_input("Artikel",key="gb_a")
-    with c2: gb_e = st.number_input("EK (€)",min_value=0.0,value=10.0,key="gb_e")
-    with c3: gb_v = st.number_input("VK (€)",min_value=0.0,value=35.0,key="gb_v")
-    with c4: gb_l = st.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"],key="gb_l")
-    if st.button("✅ Eintragen",type="primary",use_container_width=True,key="gb_btn"):
-        if gb_a:
-            g=gb_v-gb_e-(gb_v*0.05)
-            st.session_state.gwlog.append({"d":datetime.now().strftime("%d.%m.%Y"),"a":gb_a,"ek":gb_e,"vk":gb_v,"g":round(g,2),"pl":gb_l})
-            st.success(f"✅ Gewinn: €{g:.2f}"); st.rerun()
-    if st.session_state.gwlog:
-        ge=sum(i["ek"] for i in st.session_state.gwlog)
-        gv=sum(i["vk"] for i in st.session_state.gwlog)
-        gg=sum(i["g"] for i in st.session_state.gwlog)
-        roi=(gg/ge*100) if ge>0 else 0
-        c1,c2,c3,c4=st.columns(4)
-        c1.metric("Verkäufe",len(st.session_state.gwlog))
-        c2.metric("Investiert",f"€{ge:.2f}")
-        c3.metric("Gewinn",f"€{gg:.2f}")
-        c4.metric("ROI",f"{roi:.0f}%")
-        st.markdown("---")
-        for e in reversed(st.session_state.gwlog[-10:]):
-            farbe="🟢" if e["g"]>20 else "🟡" if e["g"]>0 else "🔴"
-            st.markdown(f"{farbe} {e['d']} | **{e['a']}** | €{e['ek']:.0f}→€{e['vk']:.0f} | **+€{e['g']:.2f}** | {e['pl']}")
-        if st.button("🤖 KI-Analyse",use_container_width=True,key="gb_ki"):
-            with st.spinner("..."):
-                log="\n".join([f"{e['a']}: EK{e['ek']} VK{e['vk']} G{e['g']} {e['pl']}" for e in st.session_state.gwlog])
-                st.markdown(ki(f"Analysiere diese Verkaeufe. Auf Deutsch. 1.Bester ROI? 2.Beste Plattform? 3.Tipps?\n{log}"))
 
-# ════════════════════════════════════════════════════════════
-# TAB 19 — ANZEIGEN-KI
-# ════════════════════════════════════════════════════════════
-with T[18]:
+with T[11]:
     st.header("✨ Anzeigen-Optimierer")
     c1,c2 = st.columns(2)
     with c1:
@@ -1251,8 +1096,13 @@ with T[18]:
     ao_ti = st.text_input("Aktueller Titel:",key="ao_ti")
     ao_tx = st.text_area("Aktuelle Beschreibung:",height=100,key="ao_tx")
     if st.button("✨ Optimieren",type="primary",use_container_width=True,key="ao_btn"):
-        if ao_ti or ao_tx:
+        if ao_ti or ao_tx or ao_fotos:
             with st.spinner("✨ ..."):
+                ao_bilder = []
+                if ao_fotos:
+                    for f in ao_fotos:
+                        f.seek(0)
+                        ao_bilder.append(base64.b64encode(f.read()).decode())
                 r = ki(f"Verkaufsanzeigen-Experte fuer {ao_l}. Kategorie: {ao_k}. Preis: EUR{ao_p}. {ao_t2} Tage online.\n"
                        f"Titel: {ao_ti}\nBeschreibung: {ao_tx}\n"
                        f"Analysiere und verbessere. Auf Deutsch.\n"
@@ -1261,36 +1111,15 @@ with T[18]:
                        f"3. NEUE BESCHREIBUNG (kopierfertig, alle Keywords)\n"
                        f"4. Preis-Empfehlung (jetzt EUR{ao_p} — besser: EUR?)\n"
                        f"5. Keywords fuer {ao_l}\n"
-                       f"6. Tipps: Foto, Posting-Zeit, erwartete Verbesserung +X%")
+                       f"6. Tipps: Foto, Posting-Zeit, erwartete Verbesserung +X%",
+                      bilder=ao_bilder if ao_bilder else None)
                 st.markdown(r)
 
 # ════════════════════════════════════════════════════════════
 # TAB 20 — TAGESPLAN
 # ════════════════════════════════════════════════════════════
-with T[19]:
-    st.header("🗓️ Tagesplan Generator")
-    c1,c2 = st.columns(2)
-    with c1:
-        tp_t = st.selectbox("Tag",["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"],key="tp_t")
-        tp_b = st.number_input("Budget (€)",min_value=10.0,value=100.0,step=10.0,key="tp_b")
-    with c2:
-        tp_f = st.selectbox("Fokus",["Alles","Kleidung & Mode","Porzellan","Elektronik","Möbel","Bücher"],key="tp_f")
-        tp_r = st.selectbox("Transport",["Auto","Fahrrad","U-Bahn/Bus","Zu Fuß"],key="tp_r")
-    if st.button("🗓️ Tagesplan erstellen",type="primary",use_container_width=True,key="tp_btn"):
-        with st.spinner("🤖 ..."):
-            r = ki(f"Berliner Flohmarkt-Experte. Erstelle optimalen Tagesplan. Auf Deutsch.\n"
-                   f"Tag: {tp_t} | Budget: EUR{tp_b} | Fokus: {tp_f} | Transport: {tp_r}\n"
-                   f"1. ZEITPLAN: Tabelle mit Uhrzeit, Markt, Adresse, Warum\n"
-                   f"2. BUDGET-AUFTEILUNG: Wie viel wo ausgeben?\n"
-                   f"3. WAS SUCHEN bei {tp_f}: konkrete Artikel\n"
-                   f"4. TRANSPORT-TIPP fuer {tp_r}\n"
-                   f"5. ERWARTETES ERGEBNIS: EUR{tp_b} Budget → EUR X–Y Gewinn moeglich")
-            st.markdown(r)
 
-# ════════════════════════════════════════════════════════════
-# TAB 21 — KI-RESELLING-CHAT
-# ════════════════════════════════════════════════════════════
-with T[20]:
+with T[12]:
     st.header("🤖 KI-Reselling-Chat")
     st.markdown("Ihr persönlicher Reselling-Experte — stellen Sie jede Frage!")
     if "chat_history" not in st.session_state:
@@ -1320,7 +1149,8 @@ with T[20]:
 # ════════════════════════════════════════════════════════════
 # TAB 22 — KONKURRENZ-CHECKER
 # ════════════════════════════════════════════════════════════
-with T[21]:
+
+with T[13]:
     st.header("🔎 KI-Konkurrenz-Checker")
     st.markdown("Link einer anderen Anzeige eingeben → KI sagt wie Sie besser sein können!")
     kk_url  = st.text_input("🔗 Link der Konkurrenz-Anzeige:", placeholder="https://www.kleinanzeigen.de/...", key="kk_url")
@@ -1354,7 +1184,8 @@ Antworte auf Deutsch:
 # ════════════════════════════════════════════════════════════
 # TAB 23 — BUSINESS-COACH
 # ════════════════════════════════════════════════════════════
-with T[22]:
+
+with T[14]:
     st.header("📊 KI-Business-Coach")
     st.markdown("KI analysiert Ihre Verkäufe und gibt konkrete Wachstums-Tipps!")
     if st.session_state.gwlog:
@@ -1386,7 +1217,8 @@ Verkäufe:
 # ════════════════════════════════════════════════════════════
 # TAB 24 — LAGER-KI-OPTIMIERER
 # ════════════════════════════════════════════════════════════
-with T[23]:
+
+with T[15]:
     st.header("📦 KI-Lager-Optimierer")
     st.markdown("KI analysiert Ihr Lager und sagt was zuerst verkauft werden sollte!")
     if st.session_state.lager:
@@ -1417,7 +1249,8 @@ Lager:
 # ════════════════════════════════════════════════════════════
 # TAB 25 — MARKT-NEWS
 # ════════════════════════════════════════════════════════════
-with T[24]:
+
+with T[16]:
     st.header("📰 KI-Markt-News")
     st.markdown("Was ist gerade gefragt? KI analysiert aktuelle Trends!")
     mn_kat = st.selectbox("Kategorie:", ["Alles","Kleidung","Elektronik","Porzellan & Antiquitäten",
@@ -1448,9 +1281,16 @@ Datum: {datetime.now().strftime('%B %Y')}. Auf Deutsch.
 # ════════════════════════════════════════════════════════════
 # TAB 26 — PROFI-TEXT GENERATOR
 # ════════════════════════════════════════════════════════════
-with T[25]:
+
+with T[17]:
     st.header("✍️ KI-Profi-Text Generator")
-    st.markdown("Artikel beschreiben → KI schreibt Profi-Anzeige für alle Plattformen!")
+    st.markdown("Fotos hochladen + Details eingeben → KI schreibt Profi-Anzeige für alle Plattformen!")
+    pt_fotos = st.file_uploader("📷 Artikel-Fotos (mehrere möglich)",
+        type=["jpg","jpeg","png"], accept_multiple_files=True, key="pt_fotos")
+    if pt_fotos:
+        cols = st.columns(min(len(pt_fotos),4))
+        for i,f in enumerate(pt_fotos):
+            with cols[i%4]: st.image(f, caption=f"Foto {i+1}", use_column_width=True)
     c1,c2 = st.columns(2)
     with c1:
         pt_art   = st.text_input("Artikel:", placeholder="z.B. Peg Perego Kinderwagen", key="pt_art")
@@ -1459,8 +1299,13 @@ with T[25]:
     with c2:
         pt_details = st.text_area("Details:", placeholder="z.B. Grau, mit Babyschale, Jahrgang 2022, kein Versand", height=100, key="pt_details")
     if st.button("✍️ Profi-Texte erstellen", type="primary", use_container_width=True, key="pt_btn"):
-        if pt_art:
+        if pt_art or pt_fotos:
             with st.spinner("✍️ Erstelle Profi-Texte..."):
+                pt_bilder = []
+                if pt_fotos:
+                    for f in pt_fotos:
+                        f.seek(0)
+                        pt_bilder.append(base64.b64encode(f.read()).decode())
                 r = ki(f"""Erstelle professionelle Verkaufstexte für alle Plattformen. Auf Deutsch.
 Artikel: {pt_art} | Zustand: {pt_zust} | Preis: €{pt_preis}
 Details: {pt_details}
@@ -1486,88 +1331,8 @@ Beschreibung: [Vollständig mit allen Details]
 # ════════════════════════════════════════════════════════════
 # TAB 27 — EINKAUFS-PLANER
 # ════════════════════════════════════════════════════════════
-with T[26]:
-    st.header("🛒 KI-Einkaufs-Planer")
-    st.markdown("Budget + Wunsch → KI plant Ihren optimalen Einkaufstag!")
-    c1,c2 = st.columns(2)
-    with c1:
-        ep_tag    = st.selectbox("Wann?", ["Heute","Morgen","Samstag","Sonntag","Nächste Woche"], key="ep_tag")
-        ep_budget = st.number_input("Budget (€):", min_value=10.0, value=150.0, step=10.0, key="ep_budget")
-    with c2:
-        ep_fokus  = st.multiselect("Was suchen?",
-            ["Kleidung","Porzellan","Elektronik","Möbel","Spielzeug","Bücher","Alles"],
-            default=["Alles"], key="ep_fokus")
-    ep_extra = st.text_input("Spezielle Wünsche:", placeholder="z.B. 'Suche Vintage Levi's und Kameras'", key="ep_extra")
-    if st.button("🛒 Einkaufsplan erstellen", type="primary", use_container_width=True, key="ep_btn"):
-        with st.spinner("🤖 Erstelle Plan..."):
-            fokus_text = ", ".join(ep_fokus) if ep_fokus else "Alles"
-            r = ki(f"""Berliner Flohmarkt-Experte erstellt Einkaufsplan. Auf Deutsch.
-Wann: {ep_tag} | Budget: €{ep_budget} | Fokus: {fokus_text}
-Spezialwunsch: {ep_extra or 'keiner'}
 
-Berliner Märkte: Mauerpark(So), Boxhagener Platz(So), RAW(Sa+So),
-Fehrbelliner Platz(Di+Fr), Treptower Park(So), Winterfeldtmarkt(Sa),
-Ostbahnhof(Fr-So), Arkonaplatz(So), Alexanderplatz(tägl.)
-
-🗓️ OPTIMALER EINKAUFSPLAN:
-| Zeit | Markt | Budget | Was suchen |
-[Tabelle mit konkretem Zeitplan]
-
-💰 BUDGET-AUFTEILUNG:
-[Wie viel € pro Markt einplanen?]
-
-🎯 KONKRETE ARTIKEL-TIPPS:
-[Was genau suchen bei {fokus_text}?]
-
-💡 GEHEIMTIPP FÜR {ep_tag.upper()}:
-[Insider-Wissen für diesen Tag]
-
-📊 GEWINNERWARTUNG:
-Mit €{ep_budget:.0f} Budget → realistisch €X-€X Gewinn möglich""")
-            st.markdown(r)
-
-# ════════════════════════════════════════════════════════════
-# TAB 28 — PREISALARM
-# ════════════════════════════════════════════════════════════
-with T[27]:
-    st.header("🔔 KI-Preisalarm & Scout")
-    st.markdown("Artikel eingeben → KI sucht aktuelle Angebote auf Kleinanzeigen!")
-    if "alarm_liste" not in st.session_state:
-        st.session_state.alarm_liste = []
-    c1,c2 = st.columns(2)
-    with c1:
-        pa_art    = st.text_input("Artikel suchen:", placeholder="z.B. Peg Perego Kinderwagen", key="pa_art")
-        pa_max    = st.number_input("Max. Preis (€):", min_value=1.0, value=50.0, key="pa_max")
-    with c2:
-        pa_pl = st.selectbox("Plattform:", ["Kleinanzeigen","Vinted","Facebook","eBay"], key="pa_pl")
-    if st.button("🔔 Jetzt suchen", type="primary", use_container_width=True, key="pa_btn"):
-        if pa_art:
-            with st.spinner(f"🔍 Suche '{pa_art}' unter €{pa_max}..."):
-                enc = urllib.parse.quote(pa_art)
-                if pa_pl == "Kleinanzeigen":
-                    url = f"https://www.kleinanzeigen.de/s-{enc}/k0"
-                elif pa_pl == "Vinted":
-                    url = f"https://www.vinted.de/catalog?search_text={enc}"
-                elif pa_pl == "eBay":
-                    url = f"https://www.ebay.de/sch/i.html?_nkw={enc}&LH_Complete=1&LH_Sold=1"
-                else:
-                    url = f"https://www.facebook.com/marketplace/search/?query={enc}"
-                seite = lies_url(url)
-                r = ki(f"""Suche nach günstigen Angeboten für: {pa_art} unter €{pa_max} auf {pa_pl}.
-Webseiten-Inhalt:
-{seite[:2000]}
-
-Finde alle Angebote unter €{pa_max} und liste sie auf Deutsch:
-🔔 GEFUNDENE ANGEBOTE:
-[Artikel, Preis, Zustand falls erkennbar]
-
-💡 BEWERTUNG:
-- Bestes Angebot: [welches und warum]
-- Lohnt sich?: [Ja €X Gewinn möglich / Nein zu teuer]
-- Direkt-Link: {url}""")
-                st.markdown(r)
-                st.link_button(f"🔗 Direkt auf {pa_pl} suchen", url, use_container_width=True)
 
 # ── FOOTER ──────────────────────────────────────────────────
 st.markdown("---")
-st.markdown(f"<p style='text-align:center;color:#666'>⚡ MarktRadar OS PRO v5.0 · Zoran Berlin · {datetime.now().strftime('%d.%m.%Y')}</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align:center;color:#666'>⚡ MarktRadar OS PRO v6.0 · Zoran Berlin · {datetime.now().strftime('%d.%m.%Y')}</p>", unsafe_allow_html=True)
