@@ -173,124 +173,143 @@ with t1:
                     bild_b64 = base64.b64encode(bild_input.read()).decode()
                     st.success("✅ Foto geladen & bereit für KI-Analyse")
 
-            # ── STUFE 2: KI Experten-Analyse ──
-            with st.status("🤖 Stufe 2: Experten-KI analysiert jeden Detail...", expanded=True):
+            # ── STUFE 2: TIEFEN-SCAN - Jeder Artikel einzeln ──
+            with st.status("🔬 Stufe 2: Tiefen-Scan läuft — jeder Artikel wird einzeln erfasst...", expanded=True):
 
-                # Wenn kein Bild - nur Text-Analyse
-                if not bild_b64 and not artikel_info:
-                    artikel_info = "Keine Bildinformation vorhanden - bitte manuell beschreiben"
+                kontext_text = f"\n\nINFO VON WEBSEITE:\n{artikel_info[:3000]}" if artikel_info else ""
 
-                kontext_text = f"\n\nZUSATZ-INFO:\n{artikel_info[:2000]}" if artikel_info else ""
+                prompt_scan = f"""Du bist ein Experten-Scanner für einen deutschen Reselling-Händler.
+Analysiere das Bild mit maximaler Präzision. Erkenne JEDEN sichtbaren Gegenstand.
+Antworte IMMER vollständig auf Deutsch. Nie auf Englisch. Nie verweigern.
+Bei Screenshots: extrahiere alle Produkt- und Preisinformationen.
+Bei Fotos: scanne jeden einzelnen Artikel von links nach rechts, oben nach unten.{kontext_text}
 
-                prompt_analyse = f"""Antworte NUR auf Deutsch. Immer vollständig antworten.
+SCHRITT 1 — INVENTAR-LISTE:
+Zähle zuerst alle sichtbaren Artikel auf (nummeriert):
+1. [Artikel]
+2. [Artikel]
+usw.
 
-Du analysierst Artikel für einen deutschen Reselling-Händler.
-Beschreibe ALLES was du siehst - Fotos, Objekte, Gegenstände, alles.
-Wenn du ein Bild siehst: beschreibe jeden einzelnen sichtbaren Gegenstand.
-Wenn es ein Screenshot oder Text ist: extrahiere alle relevanten Produkt-Informationen.{kontext_text}
+SCHRITT 2 — DETAIL-ANALYSE für jeden Artikel:
 
-AMPEL:
-🟢 GRÜN = schnell verkäuflich, 1-7 Tage
-🟡 GELB = mittel, 1-4 Wochen
-🔴 ROT = langsam, 1-3 Monate+
+═══════════════════════════════════════════
+ARTIKEL [N]: [NAME IN GROSSBUCHSTABEN]
+═══════════════════════════════════════════
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FÜR JEDEN SICHTBAREN ARTIKEL:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 IDENTIFIKATION (maximum detail):
+• Exakte Bezeichnung: [Was ist es?]
+• Marke/Hersteller: [Name + Herkunftsland]
+• Modell/Serie: [falls erkennbar]
+• Material: [genaues Material]
+• Farbe/Design: [Beschreibung]
+• Maße (geschätzt): [Größe/Gewicht]
+• Stempel/Logos/Punzen: [alles was sichtbar ist]
+• Seriennummer/Codes: [falls sichtbar]
+• Echtheit: [Echt ✓ / Wahrscheinlich echt / Replik ✗ / Unsicher ?]
 
-**[Name des Artikels]**
-- Beschreibung: [Was ist es genau?]
-- Marke: [Marke oder unbekannt]
-- Herstellungsjahr: [ca. Jahr oder Jahrzehnt]
-- Epoche: [DDR / 80er / 90er / Modern / etc.]
-- Zustand: [Sehr gut / Gut / Gebraucht / Beschädigt]
-- Echtheit: [Echt / Unsicher / Replik]
+📅 ALTERSBESTIMMUNG:
+• Herstellungsjahr: [Genaues Jahr ODER "ca. 1965" ODER "1960-1970"]
+• Epoche: [z.B. "Westdeutschland 1950er" / "DDR 1970er" / "80er Jahre" / "Modern 2000+"]
+• Altersbeweis: [Konkrete Merkmale: Schriftart, Design, Material, Stempel, Farben]
 
-🚦 [🟢 GRÜN / 🟡 GELB / 🔴 ROT]
-⏱️ Verkaufszeit: [Schnell 1-7 Tage / Mittel 1-4 Wochen / Langsam 1-3 Monate]
+🚦 MARKTBEWERTUNG:
+• Ampel: [🟢 GRÜN / 🟡 GELB / 🔴 ROT]
+• Verkaufszeit: [🟢 1-7 Tage / 🟡 1-4 Wochen / 🔴 1-3 Monate]
+• Nachfrage: [Sehr hoch / Hoch / Mittel / Niedrig / Kaum]
+• Zielgruppe: [Wer kauft das? z.B. Sammler, Vintage-Fans, Haushalte]
+• Besonderheit: [Was macht es wertvoll/wertlos?]
 
-💶 Preise:
-| Plattform | Preis |
-|-----------|-------|
-| eBay | €X – €Y |
-| Kleinanzeigen | €X – €Y |
-| Vinted | €X – €Y |
-| Facebook | €X – €Y |
-| Flohmarkt | €X – €Y |
-| Max. Ankauf | €X |
+💶 PREISTABELLE:
+| Plattform | Min | Max | Schnitt |
+|-----------|-----|-----|---------|
+| eBay DE | €X | €Y | €Z |
+| Kleinanzeigen | €X | €Y | €Z |
+| Vinted | €X | €Y | €Z |
+| Facebook | €X | €Y | €Z |
+| Flohmarkt | €X | €Y | €Z |
+| **Max. Ankauf** | | | **€Z** |
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GESAMT:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 🟢 Schnell: X Artikel
-- 🟡 Mittel: X Artikel
-- 🔴 Langsam: X Artikel
-- Gesamtwert: €X – €Y
-- Max. Ankauf gesamt: €X"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 GESAMT-AUSWERTUNG ALLER ARTIKEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Ampel | Anzahl | Wert |
+|-------|--------|------|
+| 🟢 Schnell (1-7 Tage) | X | €X–€Y |
+| 🟡 Mittel (1-4 Wochen) | X | €X–€Y |
+| 🔴 Langsam (1-3 Monate) | X | €X–€Y |
 
-                analyse = ki(prompt_analyse, bild_b64=bild_b64)
-                st.markdown(analyse)
-                st.session_state["letzte_analyse"] = analyse
+• Gesamtwert alle Artikel: €X – €Y
+• Maximaler Ankaufspreis gesamt: €X
+• Wertvollster Artikel: [Name] (€X)
+• Schnellster Verkauf: [Name] (🟢 X Tage)
+• Ältester Artikel: [Name] (ca. [Jahr])
+• Seltenster Fund: [Name + warum selten]"""
 
-            # ── STUFE 3: Preisrecherche ──
-            with st.status("📊 Stufe 3: Preise auf deutschen Plattformen recherchieren...", expanded=True):
+                with st.spinner("🔬 Scanne jeden Artikel..."):
+                    scan_ergebnis = ki(prompt_scan, bild_b64=bild_b64)
 
-                # Suchbegriff aus Analyse extrahieren
+                st.markdown(scan_ergebnis)
+                st.session_state["letzte_analyse"] = scan_ergebnis
+
+                # Suchbegriff für Stufe 3 extrahieren
                 suchbegriff = "Vintage Artikel"
-                for line in analyse.split("\n"):
-                    if "**Name:**" in line or "Name:" in line:
+                for line in scan_ergebnis.split("\n"):
+                    if "ARTIKEL 1:" in line or "Artikel 1:" in line:
                         parts = line.split(":")
                         if len(parts) > 1:
-                            suchbegriff = parts[1].strip().strip("*[] ")[:40]
+                            suchbegriff = parts[1].strip().strip("*[] ").split("\n")[0][:40]
                         break
 
-                # Kleinanzeigen Suche
-                ka_url = f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
+            # ── STUFE 3: Plattform-Recherche ──
+            with st.status("📡 Stufe 3: Preise auf allen Plattformen recherchieren...", expanded=True):
+
+                ka_url     = f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
                 vinted_url = f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
-                fb_url = f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
+                fb_url     = f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
+                ebay_url   = f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote(suchbegriff)}&LH_Complete=1&LH_Sold=1"
 
-                ebay_url = f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote(suchbegriff)}&LH_Complete=1&LH_Sold=1"
-                st.markdown(f"""
-### 🔗 Direkte Suche-Links für: **{suchbegriff}**
+                st.markdown(f"### 🔗 Suche nach: **{suchbegriff}**")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"🛒 [eBay beendete Verkäufe →]({ebay_url})")
+                    st.markdown(f"📱 [Kleinanzeigen →]({ka_url})")
+                with col2:
+                    st.markdown(f"👗 [Vinted →]({vinted_url})")
+                    st.markdown(f"👥 [Facebook →]({fb_url})")
 
-| Plattform | Link |
-|-----------|------|
-| 🛒 eBay (beendete Verkäufe) | [Jetzt suchen →]({ebay_url}) |
-| 📱 Kleinanzeigen | [Jetzt suchen →]({ka_url}) |
-| 👗 Vinted | [Jetzt suchen →]({vinted_url}) |
-| 👥 Facebook | [Jetzt suchen →]({fb_url}) |
-""")
+                # KI Marktrecherche
+                markt = ki(f"""Marktpreis-Recherche für deutsche Plattformen.
+Artikel: "{suchbegriff}"
+Nur Fakten, keine Empfehlungen. Auf Deutsch.
 
-                # KI Preisrecherche
-                preis_analyse = ki(f"""Als Reselling-Experte für deutsche Plattformen:
-Recherchiere realistische Preise für: "{suchbegriff}"
-Alle Plattformen: eBay, Kleinanzeigen, Vinted, Facebook Marketplace, Flohmärkte.
+Realistische Preise:
+• eBay DE (beendete Verkäufe): €X – €Y
+• Kleinanzeigen: €X – €Y
+• Vinted: €X – €Y
+• Facebook: €X – €Y
+• Flohmarkt: €X – €Y
+• Max. Ankaufspreis: €X
 
-Antworte kurz auf Deutsch:
-- eBay Ø (beendete Verkäufe): €X
-- Kleinanzeigen Ø: €X
-- Vinted Ø: €X  
-- Facebook Ø: €X
-- Flohmarkt: €X
-- Empfohlener Ankaufspreis: max €X
-- Notiz: [Besonderheit falls relevant]""")
+🚦 Ampel: [🟢/🟡/🔴] + Begründung (1 Satz)
+⏱️ Typische Verkaufszeit: [X Tage/Wochen]""")
 
-                st.markdown("### 💡 KI Preiseinschätzung:")
-                st.markdown(preis_analyse)
+                st.markdown("### 💡 Markt-Recherche:")
+                st.markdown(markt)
 
-            # ── STUFE 4: Fazit ──
-            with st.status("✅ Stufe 4: Ultimatives Fazit...", expanded=True):
-                fazit = ki(f"""Basierend auf dieser Artikel-Analyse:
-{analyse[:500]}
+            # ── STUFE 4: Zusammenfassung ──
+            with st.status("✅ Stufe 4: Zusammenfassung...", expanded=True):
 
-Erstelle eine kurze ZUSAMMENFASSUNG (3 Punkte, keine Empfehlungen):
-1. Welche Artikel haben den höchsten Marktwert?
-2. Auf welchen Plattformen werden solche Artikel gehandelt?
-3. Welche Artikel sind selten/begehrt auf dem deutschen Markt?
+                zusammen = ki(f"""Erstelle eine kurze Zusammenfassung für diesen Händler.
+Analyse: {scan_ergebnis[:800]}
+Nur Fakten. Kein Ratschlag. Auf Deutsch. Max 5 Zeilen.
+Format:
+• Artikel gefunden: X
+• 🟢 Schnell: [Namen]
+• 🟡 Mittel: [Namen]
+• 🔴 Langsam: [Namen]
+• Gesamtwert: €X – €Y""")
 
-Nur Fakten, keine Ratschläge. Auf Deutsch.""")
-
-                st.info(f"📊 **ZUSAMMENFASSUNG:** {fazit}")
+                st.info(f"📊 {zusammen}")
 
         else:
             st.warning("⚠️ Bitte Foto hochladen oder Link eingeben!")
