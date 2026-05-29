@@ -44,25 +44,26 @@ for k, v in defaults.items():
 # ───────────────────────────────────────────────────────────────
 def ki(prompt, bild_b64=None, vision=False):
     """
-    KI-Analyse - OpenAI als Haupt-Provider
-    - Mit Bild: gpt-4o (Vision-fähig)
-    - Nur Text: gpt-4o-mini (schnell & günstig)
+    KI-Analyse via OpenRouter Credits ($9.89 verfügbar)
+    - Mit Bild: openai/gpt-4o (Vision)
+    - Nur Text: openai/gpt-4o-mini (günstig)
     """
     try:
-        if not OPENAI_KEY:
-            return "❌ Kein OpenAI API-Key konfiguriert! Bitte in Streamlit Secrets eintragen."
+        if not OPENROUTER_KEY:
+            return "❌ Kein OpenRouter API-Key konfiguriert!"
         
-        client = OpenAI(api_key=OPENAI_KEY)
+        client = OpenAI(
+            api_key=OPENROUTER_KEY,
+            base_url="https://openrouter.ai/api/v1"
+        )
         
         if vision and bild_b64:
-            # Bild-Analyse: gpt-4o mit Vision
-            model = "gpt-4o"
+            model = "openai/gpt-4o"
             msgs  = [{"role":"user","content":[
                 {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{bild_b64}"}},
                 {"type":"text","text":prompt}]}]
         else:
-            # Text-Analyse: gpt-4o-mini
-            model = "gpt-4o-mini"
+            model = "openai/gpt-4o-mini"
             msgs  = [{"role":"user","content":prompt}]
         
         r = client.chat.completions.create(model=model, messages=msgs, max_tokens=1500)
