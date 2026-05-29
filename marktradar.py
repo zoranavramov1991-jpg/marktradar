@@ -735,101 +735,290 @@ with t10:
     st.header("🗺️ Berlin Flohmarkt-Kalender")
     st.markdown("Alle wichtigen Flohmärkte in Berlin — immer aktuell!")
 
+    # Nach Wochentag sortiert
     flohmärkte = [
+        # ── MONTAG ──
         {
-            "name": "Mauerpark Flohmarkt",
-            "adresse": "Bernauer Str. 63-64, 13355 Berlin",
-            "wann": "Jeden Sonntag, 9:00 - 18:00 Uhr",
-            "typ": "🎭 Gemischt — Vintage, Kleidung, Kuriositäten",
+            "tag": "Montag",
+            "name": "Flohmarkt am Rathaus Steglitz",
+            "adresse": "Schloßstraße 37, 12163 Berlin",
+            "wann": "Montag – Samstag, 9:00 – 18:00 Uhr",
+            "telefon": "+49 30 79706820",
+            "typ": "🏠 Haushalt, Kleidung, Bücher",
+            "bewertung": "⭐⭐⭐",
+            "tipp": "Günstige Alltagsartikel, gut für Haushaltswaren",
+            "maps": "https://maps.google.com/?q=Rathaus+Steglitz+Berlin"
+        },
+        {
+            "tag": "Montag",
+            "name": "Trödelmarkt Berliner Straße",
+            "adresse": "Berliner Str. 16, 10715 Berlin",
+            "wann": "Montag – Freitag, 10:00 – 17:00 Uhr",
+            "telefon": "+49 30 8537240",
+            "typ": "🛍️ Gemischt, Antiquitäten, Haushalt",
+            "bewertung": "⭐⭐⭐",
+            "tipp": "Kleine Händler, gute Verhandlungsbasis",
+            "maps": "https://maps.google.com/?q=Berliner+Straße+16+Berlin"
+        },
+        # ── DIENSTAG ──
+        {
+            "tag": "Dienstag",
+            "name": "Flohmarkt Fehrbelliner Platz",
+            "adresse": "Fehrbelliner Platz, 10707 Berlin",
+            "wann": "Dienstag & Freitag, 8:00 – 15:00 Uhr",
+            "telefon": "+49 30 28097272",
+            "typ": "🏺 Antiquitäten, Porzellan, Schmuck",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Top für Porzellan & Silber — früh kommen!",
+            "maps": "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"
+        },
+        {
+            "tag": "Dienstag",
+            "name": "Antikmarkt Charlottenburg",
+            "adresse": "Kantstraße 17, 10623 Berlin",
+            "wann": "Dienstag – Samstag, 10:00 – 18:00 Uhr",
+            "telefon": "+49 30 3138030",
+            "typ": "🏛️ Antiquitäten, Kunst, Sammlerstücke",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Hochwertige Antiquitäten, gute Preise möglich",
+            "maps": "https://maps.google.com/?q=Kantstraße+17+Berlin"
+        },
+        # ── MITTWOCH ──
+        {
+            "tag": "Mittwoch",
+            "name": "Flohmarkt Alexanderplatz",
+            "adresse": "Alexanderplatz, 10178 Berlin",
+            "wann": "Täglich, 10:00 – 19:00 Uhr",
+            "telefon": "+49 30 24632425",
+            "typ": "🏙️ Gemischt, Vintage, Souvenirs",
+            "bewertung": "⭐⭐⭐",
+            "tipp": "Täglich offen — spontane Käufe möglich",
+            "maps": "https://maps.google.com/?q=Alexanderplatz+Flohmarkt+Berlin"
+        },
+        {
+            "tag": "Mittwoch",
+            "name": "Trödelmarkt Spandau",
+            "adresse": "Carl-Schurz-Str. 13, 13597 Berlin",
+            "wann": "Mittwoch & Samstag, 8:00 – 14:00 Uhr",
+            "telefon": "+49 30 3545080",
+            "typ": "🔧 Werkzeug, Haushalt, Kleidung",
+            "bewertung": "⭐⭐⭐",
+            "tipp": "Günstige Werkzeuge & Haushaltswaren",
+            "maps": "https://maps.google.com/?q=Carl-Schurz-Straße+Spandau+Berlin"
+        },
+        # ── DONNERSTAG ──
+        {
+            "tag": "Donnerstag",
+            "name": "Flohmarkt am Fehrbelliner Platz",
+            "adresse": "Fehrbelliner Platz, 10707 Berlin",
+            "wann": "Dienstag & Freitag, 8:00 – 15:00 Uhr",
+            "telefon": "+49 30 28097272",
+            "typ": "🏺 Antiquitäten, Porzellan, Schmuck",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Auch Donnerstags manchmal geöffnet — anrufen!",
+            "maps": "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"
+        },
+        {
+            "tag": "Donnerstag",
+            "name": "Trödelmarkt Schöneberg",
+            "adresse": "Winterfeldtplatz, 10781 Berlin",
+            "wann": "Donnerstag (klein) & Samstag (groß), 8:00 – 14:00 Uhr",
+            "telefon": "+49 30 7262290",
+            "typ": "🌿 Bio, Vintage, Haushalt, Mode",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Donnerstags ruhiger und günstiger als Samstag",
+            "maps": "https://maps.google.com/?q=Winterfeldtplatz+Berlin"
+        },
+        # ── FREITAG ──
+        {
+            "tag": "Freitag",
+            "name": "Flohmarkt am Fehrbelliner Platz",
+            "adresse": "Fehrbelliner Platz, 10707 Berlin",
+            "wann": "Dienstag & Freitag, 8:00 – 15:00 Uhr",
+            "telefon": "+49 30 28097272",
+            "typ": "🏺 Antiquitäten, Porzellan, Schmuck",
             "bewertung": "⭐⭐⭐⭐⭐",
-            "tipp": "Früh kommen! Beste Funde vor 10 Uhr",
-            "maps": "https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"
+            "tipp": "Freitags am besten! Frisch aufgebaut, beste Auswahl",
+            "maps": "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"
         },
         {
-            "name": "Flohmarkt am Boxhagener Platz",
-            "adresse": "Boxhagener Platz, 10245 Berlin",
-            "wann": "Jeden Sonntag, 10:00 - 18:00 Uhr",
-            "typ": "🏺 Antiquitäten, Porzellan, Bücher",
+            "tag": "Freitag",
+            "name": "Antik & Trödelmarkt Ostbahnhof",
+            "adresse": "Erich-Steinfurth-Str. 1, 10243 Berlin",
+            "wann": "Freitag – Sonntag, 9:00 – 16:00 Uhr",
+            "telefon": "+49 30 2936028",
+            "typ": "🛍️ Großer Gemischtmarkt",
             "bewertung": "⭐⭐⭐⭐",
-            "tipp": "Ideal für Porzellan und alte Bücher",
-            "maps": "https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"
+            "tipp": "Freitags die wenigsten Leute — beste Verhandlung!",
+            "maps": "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"
         },
+        # ── SAMSTAG ──
         {
-            "name": "Treptower Flohmarkt",
-            "adresse": "Treptower Park, Alt-Treptow, 12435 Berlin",
-            "wann": "Jeden Sonntag, 8:00 - 16:00 Uhr",
-            "typ": "🔧 Werkzeug, Elektronik, DDR-Artikel",
-            "bewertung": "⭐⭐⭐⭐",
-            "tipp": "Gut für Elektronik und DDR-Sammlerstücke",
-            "maps": "https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"
-        },
-        {
+            "tag": "Samstag",
             "name": "RAW Flohmarkt",
             "adresse": "Revaler Str. 99, 10245 Berlin",
-            "wann": "Jeden Samstag & Sonntag, 10:00 - 18:00 Uhr",
+            "wann": "Samstag & Sonntag, 10:00 – 18:00 Uhr",
+            "telefon": "+49 30 29367840",
             "typ": "🕶️ Vintage Mode, Vinyl, Streetwear",
-            "bewertung": "⭐⭐⭐⭐",
-            "tipp": "Beste Quelle für Vintage-Kleidung in Berlin",
+            "bewertung": "⭐⭐⭐⭐⭐",
+            "tipp": "BESTE Quelle für Vintage-Kleidung in Berlin!",
             "maps": "https://maps.google.com/?q=RAW+Gelände+Berlin"
         },
         {
-            "name": "Nowkoelln Flowmarkt",
-            "adresse": "Maybachufer, 12047 Berlin",
-            "wann": "Jeden 2. & 4. Sonntag, 11:00 - 18:00 Uhr",
-            "typ": "🎨 Design, Handmade, Vintage",
-            "bewertung": "⭐⭐⭐",
-            "tipp": "Kreativ & künstlerisch — gute Preise",
-            "maps": "https://maps.google.com/?q=Maybachufer+Berlin"
+            "tag": "Samstag",
+            "name": "Winterfeldtmarkt",
+            "adresse": "Winterfeldtplatz, 10781 Berlin",
+            "wann": "Jeden Samstag, 8:00 – 14:00 Uhr",
+            "telefon": "+49 30 7262290",
+            "typ": "🌿 Bio, Vintage, Haushalt, Mode, Kunst",
+            "bewertung": "⭐⭐⭐⭐⭐",
+            "tipp": "Einer der besten Berliner Märkte — Pflicht!",
+            "maps": "https://maps.google.com/?q=Winterfeldtmarkt+Berlin"
         },
         {
-            "name": "Arkonaplatz Flohmarkt",
-            "adresse": "Arkonaplatz, 10435 Berlin",
-            "wann": "Jeden Sonntag, 10:00 - 16:00 Uhr",
-            "typ": "🏛️ Antiquitäten, Bücher, Kunst",
+            "tag": "Samstag",
+            "name": "Antik & Trödelmarkt Ostbahnhof",
+            "adresse": "Erich-Steinfurth-Str. 1, 10243 Berlin",
+            "wann": "Freitag – Sonntag, 9:00 – 16:00 Uhr",
+            "telefon": "+49 30 2936028",
+            "typ": "🛍️ Großer Gemischtmarkt",
             "bewertung": "⭐⭐⭐⭐",
-            "tipp": "Klein aber fein — echte Raritäten möglich",
-            "maps": "https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"
-        },
-        {
-            "name": "Flohmarkt Ostbahnhof",
-            "adresse": "Erich-Steinfurth-Str., 10243 Berlin",
-            "wann": "Jeden Samstag & Sonntag, 9:00 - 16:00 Uhr",
-            "typ": "🛍️ Gemischt — Haushalt, Kleidung, Elektronik",
-            "bewertung": "⭐⭐⭐",
-            "tipp": "Groß und günstig — viel Auswahl",
+            "tipp": "Groß & günstig — viel Auswahl für alle Kategorien",
             "maps": "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"
         },
         {
-            "name": "Flohmarkt Alexanderplatz",
-            "adresse": "Alexanderplatz, 10178 Berlin",
-            "wann": "Täglich, 10:00 - 19:00 Uhr",
-            "typ": "🏙️ Gemischt, Souvenirs, Vintage",
+            "tag": "Samstag",
+            "name": "Trödelmarkt Spandau",
+            "adresse": "Carl-Schurz-Str. 13, 13597 Berlin",
+            "wann": "Mittwoch & Samstag, 8:00 – 14:00 Uhr",
+            "telefon": "+49 30 3545080",
+            "typ": "🔧 Werkzeug, Haushalt, Kleidung",
             "bewertung": "⭐⭐⭐",
-            "tipp": "Täglich verfügbar — gute Lage für spontane Käufe",
-            "maps": "https://maps.google.com/?q=Alexanderplatz+Flohmarkt+Berlin"
-        }
+            "tipp": "Samstags viel größer als Mittwoch",
+            "maps": "https://maps.google.com/?q=Carl-Schurz-Straße+Spandau+Berlin"
+        },
+        # ── SONNTAG ──
+        {
+            "tag": "Sonntag",
+            "name": "Mauerpark Flohmarkt",
+            "adresse": "Bernauer Str. 63-64, 13355 Berlin",
+            "wann": "Jeden Sonntag, 9:00 – 18:00 Uhr",
+            "telefon": "+49 30 40505380",
+            "typ": "🎭 Gemischt — Vintage, Kleidung, Kuriositäten",
+            "bewertung": "⭐⭐⭐⭐⭐",
+            "tipp": "MUSS! Vor 10 Uhr kommen für beste Funde",
+            "maps": "https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"
+        },
+        {
+            "tag": "Sonntag",
+            "name": "Flohmarkt am Boxhagener Platz",
+            "adresse": "Boxhagener Platz, 10245 Berlin",
+            "wann": "Jeden Sonntag, 10:00 – 18:00 Uhr",
+            "telefon": "+49 30 29362596",
+            "typ": "🏺 Antiquitäten, Porzellan, Bücher",
+            "bewertung": "⭐⭐⭐⭐⭐",
+            "tipp": "Top für Porzellan & Antiquitäten — früh da sein!",
+            "maps": "https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"
+        },
+        {
+            "tag": "Sonntag",
+            "name": "Treptower Flohmarkt",
+            "adresse": "Treptower Park, Alt-Treptow, 12435 Berlin",
+            "wann": "Jeden Sonntag, 8:00 – 16:00 Uhr",
+            "telefon": "+49 30 5321555",
+            "typ": "🔧 Werkzeug, Elektronik, DDR-Artikel",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Gut für Elektronik & DDR-Sammlerstücke",
+            "maps": "https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"
+        },
+        {
+            "tag": "Sonntag",
+            "name": "RAW Flohmarkt",
+            "adresse": "Revaler Str. 99, 10245 Berlin",
+            "wann": "Samstag & Sonntag, 10:00 – 18:00 Uhr",
+            "telefon": "+49 30 29367840",
+            "typ": "🕶️ Vintage Mode, Vinyl, Streetwear",
+            "bewertung": "⭐⭐⭐⭐⭐",
+            "tipp": "Sonntags entspannter als Samstag",
+            "maps": "https://maps.google.com/?q=RAW+Gelände+Berlin"
+        },
+        {
+            "tag": "Sonntag",
+            "name": "Arkonaplatz Flohmarkt",
+            "adresse": "Arkonaplatz, 10435 Berlin",
+            "wann": "Jeden Sonntag, 10:00 – 16:00 Uhr",
+            "telefon": "+49 30 7861003",
+            "typ": "🏛️ Antiquitäten, Bücher, Kunst, Raritäten",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Klein aber fein — echte Raritäten möglich!",
+            "maps": "https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"
+        },
+        {
+            "tag": "Sonntag",
+            "name": "Nowkoelln Flowmarkt",
+            "adresse": "Maybachufer, 12047 Berlin",
+            "wann": "Jeden 2. & 4. Sonntag, 11:00 – 18:00 Uhr",
+            "telefon": "+49 30 62908811",
+            "typ": "🎨 Design, Handmade, Vintage",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Kreativ & günstig — gute Kleidung & Deko",
+            "maps": "https://maps.google.com/?q=Maybachufer+Berlin"
+        },
+        {
+            "tag": "Sonntag",
+            "name": "Antik & Trödelmarkt Ostbahnhof",
+            "adresse": "Erich-Steinfurth-Str. 1, 10243 Berlin",
+            "wann": "Freitag – Sonntag, 9:00 – 16:00 Uhr",
+            "telefon": "+49 30 2936028",
+            "typ": "🛍️ Großer Gemischtmarkt",
+            "bewertung": "⭐⭐⭐⭐",
+            "tipp": "Sonntags am vollsten — früh kommen!",
+            "maps": "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"
+        },
     ]
 
-    # Filter
-    col1, col2 = st.columns(2)
-    with col1:
-        filter_tag = st.selectbox("📅 Tag filtern", ["Alle", "Samstag", "Sonntag", "Täglich"], key="floh_tag")
-    with col2:
-        filter_typ = st.selectbox("🏷️ Typ filtern", ["Alle", "Antiquitäten", "Vintage Mode", "Elektronik", "Gemischt"], key="floh_typ")
+
+    # Filter nach Wochentag
+    tage = ["Alle", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+    filter_tag = st.radio("📅 Tag wählen:", tage, horizontal=True, key="floh_tag")
 
     st.markdown("---")
 
-    for markt in flohmärkte:
-        with st.expander(f"{markt['bewertung']} **{markt['name']}** — {markt['wann'].split(',')[0]}"):
-            col1, col2 = st.columns([2,1])
-            with col1:
-                st.markdown(f"📍 **Adresse:** {markt['adresse']}")
-                st.markdown(f"🕐 **Wann:** {markt['wann']}")
-                st.markdown(f"🏷️ **Typ:** {markt['typ']}")
-                st.markdown(f"💡 **Tipp:** {markt['tipp']}")
-            with col2:
-                st.markdown(f"**Bewertung:** {markt['bewertung']}")
-                st.link_button("🗺️ Google Maps", markt['maps'], use_container_width=True)
+    # Gefilterte Märkte anzeigen
+    gefiltert = [m for m in flohmärkte if filter_tag == "Alle" or m["tag"] == filter_tag]
+    st.markdown(f"**{len(gefiltert)} Märkte gefunden**")
+
+    # Nach Tag gruppieren wenn "Alle"
+    if filter_tag == "Alle":
+        for tag in ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]:
+            tag_märkte = [m for m in flohmärkte if m["tag"] == tag]
+            if tag_märkte:
+                st.markdown(f"### 📅 {tag}")
+                for markt in tag_märkte:
+                    with st.expander(f"{markt['bewertung']} **{markt['name']}**"):
+                        col1, col2 = st.columns([2,1])
+                        with col1:
+                            st.markdown(f"📍 {markt['adresse']}")
+                            st.markdown(f"🕐 {markt['wann']}")
+                            st.markdown(f"📞 **{markt['telefon']}**")
+                            st.markdown(f"🏷️ {markt['typ']}")
+                            st.markdown(f"💡 *{markt['tipp']}*")
+                        with col2:
+                            st.markdown(markt['bewertung'])
+                            st.link_button("🗺️ Maps", markt['maps'], use_container_width=True)
+    else:
+        for markt in gefiltert:
+            with st.expander(f"{markt['bewertung']} **{markt['name']}**"):
+                col1, col2 = st.columns([2,1])
+                with col1:
+                    st.markdown(f"📍 {markt['adresse']}")
+                    st.markdown(f"🕐 {markt['wann']}")
+                    st.markdown(f"📞 **{markt['telefon']}**")
+                    st.markdown(f"🏷️ {markt['typ']}")
+                    st.markdown(f"💡 *{markt['tipp']}*")
+                with col2:
+                    st.markdown(markt['bewertung'])
+                    st.link_button("🗺️ Maps", markt['maps'], use_container_width=True)
 
     st.markdown("---")
     st.markdown("### 🤖 Flohmarkt-Tipps vom KI")
