@@ -19,72 +19,82 @@ for k,v in {"lager":[],"sim":[],"lot":[],"gwlog":[],"fotos":[],"fcnt":0}.items()
     if k not in st.session_state: st.session_state[k]=v
 
 # ── KI ENGINE ────────────────────────────────────────────────
-def komprimiere_bild(b64_string, max_kb=800):
-    """Komprimiere Bild auf max_kb Kilobytes"""
-    try:
-        from PIL import Image
-        import io
-        img_bytes = base64.b64decode(b64_string)
-        img = Image.open(io.BytesIO(img_bytes))
-        # Konvertiere zu RGB falls nötig
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-        # Verkleinere wenn zu groß
-        max_size = (1024, 1024)
-        img.thumbnail(max_size, Image.Resampling.LANCZOS)
-        # Komprimiere
-        output = io.BytesIO()
-        quality = 85
-        while quality > 20:
-            output.seek(0)
-            output.truncate(0)
-            img.save(output, format="JPEG", quality=quality)
-            if len(output.getvalue()) <= max_kb * 1024:
-                break
-            quality -= 10
-        return base64.b64encode(output.getvalue()).decode()
-    except Exception:
-        return b64_string  # Original zurückgeben wenn Komprimierung fehlschlägt
-
 def ki(prompt, bilder=None):
     """
-    bilder = Liste von Base64-Strings
-    Gibt immer einen String zurück.
+    Zentrale KI-Funktion.
+    bilder = Liste von Base64-Strings (optional)
+    Modelle:
+      - Mit Bildern: google/gemini-flash-1.5 (Vision, günstig, zuverlässig)
+      - Nur Text:    openai/gpt-4o-mini
     """
     if not OR_KEY:
         return "❌ Kein API-Key! Bitte in Streamlit Secrets eintragen: OPENROUTER_API_KEY"
+
+    client = OpenAI(
+        api_key=OR_KEY,
+        base_url="https://openrouter.ai/api/v1"
+    )
+    headers = {
+        "HTTP-Referer": "https://marktradar.streamlit.app",
+        "X-Title": "MarktRadar OS PRO"
+    }
+
     try:
-        client = OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
         if bilder and len(bilder) > 0:
-            # Bilder komprimieren
-            komprimierte = [komprimiere_bild(b) for b in bilder[:4]]
-            model = "openai/gpt-4o"
+            # Vision-Modell: Google Gemini Flash (beste Vision-KI auf OpenRouter)
+            model = "google/gemini-flash-1.5"
             inhalt = []
-            for b64 in komprimierte:
+            for b64 in bilder[:4]:
+                # Bild komprimieren falls nötig
+                try:
+                    from PIL import Image
+                    import io as _io
+                    img_bytes = base64.b64decode(b64)
+                    img = Image.open(_io.BytesIO(img_bytes))
+                    if img.mode in ("RGBA","P"): img = img.convert("RGB")
+                    img.thumbnail((1024,1024), Image.Resampling.LANCZOS)
+                    buf = _io.BytesIO()
+                    img.save(buf, format="JPEG", quality=82)
+                    b64 = base64.b64encode(buf.getvalue()).decode()
+                except Exception:
+                    pass  # Original verwenden wenn Komprimierung fehlschlägt
                 inhalt.append({
                     "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{b64}",
-                        "detail": "high"
-                    }
+                    "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
                 })
             inhalt.append({"type": "text", "text": prompt})
             msgs = [{"role": "user", "content": inhalt}]
         else:
+            # Text-Modell
             model = "openai/gpt-4o-mini"
             msgs  = [{"role": "user", "content": prompt}]
+
         r = client.chat.completions.create(
             model=model,
             messages=msgs,
             max_tokens=2500,
-            extra_headers={
-                "HTTP-Referer": "https://marktradar.streamlit.app",
-                "X-Title": "MarktRadar OS PRO"
-            }
+            extra_headers=headers
         )
-        return r.choices[0].message.content
+        antwort = r.choices[0].message.content
+
+        # Sicherheitscheck: KI-Verweigerung abfangen
+        verweigerung = ["tut mir leid", "kann ich nicht", "kann ich leider nicht",
+                        "not able to", "cannot help", "I'm sorry"]
+        if any(v.lower() in antwort.lower() for v in verweigerung) and len(antwort) < 200:
+            # Zweiter Versuch mit anderem Modell
+            model2 = "anthropic/claude-3-haiku"
+            r2 = client.chat.completions.create(
+                model=model2,
+                messages=msgs,
+                max_tokens=2500,
+                extra_headers=headers
+            )
+            return r2.choices[0].message.content
+
+        return antwort
+
     except Exception as e:
-        return f"❌ KI-Fehler: {str(e)}"
+        return f"❌ KI-Fehler ({model}): {str(e)}"
 
 # ── URL LESEN ────────────────────────────────────────────────
 def lies_url(url):
@@ -302,19 +312,25 @@ with T[0]:
 
             # STUFE 4 — Zusammenfassung
             with st.status("✅ Stufe 4: Zusammenfassung...", expanded=True):
-                ana_kurz = st.session_state.get("ana_ergebnis","")[:800]
-                fazit = ki(
-                    "Erstelle eine sehr kurze Zusammenfassung (max 5 Zeilen) fuer diesen Haendler.\n"
-                    "Nur Fakten auf Deutsch. Kein Ratschlag.\n"
-                    "Format:\n"
-                    "• Artikel: [Anzahl und Namen]\n"
-                    "• GRUEN (schnell): [Namen]\n"
-                    "• GELB (mittel): [Namen]\n"
-                    "• ROT (langsam): [Namen]\n"
-                    "• Gesamtwert: EUR X bis EUR Y\n\n"
-                    f"Analyse:\n{ana_kurz}"
-                )
-                st.info(f"📊 {fazit}")
+                ana_text = st.session_state.get("ana_ergebnis","")
+                # Nur zusammenfassen wenn echte Analyse vorhanden
+                verweigerung = ["tut mir leid","kann nicht","cannot","sorry"]
+                ist_echt = not any(v in ana_text.lower() for v in verweigerung) and len(ana_text) > 200
+                if ist_echt:
+                    fazit = ki(
+                        "Erstelle eine kurze Zusammenfassung (max 5 Zeilen) aus dieser Analyse.\n"
+                        "Nur echte Fakten aus der Analyse. Nichts erfinden. Auf Deutsch.\n"
+                        "Format:\n"
+                        "• Artikel: [echte Namen aus der Analyse]\n"
+                        "• GRUEN (schnell): [echte Namen]\n"
+                        "• GELB (mittel): [echte Namen]\n"
+                        "• ROT (langsam): [echte Namen]\n"
+                        "• Gesamtwert: [echte Schätzung]\n\n"
+                        f"Analyse:\n{ana_text[:1000]}"
+                    )
+                    st.info(f"📊 {fazit}")
+                else:
+                    st.warning("⚠️ Keine vollständige Analyse vorhanden.")
 
 # ════════════════════════════════════════════════════════════
 # TAB 2 — ANSCHREIB-BOT
