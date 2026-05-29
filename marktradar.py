@@ -130,11 +130,8 @@ with t1:
     bild = st.file_uploader("📷 Artikel-Foto hochladen", type=["jpg","jpeg","png"])
     manuell = st.text_area("Oder manuell beschreiben:", placeholder="z.B. 'Meissen Teller blau-weiß Zwiebelmuster, 26cm, guter Zustand'", height=80)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        einkauf_preis = st.number_input("💸 Mein Einkaufspreis (€)", min_value=0.0, value=5.0, step=0.5)
-    with col2:
-        marke_check = st.checkbox("🔍 Echtheitsprüfung (Brand Shield)")
+    marke_check = st.checkbox("🔍 Echtheitsprüfung (Brand Shield)")
+    einkauf_preis = 5.0  # intern
 
     if st.button("🚀 3-Stufen-Analyse STARTEN", type="primary", use_container_width=True):
         if bild or manuell:
