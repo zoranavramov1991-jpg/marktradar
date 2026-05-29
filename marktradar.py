@@ -19,82 +19,101 @@ for k,v in {"lager":[],"sim":[],"lot":[],"gwlog":[],"fotos":[],"fcnt":0}.items()
     if k not in st.session_state: st.session_state[k]=v
 
 # ── KI ENGINE ────────────────────────────────────────────────
+def komprimiere(b64):
+    """Bild auf max 800KB komprimieren"""
+    try:
+        from PIL import Image
+        import io as _io
+        img = Image.open(_io.BytesIO(base64.b64decode(b64)))
+        if img.mode not in ("RGB",): img = img.convert("RGB")
+        img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
+        buf = _io.BytesIO()
+        img.save(buf, format="JPEG", quality=80)
+        return base64.b64encode(buf.getvalue()).decode()
+    except Exception:
+        return b64
+
 def ki(prompt, bilder=None):
     """
-    Zentrale KI-Funktion.
-    bilder = Liste von Base64-Strings (optional)
-    Modelle:
-      - Mit Bildern: google/gemini-flash-1.5 (Vision, günstig, zuverlässig)
-      - Nur Text:    openai/gpt-4o-mini
+    KI-Funktion mit automatischem Modell-Fallback.
+    Probiert Vision-Modelle nacheinander bis eines funktioniert.
     """
     if not OR_KEY:
-        return "❌ Kein API-Key! Bitte in Streamlit Secrets eintragen: OPENROUTER_API_KEY"
+        return "❌ Kein API-Key konfiguriert! Bitte OPENROUTER_API_KEY in Streamlit Secrets eintragen."
 
-    client = OpenAI(
-        api_key=OR_KEY,
-        base_url="https://openrouter.ai/api/v1"
-    )
-    headers = {
-        "HTTP-Referer": "https://marktradar.streamlit.app",
-        "X-Title": "MarktRadar OS PRO"
-    }
+    client = OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+    hdrs = {"HTTP-Referer": "https://marktradar.streamlit.app", "X-Title": "MarktRadar"}
+
+    # Modell-Reihenfolge für Vision (Fallback-Kette)
+    vision_modelle = [
+        "google/gemini-1.5-flash",          # Günstig, schnell, gut
+        "google/gemini-1.5-pro",             # Besser aber teurer
+        "qwen/qwen-vl-plus",                 # Alibaba Vision
+        "meta-llama/llama-3.2-11b-vision-instruct:free",  # Kostenlos!
+        "openai/gpt-4o",                     # OpenAI Vision
+    ]
+    text_modell = "openai/gpt-4o-mini"
+
+    verweigerungen = ["tut mir leid","kann nicht helfen","cannot assist",
+                      "can't help","i'm sorry","unable to"]
 
     try:
         if bilder and len(bilder) > 0:
-            # Vision-Modell: Google Gemini Flash (beste Vision-KI auf OpenRouter)
-            model = "google/gemini-flash-1.5"
-            inhalt = []
-            for b64 in bilder[:4]:
-                # Bild komprimieren falls nötig
+            # Bilder komprimieren
+            bilder_k = [komprimiere(b) for b in bilder[:4]]
+
+            # Vision-Nachrichten aufbauen
+            def mache_msgs(b64_liste):
+                inhalt = []
+                for b64 in b64_liste:
+                    inhalt.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
+                    })
+                inhalt.append({"type": "text", "text": prompt})
+                return [{"role": "user", "content": inhalt}]
+
+            # Modelle nacheinander versuchen
+            letzter_fehler = ""
+            for model in vision_modelle:
                 try:
-                    from PIL import Image
-                    import io as _io
-                    img_bytes = base64.b64decode(b64)
-                    img = Image.open(_io.BytesIO(img_bytes))
-                    if img.mode in ("RGBA","P"): img = img.convert("RGB")
-                    img.thumbnail((1024,1024), Image.Resampling.LANCZOS)
-                    buf = _io.BytesIO()
-                    img.save(buf, format="JPEG", quality=82)
-                    b64 = base64.b64encode(buf.getvalue()).decode()
-                except Exception:
-                    pass  # Original verwenden wenn Komprimierung fehlschlägt
-                inhalt.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
-                })
-            inhalt.append({"type": "text", "text": prompt})
-            msgs = [{"role": "user", "content": inhalt}]
+                    msgs = mache_msgs(bilder_k)
+                    r = client.chat.completions.create(
+                        model=model, messages=msgs,
+                        max_tokens=2500, extra_headers=hdrs
+                    )
+                    antwort = r.choices[0].message.content
+
+                    # Prüfe ob echte Antwort oder Verweigerung
+                    ist_verweigerung = (
+                        any(v in antwort.lower() for v in verweigerungen)
+                        and len(antwort) < 300
+                    )
+                    if not ist_verweigerung:
+                        return antwort  # ✅ Erfolg!
+
+                except Exception as e:
+                    letzter_fehler = str(e)
+                    if "404" in str(e) or "not found" in str(e).lower():
+                        continue  # Nächstes Modell probieren
+                    if "429" in str(e) or "rate" in str(e).lower():
+                        continue
+                    continue
+
+            # Alle Vision-Modelle fehlgeschlagen → Text-Analyse
+            return ki(prompt)  # Rekursiv ohne Bilder
+
         else:
-            # Text-Modell
-            model = "openai/gpt-4o-mini"
-            msgs  = [{"role": "user", "content": prompt}]
-
-        r = client.chat.completions.create(
-            model=model,
-            messages=msgs,
-            max_tokens=2500,
-            extra_headers=headers
-        )
-        antwort = r.choices[0].message.content
-
-        # Sicherheitscheck: KI-Verweigerung abfangen
-        verweigerung = ["tut mir leid", "kann ich nicht", "kann ich leider nicht",
-                        "not able to", "cannot help", "I'm sorry"]
-        if any(v.lower() in antwort.lower() for v in verweigerung) and len(antwort) < 200:
-            # Zweiter Versuch mit anderem Modell
-            model2 = "anthropic/claude-3-haiku"
-            r2 = client.chat.completions.create(
-                model=model2,
-                messages=msgs,
-                max_tokens=2500,
-                extra_headers=headers
+            # Nur Text
+            msgs = [{"role": "user", "content": prompt}]
+            r = client.chat.completions.create(
+                model=text_modell, messages=msgs,
+                max_tokens=2500, extra_headers=hdrs
             )
-            return r2.choices[0].message.content
-
-        return antwort
+            return r.choices[0].message.content
 
     except Exception as e:
-        return f"❌ KI-Fehler ({model}): {str(e)}"
+        return f"❌ Fehler: {str(e)}"
 
 # ── URL LESEN ────────────────────────────────────────────────
 def lies_url(url):
