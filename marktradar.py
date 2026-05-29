@@ -182,12 +182,17 @@ with t1:
 
 REGELN:
 - Jeden sichtbaren Artikel einzeln analysieren
-- NIEMALS "kann nicht analysieren" - immer beschreiben was du siehst
+- NIEMALS "kann nicht analysieren"
 - Nur Fakten, keine Kaufempfehlungen
 - Konkrete Eurobeträge immer angeben
-- Alter so genau wie möglich bestimmen (Jahrzehnt oder Jahr)
-- Verkäuflichkeit einschätzen (wie leicht/schwer verkäuflich)
+- Alter so genau wie möglich bestimmen
+- Ampel-System IMMER verwenden (siehe unten)
 - Nur auf Deutsch{kontext}
+
+AMPEL-SYSTEM (immer so schreiben):
+🟢 GRÜN = Günstig & schnell verkäuflich (1-7 Tage)
+🟡 GELB = Mittlerer Preis, normale Verkaufszeit (1-4 Wochen)  
+🔴 ROT = Höherer Preis, braucht Zeit oder schwer verkäuflich (1-3 Monate+)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ARTIKEL-ANALYSE
@@ -199,20 +204,21 @@ Für JEDEN sichtbaren Artikel:
 **[Artikel-Name]**
 
 📦 IDENTIFIKATION:
-- Was: [Genaue Beschreibung, Material, Größe/Maße]
+- Was: [Genaue Beschreibung, Material, Größe]
 - Marke/Hersteller: [Name oder "nicht erkennbar"]
 - Echtheit: [Echt / Wahrscheinlich echt / Unsicher / Replik]
 - Stempel/Markierungen: [Beschreibung oder "keine sichtbar"]
 
-📅 ALTER & HERKUNFT:
-- Herstellungsjahr: [Genaues Jahr ODER z.B. "ca. 1965" ODER "1960er Jahre"]
-- Epoche: [z.B. DDR / Westdeutsch / Nachkriegszeit / 80er / 90er / Modern]
-- Erkennungsmerkmale für das Alter: [Was zeigt das Alter? z.B. Schriftart, Material, Design]
+📅 ALTER:
+- Jahr/Jahrzehnt: [z.B. "ca. 1968" oder "1960er Jahre"]
+- Epoche: [z.B. DDR / Westdeutsch / 80er / 90er / Modern]
+- Altersbeweis: [Was zeigt das Alter?]
 
-🔄 VERKÄUFLICHKEIT:
-- Nachfrage: [Sehr hoch / Hoch / Mittel / Niedrig / Kaum]
-- Zielgruppe: [Wer kauft das? z.B. Sammler, Haushalte, Vintage-Fans]
-- Verkaufsdauer: [Sehr schnell (1-3 Tage) / Schnell (1 Woche) / Normal (2-4 Wochen) / Langsam (1-3 Monate)]
+🚦 VERKÄUFLICHKEIT:
+- Ampel: 🟢 GRÜN / 🟡 GELB / 🔴 ROT
+- Verkaufszeit: 🟢 Schnell (1-7 Tage) / 🟡 Mittel (1-4 Wochen) / 🔴 Langsam (1-3 Monate+)
+- Nachfrage: [Sehr hoch / Hoch / Mittel / Niedrig]
+- Zielgruppe: [Wer kauft das?]
 - Zustand: [Sehr gut / Gut / Gebraucht / Beschädigt]
 
 💶 MARKTPREISE:
@@ -231,11 +237,11 @@ Für JEDEN sichtbaren Artikel:
 📊 GESAMT-ÜBERSICHT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Artikel gesamt: [X]
-- Gesamtwert (Verkauf): €X – €Y
-- Ankaufspreis gesamt max.: €X
-- Wertvollster Artikel: [Name] (€X)
-- Am schnellsten verkäuflich: [Name]
-- Am schwierigsten zu verkaufen: [Name]
+- 🟢 Grün (schnell): [Anzahl] Artikel
+- 🟡 Gelb (mittel): [Anzahl] Artikel  
+- 🔴 Rot (langsam): [Anzahl] Artikel
+- Gesamtwert: €X – €Y
+- Max. Ankaufspreis gesamt: €X
 - Ältester Artikel: [Name] (ca. [Jahr])"""
 
                 analyse = ki(prompt_analyse, bild_b64=bild_b64)
