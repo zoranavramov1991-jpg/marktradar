@@ -309,9 +309,9 @@ with t2:
 
     col1, col2 = st.columns(2)
     with col1:
-        artikel3   = st.text_input("Artikel", placeholder="z.B. Vintage Stuhl")
-        mein_preis = st.number_input("Mein Angebot (€)", min_value=1.0, value=20.0)
-        vk_preis   = st.number_input("Verkäufer-Preis (€)", min_value=1.0, value=50.0)
+        artikel3   = st.text_input("Artikel", placeholder="z.B. Vintage Stuhl", key="anschreib_art")
+        mein_preis = st.number_input("Mein Angebot (€)", min_value=1.0, value=20.0, key="anschreib_mein")
+        vk_preis   = st.number_input("Verkäufer-Preis (€)", min_value=1.0, value=50.0, key="anschreib_vk")
     with col2:
         stil = st.selectbox("Stil", [
             "Freundlich & charmant",
@@ -319,14 +319,14 @@ with t2:
             "Dringend (heute abholen)",
             "Paket-Deal (mehrere Artikel)",
             "Letztes Angebot"
-        ])
+        ], key="anschreib_stil")
         plattform3 = st.selectbox("Plattform", [
             "Kleinanzeigen",
             "eBay",
             "Facebook Marketplace",
             "Vinted",
             "Persönlich auf Flohmarkt"
-        ])
+        ], key="anschreib_pl")
 
     if st.button("✍️ Nachricht generieren!", type="primary", use_container_width=True):
         if artikel3:
@@ -387,13 +387,13 @@ with t4:
 
     col1, col2 = st.columns(2)
     with col1:
-        la   = st.text_input("Artikel", placeholder="z.B. Vintage Stuhl")
+        la   = st.text_input("Artikel", placeholder="z.B. Vintage Stuhl", key="lager_art")
         lek  = st.number_input("Einkaufspreis (€)", min_value=0.0, value=10.0, key="lag_ek")
-        lziel = st.number_input("Ziel-Verkaufspreis (€)", min_value=0.0, value=45.0)
+        lziel = st.number_input("Ziel-Verkaufspreis (€)", min_value=0.0, value=45.0, key="lager_ziel")
     with col2:
-        lz  = st.selectbox("Zustand", ["Sehr gut","Gut","Gebraucht","Beschädigt"])
-        lpl = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"])
-        ltage = st.number_input("Liegezeit (Tage)", min_value=0, value=0)
+        lz  = st.selectbox("Zustand", ["Sehr gut","Gut","Gebraucht","Beschädigt"], key="lager_z")
+        lpl = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"], key="lager_pl")
+        ltage = st.number_input("Liegezeit (Tage)", min_value=0, value=0, key="lager_tage")
 
     if st.button("📦 Hinzufügen", type="primary", use_container_width=True):
         if la:
@@ -430,7 +430,7 @@ with t5:
     st.markdown("Fotografiere Bücher/CDs/Spiele-Stapel → KI erkennt alle und schätzt Werte!")
 
     medien_bild = st.file_uploader("📷 Stapel fotografieren", type=["jpg","jpeg","png"], key="medien")
-    medien_typ  = st.selectbox("Medien-Typ", ["Bücher","CDs/Vinyl","Video-Spiele","DVDs","Gemischt"])
+    medien_typ  = st.selectbox("Medien-Typ", ["Bücher","CDs/Vinyl","Video-Spiele","DVDs","Gemischt"], key="ocr_typ")
 
     if st.button("🔍 Stapel analysieren!", type="primary", use_container_width=True):
         if medien_bild:
@@ -456,13 +456,13 @@ with t6:
 
     col1, col2 = st.columns(2)
     with col1:
-        rep_artikel  = st.text_input("Artikel", placeholder="z.B. Vintage Stuhl")
+        rep_artikel  = st.text_input("Artikel", placeholder="z.B. Vintage Stuhl", key="rep_art")
         rep_ek       = st.number_input("Einkaufspreis (€)", min_value=0.0, value=15.0, key="rep_ek")
-        rep_material = st.number_input("Materialkosten (€)", min_value=0.0, value=25.0)
-        rep_stunden  = st.number_input("Arbeitsstunden", min_value=0.5, value=3.0, step=0.5)
+        rep_material = st.number_input("Materialkosten (€)", min_value=0.0, value=25.0, key="rep_mat")
+        rep_stunden  = st.number_input("Arbeitsstunden", min_value=0.5, value=3.0, step=0.5, key="rep_std")
     with col2:
-        rep_vk      = st.number_input("Erwarteter VK (€)", min_value=0.0, value=120.0)
-        rep_plattform = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"])
+        rep_vk      = st.number_input("Erwarteter VK (€)", min_value=0.0, value=120.0, key="rep_vk2")
+        rep_plattform = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"], key="rep_pl")
         rep_beschr  = st.text_area("Was reparieren?", height=80)
 
     if st.button("🔧 Berechnen", type="primary", use_container_width=True):
@@ -499,7 +499,7 @@ with t7:
     gewicht = col1.number_input("Gewicht (kg)", min_value=0.1, value=1.0, step=0.1)
     col2.number_input("Länge (cm)", min_value=1, value=30)
     col3.number_input("Breite (cm)", min_value=1, value=20)
-    versicherung = st.checkbox("Versicherung?")
+    versicherung = st.checkbox("Versicherung?", key="post_vers")
 
     dhl_tarife    = [(0.5,3.99,"Päckchen S"),(1.0,4.99,"Päckchen M"),(2.0,6.99,"Päckchen L"),(5.0,9.49,"Paket 5kg"),(10.0,12.49,"Paket 10kg"),(31.5,18.49,"Paket 31kg")]
     hermes_tarife = [(0.5,3.70,"XS"),(1.0,4.50,"S"),(2.0,5.50,"M"),(5.0,7.90,"L"),(10.0,10.90,"XL"),(25.0,15.90,"XXL")]
@@ -558,7 +558,7 @@ with t8:
             st.markdown(f"- {g}")
 
     st.markdown("---")
-    frage = st.text_input("🤖 Trend-Frage stellen:", placeholder="Was ist gerade auf Kleinanzeigen/Vinted gefragt?")
+    frage = st.text_input("🤖 Trend-Frage stellen:", placeholder="Was ist gerade auf Kleinanzeigen/Vinted gefragt?", key="trends_frage")
     if st.button("Fragen", use_container_width=True):
         if frage:
             with st.spinner("🤖 Analysiere..."):
