@@ -109,13 +109,6 @@ padding:18px;border-radius:14px;margin-bottom:16px;text-align:center'>
 <p style='color:#a8b2d8;margin:4px 0 0'>9 Händler-Weltwunder · KI · eBay Live · DAC7 · Handy-optimiert</p>
 </div>""", unsafe_allow_html=True)
 
-# DAC7 Schnellstatus
-c1,c2,c3 = st.columns(3)
-n = st.session_state.gesamt_anzahl
-u = st.session_state.gesamt_umsatz
-c1.metric("🛒 Verkäufe",f"{n}/30",f"{30-n} übrig")
-c2.metric("💶 Umsatz",f"€{u:.0f}",f"€{2000-u:.0f} übrig")
-c3.metric("📊 Status","🟢 OK" if n<25 and u<1500 else "🔴 LIMIT!")
 st.markdown("---")
 
 # ───────────────────────────────────────────────────────────────
