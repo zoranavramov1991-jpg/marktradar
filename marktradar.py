@@ -180,47 +180,63 @@ with t1:
 
                 prompt_analyse = f"""Du bist ein neutrales Analyse-System für einen deutschen Reselling-Profi.
 
-DEINE AUFGABE: Reine Fakten liefern. Keine Empfehlungen. Keine Ratschläge.
-Der Händler entscheidet selbst was er kauft oder verkauft.
-Identifiziere und bewerte JEDEN einzelnen sichtbaren Artikel im Bild.
-NIEMALS "kann nicht analysieren" - jeden Gegenstand beschreiben.
-Nur auf Deutsch. Konkrete Eurobeträge immer angeben.{kontext}
+REGELN:
+- Jeden sichtbaren Artikel einzeln analysieren
+- NIEMALS "kann nicht analysieren" - immer beschreiben was du siehst
+- Nur Fakten, keine Kaufempfehlungen
+- Konkrete Eurobeträge immer angeben
+- Alter so genau wie möglich bestimmen (Jahrzehnt oder Jahr)
+- Verkäuflichkeit einschätzen (wie leicht/schwer verkäuflich)
+- Nur auf Deutsch{kontext}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ARTIKEL-ANALYSE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Für JEDEN sichtbaren Artikel:
 
 ---
 **[Artikel-Name]**
-- Was: [Genaue Beschreibung, Material, Größe]
-- Marke: [Markenname oder "keine Marke erkennbar"]
-- Hergestellt: [Jahrzehnt/Epoche]
-- Zustand: [Sehr gut / Gut / Gebraucht / Beschädigt]
+
+📦 IDENTIFIKATION:
+- Was: [Genaue Beschreibung, Material, Größe/Maße]
+- Marke/Hersteller: [Name oder "nicht erkennbar"]
 - Echtheit: [Echt / Wahrscheinlich echt / Unsicher / Replik]
-- Besonderheiten: [Stempel, Logos, Seriennummern, Punzen]
+- Stempel/Markierungen: [Beschreibung oder "keine sichtbar"]
+
+📅 ALTER & HERKUNFT:
+- Herstellungsjahr: [Genaues Jahr ODER z.B. "ca. 1965" ODER "1960er Jahre"]
+- Epoche: [z.B. DDR / Westdeutsch / Nachkriegszeit / 80er / 90er / Modern]
+- Erkennungsmerkmale für das Alter: [Was zeigt das Alter? z.B. Schriftart, Material, Design]
+
+🔄 VERKÄUFLICHKEIT:
+- Nachfrage: [Sehr hoch / Hoch / Mittel / Niedrig / Kaum]
+- Zielgruppe: [Wer kauft das? z.B. Sammler, Haushalte, Vintage-Fans]
+- Verkaufsdauer: [Sehr schnell (1-3 Tage) / Schnell (1 Woche) / Normal (2-4 Wochen) / Langsam (1-3 Monate)]
+- Zustand: [Sehr gut / Gut / Gebraucht / Beschädigt]
 
 💶 MARKTPREISE:
 | Plattform | Preis |
 |-----------|-------|
 | eBay DE | €X – €Y |
 | Kleinanzeigen | €X – €Y |
-| Vinted | €X – €Y |
+| Vinted | €X – €Y oder "nicht geeignet" |
 | Facebook | €X – €Y |
 | Flohmarkt | €X – €Y |
-| Ankaufspreis max. | €X |
+| **Max. Ankaufspreis** | **€X** |
 
 ---
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GESAMT-ÜBERSICHT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Anzahl Artikel: [X]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 GESAMT-ÜBERSICHT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Artikel gesamt: [X]
 - Gesamtwert (Verkauf): €X – €Y
-- Gesamter Ankaufspreis max.: €X
-- Bester Einzelartikel: [Name] (€X)
-- Schwächster Artikel: [Name] (€X)"""
+- Ankaufspreis gesamt max.: €X
+- Wertvollster Artikel: [Name] (€X)
+- Am schnellsten verkäuflich: [Name]
+- Am schwierigsten zu verkaufen: [Name]
+- Ältester Artikel: [Name] (ca. [Jahr])"""
 
                 analyse = ki(prompt_analyse, bild_b64=bild_b64)
                 st.markdown(analyse)
