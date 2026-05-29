@@ -178,46 +178,49 @@ with t1:
 
                 kontext = f"\n\nZUSATZ-INFO VON DER WEBSEITE:\n{artikel_info[:2000]}" if artikel_info else ""
 
-                prompt_analyse = f"""ROLLE: Du bist ein erfahrener deutscher Reselling-Profi mit 20 Jahren Erfahrung auf Flohmärkten, Kleinanzeigen, Vinted, Facebook und eBay.
+                prompt_analyse = f"""Du bist ein neutrales Analyse-System für einen deutschen Reselling-Profi.
 
-AUFGABE: Analysiere dieses Bild und identifiziere JEDEN einzelnen sichtbaren Artikel.
+DEINE AUFGABE: Reine Fakten liefern. Keine Empfehlungen. Keine Ratschläge.
+Der Händler entscheidet selbst was er kauft oder verkauft.
+Identifiziere und bewerte JEDEN einzelnen sichtbaren Artikel im Bild.
+NIEMALS "kann nicht analysieren" - jeden Gegenstand beschreiben.
+Nur auf Deutsch. Konkrete Eurobeträge immer angeben.{kontext}
 
-WICHTIGE REGELN:
-- NIEMALS "kann nicht analysieren" sagen - das ist verboten!
-- Jeden Artikel einzeln bewerten, auch einfache Gegenstände
-- Immer konkrete Eurobeträge nennen
-- Nur auf Deutsch antworten
-- Bei Kartons/Kisten: jeden sichtbaren Inhalt einzeln aufführen{kontext}
-
-═══════════════════════════════════════
-📋 JEDEN ARTIKEL EINZELN ANALYSIEREN:
-═══════════════════════════════════════
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ARTIKEL-ANALYSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Für JEDEN sichtbaren Artikel:
 
-### [Artikel-Name]
-| Detail | Info |
-|--------|------|
-| Was ist es | [Genaue Beschreibung] |
-| Marke | [Marke oder unbekannt] |
-| Zustand | [Sehr gut/Gut/Gebraucht/Defekt] |
-| Alter | [Neu/5J/10J/Vintage/Antik] |
-| eBay | €X - €Y |
-| Kleinanzeigen | €X - €Y |
-| Vinted | €X oder nicht geeignet |
-| Flohmarkt | €X - €Y |
-| Max. kaufen für | €X |
-| Entscheidung | ✅ KAUFEN / ❌ SKIP |
+---
+**[Artikel-Name]**
+- Was: [Genaue Beschreibung, Material, Größe]
+- Marke: [Markenname oder "keine Marke erkennbar"]
+- Hergestellt: [Jahrzehnt/Epoche]
+- Zustand: [Sehr gut / Gut / Gebraucht / Beschädigt]
+- Echtheit: [Echt / Wahrscheinlich echt / Unsicher / Replik]
+- Besonderheiten: [Stempel, Logos, Seriennummern, Punzen]
 
-═══════════════════════════════════════
-💰 GESAMT-BEWERTUNG:
-═══════════════════════════════════════
-- Alle Artikel zusammen wert: €X - €Y
-- Maximaler Ankaufspreis: €X
-- Erwarteter Gewinn: €X - €Y
-- Beste Strategie: [Einzeln/Set/Flohmarkt]
+💶 MARKTPREISE:
+| Plattform | Preis |
+|-----------|-------|
+| eBay DE | €X – €Y |
+| Kleinanzeigen | €X – €Y |
+| Vinted | €X – €Y |
+| Facebook | €X – €Y |
+| Flohmarkt | €X – €Y |
+| Ankaufspreis max. | €X |
 
-⚡ FAZIT: [KAUFEN für max €X → Verkaufen für €X → Gewinn €X]"""
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GESAMT-ÜBERSICHT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Anzahl Artikel: [X]
+- Gesamtwert (Verkauf): €X – €Y
+- Gesamter Ankaufspreis max.: €X
+- Bester Einzelartikel: [Name] (€X)
+- Schwächster Artikel: [Name] (€X)"""
 
                 analyse = ki(prompt_analyse, bild_b64=bild_b64)
                 st.markdown(analyse)
@@ -264,28 +267,24 @@ Antworte kurz auf Deutsch:
 - Facebook Ø: €X
 - Flohmarkt: €X
 - Empfohlener Ankaufspreis: max €X
-- Beste Plattform zum Verkaufen: [Plattform] weil [Grund]""")
+- Notiz: [Besonderheit falls relevant]""")
 
                 st.markdown("### 💡 KI Preiseinschätzung:")
                 st.markdown(preis_analyse)
 
             # ── STUFE 4: Fazit ──
             with st.status("✅ Stufe 4: Ultimatives Fazit...", expanded=True):
-                fazit = ki(f"""Basierend auf dieser Analyse eines deutschen Resellers:
+                fazit = ki(f"""Basierend auf dieser Artikel-Analyse:
 {analyse[:500]}
 
-Gib ein ULTIMATIVES FAZIT in 3 Sätzen:
-1. Soll er kaufen? (Ja/Nein + warum)
-2. Für welchen Preis kaufen?
-3. Wo & für wieviel verkaufen?
+Erstelle eine kurze ZUSAMMENFASSUNG (3 Punkte, keine Empfehlungen):
+1. Welche Artikel haben den höchsten Marktwert?
+2. Auf welchen Plattformen werden solche Artikel gehandelt?
+3. Welche Artikel sind selten/begehrt auf dem deutschen Markt?
 
-Alle Plattformen: eBay, Kleinanzeigen, Vinted, Facebook, Flohmarkt.
-Kurz, direkt, auf Deutsch.""")
+Nur Fakten, keine Ratschläge. Auf Deutsch.""")
 
-                if "JA" in fazit.upper() or "KAUFEN" in fazit.upper():
-                    st.success(f"💡 **FAZIT:** {fazit}")
-                else:
-                    st.warning(f"💡 **FAZIT:** {fazit}")
+                st.info(f"📊 **ZUSAMMENFASSUNG:** {fazit}")
 
         else:
             st.warning("⚠️ Bitte Foto hochladen oder Link eingeben!")
