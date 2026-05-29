@@ -140,27 +140,47 @@ with t1:
         if bild or manuell:
             # STUFE 1: Vision
             with st.status("⚙️ Stufe 1: Vision-Agent analysiert Foto...", expanded=True) as status:
-                prompt_vision = """Du bist Experte für Flohmärkte und Antiquitäten in Deutschland.
-Analysiere diesen Artikel und antworte NUR auf Deutsch:
+                prompt_vision = """Du bist ein Team aus 3 Experten die gemeinsam analysieren:
+1. Antiquitäten-Händler mit 20 Jahren Erfahrung auf deutschen Flohmärkten
+2. eBay-Powerseller mit 10.000+ Verkäufen
+3. Markenauthentizitäts-Experte für Porzellan, Elektronik und Vintage
 
-## 🏷️ IDENTIFIKATION
-- **Artikel:** [Name]
-- **Marke:** [Marke oder unbekannt]
-- **Alter:** [Schätzung]
-- **Zustand:** [Sehr gut / Gut / Gebraucht / Beschädigt]
-- **eBay-Suchbegriff:** [optimierter Begriff für Suche]
+WICHTIG: Analysiere ALLES was du siehst - auch wenn es einfach aussieht. 
+Jeder Artikel hat einen Wert. Sei präzise, direkt und professionell.
+Antworte IMMER vollständig auf Deutsch.
 
-## 🔍 BRAND SHIELD
-- **Echtheit:** [Wahrscheinlich echt / Unsicher / Replik]
-- **Erkennungsmerkmale:** [Was macht es echt/unecht?]
+## 🏷️ ARTIKEL-IDENTIFIKATION
+- **Name:** [Exakter Produktname]
+- **Hersteller/Marke:** [Hersteller, auch wenn unbekannte Marke - beschreibe sie]
+- **Herstellungszeit:** [Jahrzehnt/Jahr-Schätzung mit Begründung]
+- **Material:** [Genaues Material]
+- **Maße/Gewicht:** [Schätzung]
+- **Zustand:** [Sehr gut / Gut / Gebraucht / Beschädigt - mit Details]
+- **Besonderheiten:** [Stempel, Markierungen, Seriennummern, Punzen]
 
-## 💰 PREISSCHÄTZUNG
-- **Flohmarkt-Einkauf:** €X - €Y
-- **eBay-Verkauf:** €X - €Y
-- **Empfehlung:** ✅ KAUFEN / ❌ SKIP
+## 🔍 ECHTHEITSPRÜFUNG
+- **Echtheit:** [Echt / Wahrscheinlich echt / Replik / Unsicher]
+- **Beweis:** [Konkrete Merkmale die für/gegen Echtheit sprechen]
+- **Fälschungsrisiko:** [Niedrig / Mittel / Hoch]
 
-## 🏷️ FERTIGER EBAY-TITEL
-[Optimierter Titel für maximale Sichtbarkeit]"""
+## 💰 MARKTPREIS-ANALYSE
+- **Flohmarkt-Einkaufspreis:** €X - €Y (was man realistisch zahlen sollte)
+- **eBay Durchschnitt:** €X - €Y (basierend auf ähnlichen Verkäufen)
+- **Maximaler Verkaufspreis:** €X (optimistisches Szenario)
+- **Gewinnpotential:** €X - €Y
+
+## 🎯 HÄNDLER-EMPFEHLUNG
+**[✅ UNBEDINGT KAUFEN / ✅ KAUFEN / ⚠️ NUR BEI GÜNSTIGEM PREIS / ❌ SKIP]**
+Begründung: [Konkrete Begründung]
+
+## 🔎 EBAY-SUCHBEGRIFF
+**[Optimierter Suchbegriff für eBay DE - max 5 Wörter]**
+
+## 🏷️ FERTIGER EBAY-TITEL (80 Zeichen)
+[Verkaufsstarker Titel mit wichtigsten Keywords]
+
+## 📝 VERKAUFSBESCHREIBUNG (3 Sätze)
+[Professionelle Beschreibung die Käufer überzeugt]"""
 
                 if bild:
                     b64 = base64.b64encode(bild.read()).decode()
