@@ -176,73 +176,57 @@ with t1:
             # ── STUFE 2: KI Experten-Analyse ──
             with st.status("🤖 Stufe 2: Experten-KI analysiert jeden Detail...", expanded=True):
 
-                kontext = f"\n\nZUSATZ-INFO VON DER WEBSEITE:\n{artikel_info[:2000]}" if artikel_info else ""
+                # Wenn kein Bild - nur Text-Analyse
+                if not bild_b64 and not artikel_info:
+                    artikel_info = "Keine Bildinformation vorhanden - bitte manuell beschreiben"
 
-                prompt_analyse = f"""Du bist ein neutrales Analyse-System für einen deutschen Reselling-Profi.
+                kontext_text = f"\n\nZUSATZ-INFO:\n{artikel_info[:2000]}" if artikel_info else ""
 
-REGELN:
-- Jeden sichtbaren Artikel einzeln analysieren
-- NIEMALS "kann nicht analysieren"
-- Nur Fakten, keine Kaufempfehlungen
-- Konkrete Eurobeträge immer angeben
-- Alter so genau wie möglich bestimmen
-- Ampel-System IMMER verwenden (siehe unten)
-- Nur auf Deutsch{kontext}
+                prompt_analyse = f"""Antworte NUR auf Deutsch. Immer vollständig antworten.
 
-AMPEL-SYSTEM (immer so schreiben):
-🟢 GRÜN = Günstig & schnell verkäuflich (1-7 Tage)
-🟡 GELB = Mittlerer Preis, normale Verkaufszeit (1-4 Wochen)  
-🔴 ROT = Höherer Preis, braucht Zeit oder schwer verkäuflich (1-3 Monate+)
+Du analysierst Artikel für einen deutschen Reselling-Händler.
+Beschreibe ALLES was du siehst - Fotos, Objekte, Gegenstände, alles.
+Wenn du ein Bild siehst: beschreibe jeden einzelnen sichtbaren Gegenstand.
+Wenn es ein Screenshot oder Text ist: extrahiere alle relevanten Produkt-Informationen.{kontext_text}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ARTIKEL-ANALYSE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AMPEL:
+🟢 GRÜN = schnell verkäuflich, 1-7 Tage
+🟡 GELB = mittel, 1-4 Wochen
+🔴 ROT = langsam, 1-3 Monate+
 
-Für JEDEN sichtbaren Artikel:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FÜR JEDEN SICHTBAREN ARTIKEL:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
----
-**[Artikel-Name]**
-
-📦 IDENTIFIKATION:
-- Was: [Genaue Beschreibung, Material, Größe]
-- Marke/Hersteller: [Name oder "nicht erkennbar"]
-- Echtheit: [Echt / Wahrscheinlich echt / Unsicher / Replik]
-- Stempel/Markierungen: [Beschreibung oder "keine sichtbar"]
-
-📅 ALTER:
-- Jahr/Jahrzehnt: [z.B. "ca. 1968" oder "1960er Jahre"]
-- Epoche: [z.B. DDR / Westdeutsch / 80er / 90er / Modern]
-- Altersbeweis: [Was zeigt das Alter?]
-
-🚦 VERKÄUFLICHKEIT:
-- Ampel: 🟢 GRÜN / 🟡 GELB / 🔴 ROT
-- Verkaufszeit: 🟢 Schnell (1-7 Tage) / 🟡 Mittel (1-4 Wochen) / 🔴 Langsam (1-3 Monate+)
-- Nachfrage: [Sehr hoch / Hoch / Mittel / Niedrig]
-- Zielgruppe: [Wer kauft das?]
+**[Name des Artikels]**
+- Beschreibung: [Was ist es genau?]
+- Marke: [Marke oder unbekannt]
+- Herstellungsjahr: [ca. Jahr oder Jahrzehnt]
+- Epoche: [DDR / 80er / 90er / Modern / etc.]
 - Zustand: [Sehr gut / Gut / Gebraucht / Beschädigt]
+- Echtheit: [Echt / Unsicher / Replik]
 
-💶 MARKTPREISE:
+🚦 [🟢 GRÜN / 🟡 GELB / 🔴 ROT]
+⏱️ Verkaufszeit: [Schnell 1-7 Tage / Mittel 1-4 Wochen / Langsam 1-3 Monate]
+
+💶 Preise:
 | Plattform | Preis |
 |-----------|-------|
-| eBay DE | €X – €Y |
+| eBay | €X – €Y |
 | Kleinanzeigen | €X – €Y |
-| Vinted | €X – €Y oder "nicht geeignet" |
+| Vinted | €X – €Y |
 | Facebook | €X – €Y |
 | Flohmarkt | €X – €Y |
-| **Max. Ankaufspreis** | **€X** |
+| Max. Ankauf | €X |
 
----
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 GESAMT-ÜBERSICHT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Artikel gesamt: [X]
-- 🟢 Grün (schnell): [Anzahl] Artikel
-- 🟡 Gelb (mittel): [Anzahl] Artikel  
-- 🔴 Rot (langsam): [Anzahl] Artikel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GESAMT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- 🟢 Schnell: X Artikel
+- 🟡 Mittel: X Artikel
+- 🔴 Langsam: X Artikel
 - Gesamtwert: €X – €Y
-- Max. Ankaufspreis gesamt: €X
-- Ältester Artikel: [Name] (ca. [Jahr])"""
+- Max. Ankauf gesamt: €X"""
 
                 analyse = ki(prompt_analyse, bild_b64=bild_b64)
                 st.markdown(analyse)
