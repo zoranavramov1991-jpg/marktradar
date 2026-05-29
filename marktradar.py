@@ -123,15 +123,18 @@ Kleinanzeigen · Vinted · Facebook · eBay · Flohmärkte · Auktionen
 # ───────────────────────────────────────────────────────────────
 # TABS
 # ───────────────────────────────────────────────────────────────
-t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs([
+t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11 = st.tabs([
     "🔍 Artikel Analyse",
     "💬 Anschreib-Bot",
-    "💰 DAC7",
     "📦 Lager",
     "📚 OCR Scanner",
     "🔧 Reparatur",
     "📦 Post-Duell",
-    "📈 Trends"
+    "📈 Trends",
+    "🎭 Verhandlungs-Sim",
+    "📸 Foto-Coach",
+    "🗺️ Flohmarkt Berlin",
+    "🧮 Lot-Kalkulator"
 ])
 
 # ══════════════════════════════════════════════════════════════
@@ -406,49 +409,9 @@ NUR die fertige Nachricht ausgeben!""")
                 st.success("✅ Fertig! Einfach kopieren.")
 
 # ══════════════════════════════════════════════════════════════
-# TAB 3 — DAC7 TRACKER
-# ══════════════════════════════════════════════════════════════
-with t3:
-    st.header("💰 DAC7 Steuer-Wächter")
-    st.warning("⚠️ Ab 30 Verkäufe ODER €2.000 → Finanzamt-Meldung durch Plattformen!")
-
-    n = st.session_state.anzahl
-    u = st.session_state.umsatz
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.progress(min(n/30, 1.0))
-        st.markdown(f"{'🔴' if n>=28 else '🟡' if n>=20 else '🟢'} **{n}/30 Verkäufe** ({30-n} übrig)")
-    with col2:
-        st.progress(min(u/2000, 1.0))
-        st.markdown(f"{'🔴' if u>=1900 else '🟡' if u>=1500 else '🟢'} **€{u:.0f}/€2000** (€{2000-u:.0f} übrig)")
-
-    st.markdown("---")
-    col1, col2, col3 = st.columns(3)
-    a4  = col1.text_input("Artikel", key="dac_art")
-    p4  = col2.number_input("Preis (€)", min_value=0.01, value=25.0, key="dac_pr")
-    pl4 = col3.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"], key="dac_pl")
-
-    if st.button("✅ Verkauf eintragen", type="primary", use_container_width=True):
-        if a4:
-            st.session_state.verkaufe.append({
-                "datum": datetime.now().strftime("%d.%m.%Y"),
-                "artikel": a4, "preis": p4, "plattform": pl4
-            })
-            st.session_state.anzahl += 1
-            st.session_state.umsatz += p4
-            st.success(f"✅ Eingetragen! {st.session_state.anzahl} Verkäufe / €{st.session_state.umsatz:.2f}")
-            st.rerun()
-
-    if st.session_state.verkaufe:
-        st.markdown("### 📋 Letzte Verkäufe:")
-        for v in reversed(st.session_state.verkaufe[-8:]):
-            st.markdown(f"- {v['datum']} | {v['artikel']} | **€{v['preis']:.2f}** | {v['plattform']}")
-
-# ══════════════════════════════════════════════════════════════
 # TAB 4 — LAGER
 # ══════════════════════════════════════════════════════════════
-with t4:
+with t3:
     st.header("📦 Lagerbestand")
 
     col1, col2 = st.columns(2)
@@ -491,7 +454,7 @@ with t4:
 # ══════════════════════════════════════════════════════════════
 # TAB 5 — OCR SCANNER
 # ══════════════════════════════════════════════════════════════
-with t5:
+with t4:
     st.header("📚 Multi-OCR Medien-Scanner")
     st.markdown("Fotografiere Bücher/CDs/Spiele-Stapel → KI erkennt alle und schätzt Werte!")
 
@@ -517,7 +480,7 @@ Plattformen: eBay, Kleinanzeigen, Vinted, Facebook. Auf Deutsch.""", bild_b64=b6
 # ══════════════════════════════════════════════════════════════
 # TAB 6 — REPARATUR-RECHNER
 # ══════════════════════════════════════════════════════════════
-with t6:
+with t5:
     st.header("🔧 Reparatur & Upcycling-Rechner")
 
     col1, col2 = st.columns(2)
@@ -558,7 +521,7 @@ with t6:
 # ══════════════════════════════════════════════════════════════
 # TAB 7 — POST-DUELL
 # ══════════════════════════════════════════════════════════════
-with t7:
+with t6:
     st.header("📦 Post-Duell: DHL vs. Hermes")
 
     col1,col2,col3 = st.columns(3)
@@ -598,7 +561,7 @@ with t7:
 # ══════════════════════════════════════════════════════════════
 # TAB 8 — TRENDS
 # ══════════════════════════════════════════════════════════════
-with t8:
+with t7:
     st.header("📈 Markt-Trends")
 
     col1, col2 = st.columns(2)
