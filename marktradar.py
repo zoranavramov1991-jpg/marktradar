@@ -178,56 +178,46 @@ with t1:
 
                 kontext = f"\n\nZUSATZ-INFO VON DER WEBSEITE:\n{artikel_info[:2000]}" if artikel_info else ""
 
-                prompt_analyse = f"""Du bist ein Team aus 4 deutschen Reselling-Experten:
-1. 🏛️ Antiquitäten-Händler (25 Jahre Flohmärkte Deutschland)
-2. 💻 Reselling-Profi (Kleinanzeigen, Vinted, Facebook - 15.000+ Verkäufe)
-3. 🔍 Markenauthentizitäts-Experte (Porzellan, Elektronik, Mode, Spielzeug)
-4. 📊 Marktpreis-Analyst (kennt alle deutschen Secondhand-Plattformen)
+                prompt_analyse = f"""ROLLE: Du bist ein erfahrener deutscher Reselling-Profi mit 20 Jahren Erfahrung auf Flohmärkten, Kleinanzeigen, Vinted, Facebook und eBay.
 
-WICHTIG: Analysiere ALLES präzise. Kein "kann nicht identifizieren". Jeder Artikel hat einen Wert!
-Plattformen: Kleinanzeigen, Vinted, Facebook Marketplace, eBay Deutschland, Flohmärkte persönlich.
-Antworte komplett auf Deutsch.{kontext}
+AUFGABE: Analysiere dieses Bild und identifiziere JEDEN einzelnen sichtbaren Artikel.
 
-## 🏷️ ARTIKEL-IDENTIFIKATION
-- **Name:** [Exakter Name]
-- **Hersteller/Marke:** [Hersteller, auch unbekannte beschreiben]
-- **Herstellungszeit:** [Jahrzehnt + Begründung]
-- **Material:** [Genaues Material]
-- **Zustand:** [Sehr gut / Gut / Gebraucht / Beschädigt + Details]
-- **Besonderheiten:** [Stempel, Markierungen, Seriennummern, Punzen, Logos]
-- **Vollständigkeit:** [Komplett / Teile fehlen: welche?]
+WICHTIGE REGELN:
+- NIEMALS "kann nicht analysieren" sagen - das ist verboten!
+- Jeden Artikel einzeln bewerten, auch einfache Gegenstände
+- Immer konkrete Eurobeträge nennen
+- Nur auf Deutsch antworten
+- Bei Kartons/Kisten: jeden sichtbaren Inhalt einzeln aufführen{kontext}
 
-## 🔍 ECHTHEITSPRÜFUNG
-- **Echtheit:** [Echt / Wahrscheinlich echt / Replik / Unsicher]
-- **Beweis:** [Konkrete Merkmale die für/gegen Echtheit sprechen]
-- **Fälschungsrisiko:** [Niedrig / Mittel / Hoch]
+═══════════════════════════════════════
+📋 JEDEN ARTIKEL EINZELN ANALYSIEREN:
+═══════════════════════════════════════
 
-## 💰 MARKTPREIS-ANALYSE (alle Plattformen)
-- **eBay Deutschland:** €X - €Y (beendete Verkäufe)
-- **Kleinanzeigen:** €X - €Y (realistischer Verkaufspreis)
-- **Vinted:** €X - €Y (falls geeignet)
-- **Facebook Marketplace:** €X - €Y
-- **Flohmarkt persönlich:** €X - €Y (Kassenpreis vor Ort)
-- **Ankaufspreis (was Sie max. zahlen sollten):** €X
-- **Erwarteter Gewinn:** €X - €Y
+Für JEDEN sichtbaren Artikel:
 
-## 🎯 HÄNDLER-EMPFEHLUNG
-**[✅ UNBEDINGT KAUFEN / ✅ KAUFEN / ⚠️ NUR UNTER €X / ❌ FINGER WEG]**
-- Begründung: [Konkret & ehrlich]
-- Beste Verkaufsplattform: [Welche & warum]
-- Optimale Verkaufsstrategie: [Wie verkaufen?]
+### [Artikel-Name]
+| Detail | Info |
+|--------|------|
+| Was ist es | [Genaue Beschreibung] |
+| Marke | [Marke oder unbekannt] |
+| Zustand | [Sehr gut/Gut/Gebraucht/Defekt] |
+| Alter | [Neu/5J/10J/Vintage/Antik] |
+| eBay | €X - €Y |
+| Kleinanzeigen | €X - €Y |
+| Vinted | €X oder nicht geeignet |
+| Flohmarkt | €X - €Y |
+| Max. kaufen für | €X |
+| Entscheidung | ✅ KAUFEN / ❌ SKIP |
 
-## ⚡ SCHNELL-ENTSCHEIDUNG
-- **Kaufen für max:** €[X]
-- **Verkaufen für:** €[X] auf [Plattform]
-- **Gewinn:** €[X]
-- **Lohnt sich:** ✅ JA / ❌ NEIN
+═══════════════════════════════════════
+💰 GESAMT-BEWERTUNG:
+═══════════════════════════════════════
+- Alle Artikel zusammen wert: €X - €Y
+- Maximaler Ankaufspreis: €X
+- Erwarteter Gewinn: €X - €Y
+- Beste Strategie: [Einzeln/Set/Flohmarkt]
 
-## 🏷️ FERTIGER ANZEIGEN-TITEL (für Kleinanzeigen)
-[Verkaufsstarker Titel - max 60 Zeichen]
-
-## 📝 VERKAUFSTEXT (für Kleinanzeigen/Vinted)
-[3-4 Sätze professionelle Beschreibung die Käufer überzeugt]"""
+⚡ FAZIT: [KAUFEN für max €X → Verkaufen für €X → Gewinn €X]"""
 
                 analyse = ki(prompt_analyse, bild_b64=bild_b64)
                 st.markdown(analyse)
