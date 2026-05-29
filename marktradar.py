@@ -26,6 +26,8 @@ defaults = {
     "sim_verlauf": [],
     "lot_artikel": [],
     "gewinn_log": [],
+    "gespeicherte_bilder": [],   # Bilder bleiben gespeichert!
+    "bild_counter": 0,
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -118,22 +120,54 @@ with t1:
     eingabe_typ = st.radio("Was analysieren?",
         ["📸 Foto", "🔗 Link", "📸 + 🔗 Beides"], horizontal=True, key="ana_typ")
 
-    bild_input = None
-    url_input  = None
+    url_input = None
 
+    # ── FOTO-UPLOAD mit Session-State Speicherung ──
     if "Foto" in eingabe_typ:
-        bild_input = st.file_uploader(
-            "📷 Fotos hochladen (mehrere möglich — alle bleiben!)",
+        st.markdown("### 📷 Fotos hochladen")
+        st.caption("Fotos werden sofort gespeichert und bleiben erhalten!")
+
+        # Einzelner Uploader - sofort speichern
+        neu_foto = st.file_uploader(
+            "Foto hinzufügen (jedes Foto einzeln hochladen)",
             type=["jpg","jpeg","png","webp"],
-            accept_multiple_files=True,
-            key="ana_bild"
+            accept_multiple_files=False,
+            key=f"foto_uploader_{st.session_state.bild_counter}"
         )
-        if bild_input:
-            st.success(f"✅ {len(bild_input)} Foto(s) geladen")
-            cols = st.columns(min(len(bild_input), 4))
-            for idx, img in enumerate(bild_input):
-                with cols[idx % 4]:
-                    st.image(img, caption=f"Foto {idx+1}", use_column_width=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("➕ Foto speichern", use_container_width=True, key="foto_save"):
+                if neu_foto is not None:
+                    neu_foto.seek(0)
+                    b64 = base64.b64encode(neu_foto.read()).decode()
+                    st.session_state.gespeicherte_bilder.append({
+                        "name": neu_foto.name,
+                        "b64": b64
+                    })
+                    st.session_state.bild_counter += 1
+                    st.success(f"✅ Foto gespeichert! ({len(st.session_state.gespeicherte_bilder)} gesamt)")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Bitte zuerst ein Foto auswählen!")
+
+        with col2:
+            if st.button("🗑️ Alle Fotos löschen", use_container_width=True, key="foto_clear"):
+                st.session_state.gespeicherte_bilder = []
+                st.session_state.bild_counter += 1
+                st.rerun()
+
+        # Gespeicherte Fotos anzeigen
+        if st.session_state.gespeicherte_bilder:
+            st.success(f"✅ {len(st.session_state.gespeicherte_bilder)} Foto(s) bereit für Analyse")
+            cols = st.columns(min(len(st.session_state.gespeicherte_bilder), 3))
+            for idx, foto in enumerate(st.session_state.gespeicherte_bilder):
+                with cols[idx % 3]:
+                    import base64 as b64mod
+                    img_bytes = b64mod.b64decode(foto["b64"])
+                    st.image(img_bytes, caption=f"Foto {idx+1}", use_column_width=True)
+        else:
+            st.info("📷 Noch keine Fotos gespeichert. Foto auswählen → 'Foto speichern' drücken!")
 
     if "Link" in eingabe_typ:
         url_input = st.text_input("🔗 Link eingeben",
@@ -158,9 +192,10 @@ with t1:
             st.error(f"⛔ {defekt}% — Fast unbrauchbar")
 
     if st.button("🚀 VOLLANALYSE STARTEN", type="primary", use_container_width=True, key="ana_btn"):
-        if bild_input or url_input or beschreibung:
+        hat_bilder = len(st.session_state.gespeicherte_bilder) > 0
+        if hat_bilder or url_input or beschreibung:
             artikel_info = ""
-            alle_bilder  = []
+            alle_bilder  = [f["b64"] for f in st.session_state.gespeicherte_bilder]
 
             with st.status("📡 Stufe 1: Daten sammeln...", expanded=True):
                 if url_input:
@@ -170,11 +205,8 @@ with t1:
                         st.success(f"✅ Seite ausgelesen ({len(artikel_info)} Zeichen)")
                     else:
                         st.warning("⚠️ URL nicht erreichbar")
-                if bild_input:
-                    for img in bild_input:
-                        img.seek(0)
-                        alle_bilder.append(base64.b64encode(img.read()).decode())
-                    st.success(f"✅ {len(alle_bilder)} Foto(s) bereit")
+                if alle_bilder:
+                    st.success(f"✅ {len(alle_bilder)} Foto(s) aus Speicher geladen")
 
             with st.status("🔬 Stufe 2: KI-Tiefen-Scan...", expanded=True):
                 if defekt <= 20: defekt_beschr = f"Fast neu ({defekt}%)"
