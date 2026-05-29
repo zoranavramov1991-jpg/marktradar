@@ -167,14 +167,47 @@ def mache_prompt(defekt, beschreibung, url_text):
         f"- Facebook: €X – €Y\n"
         f"- Flohmarkt: €X – €Y\n"
         f"- Maximaler Ankaufspreis: €X\n\n"
-        f"Am Ende: Gesamtwert aller Artikel zusammen.\n\n"
-        f"Für JEDEN Artikel zusätzlich:\n"
+        f"\n\nFür JEDEN Artikel auch diese Punkte:\n\n"
+
         f"🏆 BESTE VERKAUFS-STRATEGIE:\n"
-        f"- Beste Plattform: [Welche Plattform und warum]\n"
-        f"- Optimaler Preis dort: €X\n"
+        f"- Beste Plattform: [Welche und warum]\n"
+        f"- Optimaler Preis: €X\n"
         f"- Zweitbeste Option: [Plattform] für €X\n"
-        f"- Flohmarkt geeignet?: [Ja/Nein + warum + Preis €X]\n"
-        f"- Tipp: [1 konkreter Tipp für schnellen Verkauf]"
+        f"- Flohmarkt: [Ja €X / Nein]\n"
+        f"- Schnell-Tipp: [1 konkreter Tipp]\n\n"
+
+        f"🎯 KONFIDENZ-SCORE:\n"
+        f"- Identifikation: X% sicher ([Begründung])\n"
+        f"- Preisschätzung: X% sicher ([Begründung])\n"
+        f"- Gesamtsicherheit: X%\n\n"
+
+        f"⚠️ FÄLSCHUNGS-CHECK:\n"
+        f"- Risiko: [Niedrig / Mittel / Hoch]\n"
+        f"- Red Flags: [konkrete Warnsignale oder 'keine']\n"
+        f"- Echtheitsbeweis: [Was spricht für Echtheit]\n\n"
+
+        f"✨ AUFBEREITUNG & MEHRWERT:\n"
+        f"- Empfehlung: [Reinigen / Polieren / Reparieren / Nichts tun]\n"
+        f"- Methode: [Wie genau aufbereiten?]\n"
+        f"- Wertsteigerung: +€X möglich\n\n"
+
+        f"👥 SAMMLER & ZIELGRUPPE:\n"
+        f"- Hauptkäufer: [Wer kauft das?]\n"
+        f"- Sammlergruppen: [Spezifische Gruppen]\n"
+        f"- Wo finden: [Facebook-Gruppen, Foren, Plattformen]\n\n"
+
+        f"📅 BESTER VERKAUFS-ZEITPUNKT:\n"
+        f"- Beste Monate: [Welche Monate]\n"
+        f"- Schlechteste Monate: [Welche meiden]\n"
+        f"- Jetzt verkaufen?: [Ja / Warten bis: Monat]\n\n"
+
+        f"📝 FERTIGE KLEINANZEIGE (kopierbereit):\n"
+        f"Titel: [Max 60 Zeichen]\n"
+        f"Beschreibung: [3-4 überzeugende Sätze]\n"
+        f"Preis: €X\n\n"
+
+        f"---\n"
+        f"Am Ende: Gesamtwert aller Artikel, Max. Ankaufspreis gesamt."
     )
 
 # ── HEADER ───────────────────────────────────────────────────
