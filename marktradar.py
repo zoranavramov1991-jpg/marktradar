@@ -459,8 +459,56 @@ def mache_prompt(defekt, beschreibung, url_text):
         f"Beschreibung: [3-4 überzeugende Sätze]\n"
         f"Preis: €X\n\n"
 
+        f"---\n\n"
+
+        f"🔢 SERIENNUMMERN & CODES:\n"
+        f"- Seriennummer/Modellnr.: [falls sichtbar oder 'nicht erkennbar']\n"
+        f"- Herstellungsdatum laut Code: [Datum oder 'nicht bestimmbar']\n"
+        f"- Bedeutung: [Was sagt die Nummer aus?]\n\n"
+
+        f"🔬 MATERIAL-ANALYSE:\n"
+        f"- Hauptmaterial: [genaue Materialangabe]\n"
+        f"- Qualitätsstufe: [z.B. Silber 925 / Porzellan 1. Wahl / Vollholz Eiche]\n"
+        f"- Materialwert: [Beeinflusst Preis um +/- €X]\n\n"
+
+        f"📋 ZUSTAND-PROTOKOLL:\n"
+        f"- Schäden einzeln: [jede Delle, Kratzer, Chip genau beschreiben]\n"
+        f"- Preisminderung: -€X wegen [Schaden]\n"
+        f"- Ohne Schäden wäre Wert: €X\n\n"
+
+        f"🔍 STEMPEL-DECODER:\n"
+        f"- Alle Stempel/Punzen: [jeden Stempel beschreiben]\n"
+        f"- Bedeutung: [was bedeutet jeder Stempel?]\n"
+        f"- Echtheitswert: [wie viel mehr wert durch Stempel?]\n\n"
+
+        f"📊 VERGLEICHSVERKÄUFE:\n"
+        f"- Ähnlicher Artikel 1: [Beschreibung] → verkauft für €X auf [Plattform]\n"
+        f"- Ähnlicher Artikel 2: [Beschreibung] → verkauft für €X auf [Plattform]\n"
+        f"- Trend: [Preise steigen/fallen/stabil]\n\n"
+
+        f"💰 GEWINNPROGNOSE:\n"
+        f"- Empfohlener Einkaufspreis: €X\n"
+        f"- Aufbereitungskosten: €X\n"
+        f"- Erwarteter Verkaufspreis: €X\n"
+        f"- Plattformgebühren: €X\n"
+        f"- Netto-Gewinn: €X\n"
+        f"- ROI: X%\n"
+        f"- Lohnt sich?: [✅ JA / ⚠️ GRENZFALL / ❌ NEIN]\n\n"
+
+        f"🌟 RARITÄTEN-CHECK:\n"
+        f"Falls der Artikel selten oder besonders wertvoll ist:\n"
+        f"- Seltenheit: [Sehr selten / Selten / Häufig / Massenware]\n"
+        f"- Warum selten?: [Begründung — Auflage, Epoche, Hersteller]\n"
+        f"- Höchstpreis je nach Sammler: bis zu €X möglich\n"
+        f"- Spezial-Tipp: [An welchen Sammler/Händler/Auktionshaus wenden?]\n"
+        f"- ⭐ ALERT: Falls Schätzwert über €200 → UNBEDINGT vor Verkauf von Experten bewerten lassen!\n\n"
+
         f"---\n"
-        f"Am Ende: Gesamtwert aller Artikel, Max. Ankaufspreis gesamt."
+        f"GESAMT ALLER ARTIKEL:\n"
+        f"- Gesamtwert: €X bis €X\n"
+        f"- Max. Ankaufspreis gesamt: €X\n"
+        f"- Wertvollster Artikel: [Name] (€X)\n"
+        f"- Raritäten gefunden: [Namen oder 'keine']"
     )
 
 # ── HEADER ───────────────────────────────────────────────────
