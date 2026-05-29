@@ -44,13 +44,15 @@ for k, v in defaults.items():
 # ───────────────────────────────────────────────────────────────
 def ki(prompt, bild_b64=None, vision=False):
     try:
-        if vision and OPENROUTER_KEY:
+        if vision and bild_b64 and OPENROUTER_KEY:
+            # Vision mit Bild: Claude Sonnet
             client = OpenAI(api_key=OPENROUTER_KEY, base_url="https://openrouter.ai/api/v1")
-            model  = "anthropic/claude-3.5-sonnet"
+            model  = "anthropic/claude-3.5-sonnet:beta"
             msgs   = [{"role":"user","content":[
                 {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{bild_b64}"}},
                 {"type":"text","text":prompt}]}]
         elif OPENROUTER_KEY:
+            # Text: Llama kostenlos
             client = OpenAI(api_key=OPENROUTER_KEY, base_url="https://openrouter.ai/api/v1")
             model  = "meta-llama/llama-3.3-70b-instruct:free"
             msgs   = [{"role":"user","content":prompt}]
@@ -167,7 +169,7 @@ Analysiere diesen Artikel und antworte NUR auf Deutsch:
                     b64 = base64.b64encode(bild.read()).decode()
                     analyse = ki(prompt_vision, bild_b64=b64, vision=True)
                 else:
-                    analyse = ki(f"{prompt_vision}\n\nArtikel: {manuell}")
+                    analyse = ki(f"{prompt_vision}\n\nArtikel: {manuell}", vision=False)
 
                 st.markdown(analyse)
 
