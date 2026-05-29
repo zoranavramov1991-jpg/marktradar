@@ -152,42 +152,40 @@ with T[0]:
     url_text = ""
     url_inp  = ""
 
-    # ── FOTO-UPLOAD MIT PERMANENTEM SPEICHER ──
+    # ── FOTO-UPLOAD ──
     if "Foto" in typ:
         st.markdown("##### 📷 Fotos hochladen")
 
-        neu = st.file_uploader(
-            "Foto auswählen (einzeln hochladen, dann speichern)",
+        hochgeladen = st.file_uploader(
+            "Foto(s) auswählen (mehrere möglich)",
             type=["jpg","jpeg","png","webp"],
-            accept_multiple_files=False,
+            accept_multiple_files=True,
             key=f"fu_{st.session_state.fcnt}"
         )
 
-        c1,c2 = st.columns(2)
-        with c1:
-            if st.button("➕ Foto speichern", type="primary", use_container_width=True):
-                if neu:
-                    neu.seek(0)
-                    st.session_state.fotos.append(base64.b64encode(neu.read()).decode())
-                    st.session_state.fcnt += 1
-                    st.rerun()
-                else:
-                    st.warning("Zuerst Foto auswählen!")
-        with c2:
-            if st.button("🗑️ Alle löschen", use_container_width=True):
+        # Automatisch in Session State laden sobald hochgeladen
+        if hochgeladen:
+            neue_bilder = []
+            for f in hochgeladen:
+                f.seek(0)
+                b64 = base64.b64encode(f.read()).decode()
+                if b64 not in st.session_state.fotos:
+                    neue_bilder.append(b64)
+            if neue_bilder:
+                st.session_state.fotos.extend(neue_bilder)
+
+        # Fotos anzeigen
+        n = len(st.session_state.fotos)
+        if n > 0:
+            st.success(f"✅ {n} Foto(s) bereit für Analyse")
+            cols = st.columns(min(n, 4))
+            for i, b64 in enumerate(st.session_state.fotos):
+                with cols[i % 4]:
+                    st.image(base64.b64decode(b64), caption=f"Foto {i+1}", use_column_width=True)
+            if st.button("🗑️ Alle Fotos löschen", use_container_width=True):
                 st.session_state.fotos = []
                 st.session_state.fcnt += 1
                 st.rerun()
-
-        n = len(st.session_state.fotos)
-        if n > 0:
-            st.success(f"✅ {n} Foto(s) gespeichert und bereit!")
-            cols = st.columns(min(n,4))
-            for i,b64 in enumerate(st.session_state.fotos):
-                with cols[i%4]:
-                    st.image(base64.b64decode(b64), caption=f"Foto {i+1}", use_column_width=True)
-        else:
-            st.info("Noch keine Fotos. Foto auswählen → 'Foto speichern' drücken.")
 
     # ── URL-EINGABE ──
     if "Link" in typ:
