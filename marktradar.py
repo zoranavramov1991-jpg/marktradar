@@ -233,11 +233,20 @@ Zähle zuerst alle sichtbaren Artikel auf (nummeriert):
 2. [Artikel]
 usw.
 
-SCHRITT 2 — DETAIL-ANALYSE für jeden Artikel:
+SCHRITT 2 — KURZBESCHREIBUNG (für jeden Artikel, 2-3 Sätze):
+Schreibe für jeden Artikel eine kurze, klare Beschreibung:
+• Was ist es genau?
+• Was fällt sofort auf? (Besonderheiten, Marke, Zustand)
+• Warum ist es interessant oder nicht?
+
+SCHRITT 3 — DETAIL-ANALYSE für jeden Artikel:
 
 ═══════════════════════════════════════════
 ARTIKEL [N]: [NAME IN GROSSBUCHSTABEN]
 ═══════════════════════════════════════════
+
+📌 KURZBESCHREIBUNG:
+[2-3 Sätze: Was ist es? Was fällt auf? Besonderheiten?]
 
 🔍 IDENTIFIKATION (maximum detail):
 • Exakte Bezeichnung: [Was ist es?]
