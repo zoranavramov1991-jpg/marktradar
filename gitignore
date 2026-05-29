@@ -1,0 +1,27 @@
+# Sicherheit - NIEMALS committen!
+.env
+api_keys.json
+*.key
+secrets.toml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Cache & Daten
+data/cache/
+*.cache
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
