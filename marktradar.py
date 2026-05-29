@@ -44,28 +44,27 @@ for k, v in defaults.items():
 # ───────────────────────────────────────────────────────────────
 def ki(prompt, bild_b64=None, vision=False):
     """
-    KI-Analyse - nur echte Modelle mit Ihrem OpenRouter-Kredit oder OpenAI
-    Modell-Priorität:
-      1. OpenRouter + Bild  → anthropic/claude-3-5-sonnet-20241022 (Vision)
-      2. OpenRouter Text    → anthropic/claude-3-5-sonnet-20241022
-      3. OpenAI Fallback    → gpt-4o-mini
+    KI-Analyse - OpenAI als Haupt-Provider
+    - Mit Bild: gpt-4o (Vision-fähig)
+    - Nur Text: gpt-4o-mini (schnell & günstig)
     """
     try:
-        if OPENROUTER_KEY:
-            client = OpenAI(api_key=OPENROUTER_KEY, base_url="https://openrouter.ai/api/v1")
-            model  = "anthropic/claude-3-5-sonnet-20241022"
-            if vision and bild_b64:
-                msgs = [{"role":"user","content":[
-                    {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{bild_b64}"}},
-                    {"type":"text","text":prompt}]}]
-            else:
-                msgs = [{"role":"user","content":prompt}]
-        elif OPENAI_KEY:
-            client = OpenAI(api_key=OPENAI_KEY)
-            model  = "gpt-4o-mini"
-            msgs   = [{"role":"user","content":prompt}]
+        if not OPENAI_KEY:
+            return "❌ Kein OpenAI API-Key konfiguriert! Bitte in Streamlit Secrets eintragen."
+        
+        client = OpenAI(api_key=OPENAI_KEY)
+        
+        if vision and bild_b64:
+            # Bild-Analyse: gpt-4o mit Vision
+            model = "gpt-4o"
+            msgs  = [{"role":"user","content":[
+                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{bild_b64}"}},
+                {"type":"text","text":prompt}]}]
         else:
-            return "❌ Kein API-Key konfiguriert! Bitte in Streamlit Secrets eintragen."
+            # Text-Analyse: gpt-4o-mini
+            model = "gpt-4o-mini"
+            msgs  = [{"role":"user","content":prompt}]
+        
         r = client.chat.completions.create(model=model, messages=msgs, max_tokens=1500)
         return r.choices[0].message.content
     except Exception as e:
