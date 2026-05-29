@@ -102,7 +102,7 @@ st.markdown("""
 padding:20px;border-radius:14px;margin-bottom:20px;text-align:center'>
 <h1 style='color:#f5a623;margin:0;font-size:2.2em'>⚡ MarktRadar OS PRO</h1>
 <p style='color:#a8b2d8;margin:6px 0 0'>
-Kleinanzeigen · Vinted · Facebook · Flohmärkte · Auktionen
+Kleinanzeigen · Vinted · Facebook · eBay · Flohmärkte · Auktionen
 </p>
 </div>""", unsafe_allow_html=True)
 
@@ -185,8 +185,8 @@ with t1:
 4. 📊 Marktpreis-Analyst (kennt alle deutschen Secondhand-Plattformen)
 
 WICHTIG: Analysiere ALLES präzise. Kein "kann nicht identifizieren". Jeder Artikel hat einen Wert!
-Wir arbeiten NUR mit: Kleinanzeigen, Vinted, Facebook Marketplace, Flohmärkte persönlich.
-KEIN eBay! Antworte komplett auf Deutsch.{kontext}
+Plattformen: Kleinanzeigen, Vinted, Facebook Marketplace, eBay Deutschland, Flohmärkte persönlich.
+Antworte komplett auf Deutsch.{kontext}
 
 ## 🏷️ ARTIKEL-IDENTIFIKATION
 - **Name:** [Exakter Name]
@@ -202,7 +202,8 @@ KEIN eBay! Antworte komplett auf Deutsch.{kontext}
 - **Beweis:** [Konkrete Merkmale die für/gegen Echtheit sprechen]
 - **Fälschungsrisiko:** [Niedrig / Mittel / Hoch]
 
-## 💰 MARKTPREIS-ANALYSE (NUR deutsche Plattformen)
+## 💰 MARKTPREIS-ANALYSE (alle Plattformen)
+- **eBay Deutschland:** €X - €Y (beendete Verkäufe)
 - **Kleinanzeigen:** €X - €Y (realistischer Verkaufspreis)
 - **Vinted:** €X - €Y (falls geeignet)
 - **Facebook Marketplace:** €X - €Y
@@ -249,11 +250,13 @@ KEIN eBay! Antworte komplett auf Deutsch.{kontext}
                 vinted_url = f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
                 fb_url = f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
 
+                ebay_url = f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote(suchbegriff)}&LH_Complete=1&LH_Sold=1"
                 st.markdown(f"""
 ### 🔗 Direkte Suche-Links für: **{suchbegriff}**
 
 | Plattform | Link |
 |-----------|------|
+| 🛒 eBay (beendete Verkäufe) | [Jetzt suchen →]({ebay_url}) |
 | 📱 Kleinanzeigen | [Jetzt suchen →]({ka_url}) |
 | 👗 Vinted | [Jetzt suchen →]({vinted_url}) |
 | 👥 Facebook | [Jetzt suchen →]({fb_url}) |
@@ -262,10 +265,10 @@ KEIN eBay! Antworte komplett auf Deutsch.{kontext}
                 # KI Preisrecherche
                 preis_analyse = ki(f"""Als Reselling-Experte für deutsche Plattformen:
 Recherchiere realistische Preise für: "{suchbegriff}"
-NUR: Kleinanzeigen, Vinted, Facebook Marketplace, Flohmärkte.
-Kein eBay!
+Alle Plattformen: eBay, Kleinanzeigen, Vinted, Facebook Marketplace, Flohmärkte.
 
 Antworte kurz auf Deutsch:
+- eBay Ø (beendete Verkäufe): €X
 - Kleinanzeigen Ø: €X
 - Vinted Ø: €X  
 - Facebook Ø: €X
@@ -286,7 +289,7 @@ Gib ein ULTIMATIVES FAZIT in 3 Sätzen:
 2. Für welchen Preis kaufen?
 3. Wo & für wieviel verkaufen?
 
-Kein eBay! Nur Kleinanzeigen, Vinted, Facebook, Flohmarkt.
+Alle Plattformen: eBay, Kleinanzeigen, Vinted, Facebook, Flohmarkt.
 Kurz, direkt, auf Deutsch.""")
 
                 if "JA" in fazit.upper() or "KAUFEN" in fazit.upper():
@@ -319,6 +322,7 @@ with t2:
         ])
         plattform3 = st.selectbox("Plattform", [
             "Kleinanzeigen",
+            "eBay",
             "Facebook Marketplace",
             "Vinted",
             "Persönlich auf Flohmarkt"
@@ -357,7 +361,7 @@ with t3:
     col1, col2, col3 = st.columns(3)
     a4  = col1.text_input("Artikel", key="dac_art")
     p4  = col2.number_input("Preis (€)", min_value=0.01, value=25.0, key="dac_pr")
-    pl4 = col3.selectbox("Plattform", ["Kleinanzeigen","Vinted","Facebook","Flohmarkt"], key="dac_pl")
+    pl4 = col3.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"], key="dac_pl")
 
     if st.button("✅ Verkauf eintragen", type="primary", use_container_width=True):
         if a4:
@@ -388,7 +392,7 @@ with t4:
         lziel = st.number_input("Ziel-Verkaufspreis (€)", min_value=0.0, value=45.0)
     with col2:
         lz  = st.selectbox("Zustand", ["Sehr gut","Gut","Gebraucht","Beschädigt"])
-        lpl = st.selectbox("Plattform", ["Kleinanzeigen","Vinted","Facebook","Flohmarkt"])
+        lpl = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"])
         ltage = st.number_input("Liegezeit (Tage)", min_value=0, value=0)
 
     if st.button("📦 Hinzufügen", type="primary", use_container_width=True):
@@ -436,10 +440,10 @@ with t5:
 Scanne ALLE {medien_typ} auf dem Foto.
 
 Für jeden Artikel:
-**[Titel]** | Kleinanzeigen: €X | Vinted: €X | Flohmarkt: €X | Empfehlung: KAUFEN/SKIP
+**[Titel]** | eBay: €X | Kleinanzeigen: €X | Vinted: €X | Flohmarkt: €X | Empfehlung: KAUFEN/SKIP
 
 Am Ende: Top-3 wertvollste + Gesamtwert des Stapels.
-Kein eBay! Nur deutsche Plattformen. Auf Deutsch.""", bild_b64=b64)
+Plattformen: eBay, Kleinanzeigen, Vinted, Facebook. Auf Deutsch.""", bild_b64=b64)
                 st.markdown(ergebnis)
         else:
             st.info("💡 Legen Sie alle Artikel nebeneinander und fotografieren Sie von oben!")
@@ -458,7 +462,7 @@ with t6:
         rep_stunden  = st.number_input("Arbeitsstunden", min_value=0.5, value=3.0, step=0.5)
     with col2:
         rep_vk      = st.number_input("Erwarteter VK (€)", min_value=0.0, value=120.0)
-        rep_plattform = st.selectbox("Plattform", ["Kleinanzeigen","Vinted","Facebook","Flohmarkt"])
+        rep_plattform = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"])
         rep_beschr  = st.text_area("Was reparieren?", height=80)
 
     if st.button("🔧 Berechnen", type="primary", use_container_width=True):
@@ -558,7 +562,7 @@ with t8:
     if st.button("Fragen", use_container_width=True):
         if frage:
             with st.spinner("🤖 Analysiere..."):
-                st.markdown(ki(f"Reselling-Experte Deutschland, nur Kleinanzeigen/Vinted/Facebook/Flohmarkt, kein eBay. Kurz auf Deutsch: {frage}"))
+                st.markdown(ki(f"Reselling-Experte Deutschland, alle Plattformen: eBay/Kleinanzeigen/Vinted/Facebook/Flohmarkt. Kurz auf Deutsch: {frage}"))
 
 # ───────────────────────────────────────────────────────────────
 # FOOTER
