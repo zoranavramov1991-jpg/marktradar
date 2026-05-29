@@ -19,6 +19,33 @@ for k,v in {"lager":[],"sim":[],"lot":[],"gwlog":[],"fotos":[],"fcnt":0}.items()
     if k not in st.session_state: st.session_state[k]=v
 
 # ── KI ENGINE ────────────────────────────────────────────────
+def komprimiere_bild(b64_string, max_kb=800):
+    """Komprimiere Bild auf max_kb Kilobytes"""
+    try:
+        from PIL import Image
+        import io
+        img_bytes = base64.b64decode(b64_string)
+        img = Image.open(io.BytesIO(img_bytes))
+        # Konvertiere zu RGB falls nötig
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        # Verkleinere wenn zu groß
+        max_size = (1024, 1024)
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        # Komprimiere
+        output = io.BytesIO()
+        quality = 85
+        while quality > 20:
+            output.seek(0)
+            output.truncate(0)
+            img.save(output, format="JPEG", quality=quality)
+            if len(output.getvalue()) <= max_kb * 1024:
+                break
+            quality -= 10
+        return base64.b64encode(output.getvalue()).decode()
+    except Exception:
+        return b64_string  # Original zurückgeben wenn Komprimierung fehlschlägt
+
 def ki(prompt, bilder=None):
     """
     bilder = Liste von Base64-Strings
@@ -29,19 +56,32 @@ def ki(prompt, bilder=None):
     try:
         client = OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
         if bilder and len(bilder) > 0:
+            # Bilder komprimieren
+            komprimierte = [komprimiere_bild(b) for b in bilder[:4]]
             model = "openai/gpt-4o"
             inhalt = []
-            for b64 in bilder[:4]:  # max 4 Bilder
+            for b64 in komprimierte:
                 inhalt.append({
                     "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"}
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{b64}",
+                        "detail": "high"
+                    }
                 })
             inhalt.append({"type": "text", "text": prompt})
             msgs = [{"role": "user", "content": inhalt}]
         else:
             model = "openai/gpt-4o-mini"
             msgs  = [{"role": "user", "content": prompt}]
-        r = client.chat.completions.create(model=model, messages=msgs, max_tokens=2500)
+        r = client.chat.completions.create(
+            model=model,
+            messages=msgs,
+            max_tokens=2500,
+            extra_headers={
+                "HTTP-Referer": "https://marktradar.streamlit.app",
+                "X-Title": "MarktRadar OS PRO"
+            }
+        )
         return r.choices[0].message.content
     except Exception as e:
         return f"❌ KI-Fehler: {str(e)}"
