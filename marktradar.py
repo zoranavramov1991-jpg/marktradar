@@ -7,6 +7,209 @@ from openai import OpenAI
 st.set_page_config(page_title="⚡ MarktRadar OS PRO", page_icon="⚡",
     layout="wide", initial_sidebar_state="collapsed")
 
+# ── CUSTOM CSS DESIGN ────────────────────────────────────────
+st.markdown("""
+<style>
+/* ── HAUPT-HINTERGRUND ── */
+.stApp {
+    background: linear-gradient(160deg, #0a0a1a 0%, #0d1117 50%, #0a0a1a 100%);
+}
+
+/* ── TABS ── */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 6px;
+    flex-wrap: wrap;
+}
+.stTabs [data-baseweb="tab"] {
+    background: transparent;
+    border-radius: 8px;
+    color: #888;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border: none;
+    transition: all 0.2s;
+}
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #f5a623, #e8850a) !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(245,166,35,0.15);
+    color: #f5a623;
+}
+.stTabs [data-baseweb="tab-panel"] {
+    background: rgba(255,255,255,0.02);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 0.5px solid rgba(255,255,255,0.06);
+    margin-top: 8px;
+}
+
+/* ── BUTTONS ── */
+.stButton > button {
+    background: linear-gradient(135deg, #f5a623 0%, #e8850a 100%) !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.6rem 1.5rem !important;
+    font-size: 14px !important;
+    transition: all 0.2s !important;
+    box-shadow: 0 4px 15px rgba(245,166,35,0.3) !important;
+}
+.stButton > button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(245,166,35,0.5) !important;
+}
+.stButton > button:active {
+    transform: translateY(0px) !important;
+}
+/* Sekundäre Buttons (nicht primary) */
+.stButton > button[kind="secondary"] {
+    background: rgba(255,255,255,0.06) !important;
+    color: #ccc !important;
+    box-shadow: none !important;
+    border: 0.5px solid rgba(255,255,255,0.1) !important;
+}
+
+/* ── INPUTS ── */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stNumberInput > div > div > input {
+    background: rgba(255,255,255,0.05) !important;
+    border: 0.5px solid rgba(255,255,255,0.1) !important;
+    border-radius: 10px !important;
+    color: #fff !important;
+    font-size: 14px !important;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: #f5a623 !important;
+    box-shadow: 0 0 0 2px rgba(245,166,35,0.2) !important;
+}
+
+/* ── SELECTBOX ── */
+.stSelectbox > div > div {
+    background: rgba(255,255,255,0.05) !important;
+    border: 0.5px solid rgba(255,255,255,0.1) !important;
+    border-radius: 10px !important;
+    color: #fff !important;
+}
+
+/* ── METRIKEN ── */
+[data-testid="metric-container"] {
+    background: rgba(255,255,255,0.04) !important;
+    border: 0.5px solid rgba(255,255,255,0.08) !important;
+    border-radius: 12px !important;
+    padding: 1rem !important;
+}
+[data-testid="metric-container"] label {
+    color: #888 !important;
+    font-size: 12px !important;
+}
+[data-testid="metric-container"] [data-testid="stMetricValue"] {
+    color: #f5a623 !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+}
+[data-testid="metric-container"] [data-testid="stMetricDelta"] {
+    font-size: 12px !important;
+}
+
+/* ── STATUS BOXES ── */
+[data-testid="stStatusContainer"] {
+    background: rgba(255,255,255,0.03) !important;
+    border: 0.5px solid rgba(255,255,255,0.08) !important;
+    border-radius: 12px !important;
+}
+
+/* ── SUCCESS / WARNING / ERROR / INFO ── */
+.stAlert {
+    border-radius: 10px !important;
+    border: none !important;
+}
+
+/* ── EXPANDER ── */
+.streamlit-expanderHeader {
+    background: rgba(255,255,255,0.04) !important;
+    border-radius: 10px !important;
+    border: 0.5px solid rgba(255,255,255,0.08) !important;
+    color: #ccc !important;
+    font-weight: 500 !important;
+}
+
+/* ── FILE UPLOADER ── */
+[data-testid="stFileUploader"] {
+    background: rgba(255,255,255,0.03) !important;
+    border: 1.5px dashed rgba(245,166,35,0.4) !important;
+    border-radius: 12px !important;
+    padding: 1rem !important;
+}
+
+/* ── SLIDER ── */
+.stSlider [data-baseweb="slider"] {
+    padding: 0.5rem 0 !important;
+}
+.stSlider [data-baseweb="thumb"] {
+    background: #f5a623 !important;
+    border: 2px solid #fff !important;
+}
+.stSlider [data-baseweb="track"] > div:first-child {
+    background: #f5a623 !important;
+}
+
+/* ── DATAFRAME ── */
+[data-testid="stDataFrame"] {
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+
+/* ── RADIO ── */
+.stRadio > div {
+    gap: 8px !important;
+}
+.stRadio label {
+    background: rgba(255,255,255,0.04) !important;
+    border: 0.5px solid rgba(255,255,255,0.08) !important;
+    border-radius: 8px !important;
+    padding: 6px 14px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+.stRadio label:has(input:checked) {
+    background: rgba(245,166,35,0.15) !important;
+    border-color: #f5a623 !important;
+    color: #f5a623 !important;
+}
+
+/* ── SIDEBAR ── */
+[data-testid="stSidebar"] {
+    background: rgba(0,0,0,0.5) !important;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #f5a623; border-radius: 4px; }
+
+/* ── MOBILE OPTIMIERUNG ── */
+@media (max-width: 768px) {
+    .stTabs [data-baseweb="tab"] {
+        font-size: 11px !important;
+        padding: 5px 8px !important;
+    }
+    [data-testid="metric-container"] [data-testid="stMetricValue"] {
+        font-size: 18px !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ── SECRETS ─────────────────────────────────────────────────
 def secret(k):
     try: return st.secrets[k]
