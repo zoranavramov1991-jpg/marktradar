@@ -84,12 +84,11 @@ def ki(prompt, bilder=None):
                     )
                     antwort = r.choices[0].message.content
 
-                    # Prüfe ob echte Antwort oder Verweigerung
-                    ist_verweigerung = (
-                        any(v in antwort.lower() for v in verweigerungen)
-                        and len(antwort) < 300
-                    )
-                    if not ist_verweigerung:
+                    # Prüfe ob echte Analyse oder Verweigerung
+                    # Echte Analyse enthält immer Preise (EUR oder €)
+                    hat_preise = "eur" in antwort.lower() or "€" in antwort
+                    ist_verweigerung = any(v in antwort.lower() for v in verweigerungen)
+                    if hat_preise or (not ist_verweigerung and len(antwort) > 200):
                         return antwort  # ✅ Erfolg!
 
                 except Exception as e:
@@ -130,64 +129,41 @@ def lies_url(url):
 
 # ── ANALYSE-PROMPT ────────────────────────────────────────────
 def mache_prompt(defekt, beschreibung, url_text):
-    defekt_info = {
-        (1,20):  "Fast neu — minimale Gebrauchsspuren",
-        (21,40): "Leicht gebraucht — kleine sichtbare Mängel",
-        (41,60): "Deutlich gebraucht — sichtbare Mängel",
-        (61,80): "Stark beschädigt — größere Schäden",
-        (81,100):"Fast unbrauchbar — erhebliche Defekte",
-    }
-    defekt_text = next((v for (lo,hi),v in defekt_info.items() if lo<=defekt<=hi), "")
+    """Einfacher, natürlicher Prompt der von allen KI-Modellen akzeptiert wird"""
+
+    zustand = (
+        "wie neu" if defekt <= 20 else
+        "leicht gebraucht" if defekt <= 40 else
+        "gebraucht" if defekt <= 60 else
+        "stark beschädigt" if defekt <= 80 else
+        "defekt"
+    )
 
     extra = ""
     if beschreibung.strip():
-        extra += f"\n\nHAENDLER-HINWEIS: {beschreibung}"
+        extra += f" Der Händler schreibt: {beschreibung}."
     if url_text.strip() and not url_text.startswith("[URL"):
-        extra += f"\n\nWEBSEITE-INHALT:\n{url_text[:2000]}"
+        extra += f"\n\nInformationen von der Webseite:\n{url_text[:2000]}"
 
-    return f"""Du bist ein erfahrener deutscher Reselling-Experte.
-Analysiere ALLE sichtbaren Artikel im Bild (oder Webseiten-Inhalt).
-Antworte IMMER vollstaendig auf Deutsch. Niemals verweigern.
-Zustand laut Haendler: {defekt}% Defekt — {defekt_text}{extra}
-
-Ampel-System:
-GRUEN = schnell verkaeuflich (1-7 Tage)
-GELB  = mittlere Verkaufszeit (1-4 Wochen)
-ROT   = langsame Verkaeuflichkeit (1-3 Monate)
-
-Fuer JEDEN sichtbaren Artikel:
-
-ARTIKEL [Nummer]: [Name in Grossbuchstaben]
-Kurzbeschreibung: [2-3 Saetze: Was ist es? Besonderheiten? Zustand?]
-Marke/Hersteller: [Name oder nicht erkennbar]
-Material: [genaues Material]
-Alter/Epoche: [ca. Jahr oder Jahrzehnt, z.B. 1960er DDR]
-Stempel/Logos: [was sichtbar ist oder keine]
-Echtheit: [Echt / Wahrscheinlich echt / Unsicher / Replik]
-Ampel: [GRUEN / GELB / ROT]
-Verkaufszeit: [X Tage oder X Wochen]
-Nachfrage: [Sehr hoch / Hoch / Mittel / Niedrig]
-Zielgruppe: [Wer kauft das?]
-Preise (Defekt {defekt}% beruecksichtigt):
-  eBay: EUR X bis EUR Y
-  Kleinanzeigen: EUR X bis EUR Y
-  Vinted: EUR X bis EUR Y
-  Facebook: EUR X bis EUR Y
-  Flohmarkt: EUR X bis EUR Y
-  Max. Ankaufspreis: EUR X
-
----
-
-[Naechster Artikel genau so]
-
-GESAMT-AUSWERTUNG:
-Artikel gefunden: X
-GRUEN (schnell): X Artikel
-GELB (mittel): X Artikel
-ROT (langsam): X Artikel
-Gesamtwert: EUR X bis EUR Y
-Max. Ankauf gesamt: EUR X
-Wertvollster Artikel: [Name] (EUR X)"""
+    return (
+        f"Ich bin ein Händler auf deutschen Flohmärkten und verkaufe auf "
+        f"Kleinanzeigen, Vinted, Facebook und eBay.\n"
+        f"Der Artikel ist im Zustand: {zustand} ({defekt}% Defekt).{extra}\n\n"
+        f"Bitte analysiere den/die Artikel im Bild und beantworte auf Deutsch:\n\n"
+        f"Für JEDEN sichtbaren Artikel:\n"
+        f"**Artikel: [Name]**\n"
+        f"- Was ist es genau? [Beschreibung, Marke, Material]\n"
+        f"- Alter: [Schätzung, z.B. 1980er Jahre]\n"
+        f"- Zustand: [Einschätzung]\n"
+        f"- Verkäuflichkeit: 🟢 schnell (1-7 Tage) / 🟡 mittel (1-4 Wochen) / 🔴 langsam (Monate)\n"
+        f"- eBay Preis: €X – €Y\n"
+        f"- Kleinanzeigen: €X – €Y\n"
+        f"- Vinted: €X – €Y\n"
+        f"- Facebook: €X – €Y\n"
+        f"- Flohmarkt: €X – €Y\n"
+        f"- Maximaler Ankaufspreis: €X\n\n"
+        f"Am Ende: Gesamtwert aller Artikel zusammen."
+    )
 
 # ── HEADER ───────────────────────────────────────────────────
 st.markdown("""
