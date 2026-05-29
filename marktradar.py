@@ -43,29 +43,33 @@ for k, v in defaults.items():
 # KI-FUNKTION
 # ───────────────────────────────────────────────────────────────
 def ki(prompt, bild_b64=None, vision=False):
+    """
+    KI-Analyse - nur echte Modelle mit Ihrem OpenRouter-Kredit oder OpenAI
+    Modell-Priorität:
+      1. OpenRouter + Bild  → anthropic/claude-3-5-sonnet-20241022 (Vision)
+      2. OpenRouter Text    → anthropic/claude-3-5-sonnet-20241022
+      3. OpenAI Fallback    → gpt-4o-mini
+    """
     try:
-        if vision and bild_b64 and OPENROUTER_KEY:
-            # Vision mit Bild: Claude Sonnet
+        if OPENROUTER_KEY:
             client = OpenAI(api_key=OPENROUTER_KEY, base_url="https://openrouter.ai/api/v1")
-            model  = "anthropic/claude-3.5-sonnet:beta"
-            msgs   = [{"role":"user","content":[
-                {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{bild_b64}"}},
-                {"type":"text","text":prompt}]}]
-        elif OPENROUTER_KEY:
-            # Text: Llama kostenlos
-            client = OpenAI(api_key=OPENROUTER_KEY, base_url="https://openrouter.ai/api/v1")
-            model  = "meta-llama/llama-3.3-70b-instruct:free"
-            msgs   = [{"role":"user","content":prompt}]
+            model  = "anthropic/claude-3-5-sonnet-20241022"
+            if vision and bild_b64:
+                msgs = [{"role":"user","content":[
+                    {"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{bild_b64}"}},
+                    {"type":"text","text":prompt}]}]
+            else:
+                msgs = [{"role":"user","content":prompt}]
         elif OPENAI_KEY:
             client = OpenAI(api_key=OPENAI_KEY)
             model  = "gpt-4o-mini"
             msgs   = [{"role":"user","content":prompt}]
         else:
-            return "❌ Kein API-Key in Streamlit Secrets konfiguriert!"
+            return "❌ Kein API-Key konfiguriert! Bitte in Streamlit Secrets eintragen."
         r = client.chat.completions.create(model=model, messages=msgs, max_tokens=1500)
         return r.choices[0].message.content
     except Exception as e:
-        return f"❌ Fehler: {e}"
+        return f"❌ KI-Fehler: {str(e)}"
 
 # ───────────────────────────────────────────────────────────────
 # EBAY SCRAPER
