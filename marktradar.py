@@ -503,6 +503,18 @@ def mache_prompt(defekt, beschreibung, url_text):
         f"- Spezial-Tipp: [An welchen Sammler/Händler/Auktionshaus wenden?]\n"
         f"- ⭐ ALERT: Falls Schätzwert über €200 → UNBEDINGT vor Verkauf von Experten bewerten lassen!\n\n"
 
+        f"\n📷 FOTO-ANLEITUNG (welche Fotos noch machen?):\n"
+        f"- Pflicht-Fotos: [z.B. Stempel, Rückseite, Maßband, Details]\n"
+        f"- Warum wichtig: [welches Foto steigert den Verkaufspreis?]\n"
+        f"- Foto-Tipp: [Bestes Licht, Hintergrund, Winkel für diesen Artikel]\n\n"
+
+        f"🏪 ANKAUFSSTELLEN BERLIN (wo sonst verkaufen?):\n"
+        f"- Spezialhändler: [passende Händler für diesen Artikel in Berlin]\n"
+        f"- Antiquariate/Trödler: [konkrete Empfehlung]\n"
+        f"- Pfandhaus/Auktionshaus: [falls geeignet, welches?]\n"
+        f"- Was würden die zahlen: ca. €X\n"
+        f"- Online-Spezialisten: [z.B. Catawiki, Dorotheum, Auktionshaus]\n\n"
+
         f"---\n"
         f"GESAMT ALLER ARTIKEL:\n"
         f"- Gesamtwert: €X bis €X\n"
