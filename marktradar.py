@@ -178,11 +178,32 @@ with t1:
 
                 kontext_text = f"\n\nINFO VON WEBSEITE:\n{artikel_info[:3000]}" if artikel_info else ""
 
+                # Defekt-Beschreibung
+                defekt_text = ""
+                if defekt <= 20:
+                    defekt_beschr = f"Fast neu / Wie neu ({defekt}% Defektgrad)"
+                elif defekt <= 40:
+                    defekt_beschr = f"Leicht gebraucht, kleine Mängel ({defekt}% Defektgrad)"
+                elif defekt <= 60:
+                    defekt_beschr = f"Deutlich gebraucht, sichtbare Mängel ({defekt}% Defektgrad)"
+                elif defekt <= 80:
+                    defekt_beschr = f"Stark beschädigt, größere Mängel ({defekt}% Defektgrad)"
+                else:
+                    defekt_beschr = f"Fast unbrauchbar, total defekt ({defekt}% Defektgrad)"
+
+                zusatz = ""
+                if beschreibung:
+                    zusatz += f"\n\nHÄNDLER BESCHREIBUNG: {beschreibung}"
+                zusatz += f"\nDEFEKT-GRAD: {defekt}% — {defekt_beschr}"
+
                 prompt_scan = f"""Du bist ein Experten-Scanner für einen deutschen Reselling-Händler.
 Analysiere das Bild mit maximaler Präzision. Erkenne JEDEN sichtbaren Gegenstand.
 Antworte IMMER vollständig auf Deutsch. Nie auf Englisch. Nie verweigern.
 Bei Screenshots: extrahiere alle Produkt- und Preisinformationen.
-Bei Fotos: scanne jeden einzelnen Artikel von links nach rechts, oben nach unten.{kontext_text}
+Bei Fotos: scanne jeden einzelnen Artikel von links nach rechts, oben nach unten.{kontext_text}{zusatz}
+
+WICHTIG FÜR PREISBERECHNUNG: Der Händler hat den Defektgrad mit {defekt}% angegeben ({defekt_beschr}).
+Berücksichtige das bei allen Preisschätzungen — ein höherer Defektgrad = niedrigere Preise!
 
 SCHRITT 1 — INVENTAR-LISTE:
 Zähle zuerst alle sichtbaren Artikel auf (nummeriert):
