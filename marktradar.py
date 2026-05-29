@@ -162,7 +162,14 @@ def mache_prompt(defekt, beschreibung, url_text):
         f"- Facebook: €X – €Y\n"
         f"- Flohmarkt: €X – €Y\n"
         f"- Maximaler Ankaufspreis: €X\n\n"
-        f"Am Ende: Gesamtwert aller Artikel zusammen."
+        f"Am Ende: Gesamtwert aller Artikel zusammen.\n\n"
+        f"Für JEDEN Artikel zusätzlich:\n"
+        f"🏆 BESTE VERKAUFS-STRATEGIE:\n"
+        f"- Beste Plattform: [Welche Plattform und warum]\n"
+        f"- Optimaler Preis dort: €X\n"
+        f"- Zweitbeste Option: [Plattform] für €X\n"
+        f"- Flohmarkt geeignet?: [Ja/Nein + warum + Preis €X]\n"
+        f"- Tipp: [1 konkreter Tipp für schnellen Verkauf]"
     )
 
 # ── HEADER ───────────────────────────────────────────────────
