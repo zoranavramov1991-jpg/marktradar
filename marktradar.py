@@ -600,8 +600,11 @@ with T[1]:
         if ab_art:
             with st.spinner("✍️ 3 KIs schreiben..."):
                 kt=f"\nKunden-Nachricht: '{ab_kunde}'" if ab_kunde.strip() else ""
+                web_ab = google_suche(ab_art+" Preis Kleinanzeigen eBay Deutschland")
+                markt_k = f"\nAktueller Marktpreis laut Web: {web_ab[:150]}" if web_ab else ""
                 p=(f"Verhandlungs-Nachricht auf Deutsch. Stil: {ab_stil} | {ab_pl}\n"
-                   f"Artikel: {ab_art} | Angebot: €{ab_mp} | Verkäufer: €{ab_vk}{kt}\n"
+                   f"Artikel: {ab_art} | Angebot: €{ab_mp} | Verkäufer: €{ab_vk}{kt}{markt_k}\n"
+                   f"Nutze Marktpreise als Argument falls vorhanden.\n"
                    f"Max 5 Sätze. Psychologisch optimiert. NUR die fertige Nachricht!")
                 st.text_area("📩 Kopieren:",value=ensemble_ki(p),height=180,key="ab_r")
 
@@ -644,11 +647,20 @@ with T[3]:
     ocr_t=st.selectbox("Typ",["Bücher","CDs/Vinyl","Video-Spiele","DVDs","Gemischt"],key="ocr_t")
     if st.button("🔍 Analysieren",type="primary",use_container_width=True,key="ocr_btn"):
         if ocr_b:
-            with st.spinner("🤖 3 KIs scannen..."):
+            with st.spinner("🤖 3 KIs scannen + Web verifiziert..."):
                 b64=base64.b64encode(ocr_b.read()).decode()
                 p=(f"Scanne ALLE {ocr_t}. Für jeden: Titel | eBay:€X | KA:€X | Vinted:€X | FM:€X\n"
                    f"Top-3 wertvollste + Gesamtwert. Deutsch.")
-                st.markdown(ensemble_ki(p,bilder=[b64]))
+                scan_ergebnis = ensemble_ki(p,bilder=[b64])
+                st.markdown(scan_ergebnis)
+                # Web verifiziert Top-Artikel
+                erste_zeile = scan_ergebnis.split("\n")[0][:40] if scan_ergebnis else ""
+                if erste_zeile:
+                    web_ocr = multi_suche(erste_zeile+" Preis eBay Deutschland "+datetime.now().strftime("%Y"))
+                    if web_ocr:
+                        st.success("✅ Web-Preisverifikation:")
+                        preis_check = ki(f"Vergleiche diese Web-Preise mit dem Scan-Ergebnis für '{erste_zeile}'.\nWeb: {web_ocr[:400]}\nScan: {scan_ergebnis[:300]}\nKurzes Fazit: Sind die Preise realistisch? Empfehlung? Deutsch.")
+                        st.info("🌐 "+preis_check)
 
 # ════════════════════════════════════════════════════════════
 # TAB 5 — REPARATUR
@@ -678,9 +690,13 @@ with T[4]:
         elif sl>=8: st.warning("⚠️ Grenzfall")
         else: st.error("❌ Lohnt nicht")
         if rb:
-            with st.spinner("💡 3 KIs geben Tipps..."):
+            with st.spinner("💡 3 KIs + Web..."):
                 rep_b=[base64.b64encode(f.read()).decode() for f in rep_fotos] if rep_fotos else None
-                st.markdown(ensemble_ki(f"3 Reparatur-Tipps für '{ra}': {rb}. Deutsch.",bilder=rep_b))
+                web_rep = google_suche(f"{ra} Reparatur Materialkosten Deutschland "+rb[:30])
+                mat_k = f"\nAktuelle Materialpreise laut Web: {web_rep[:200]}" if web_rep else ""
+                st.markdown(ensemble_ki(
+                    f"3 konkrete Reparatur-Tipps für '{ra}': {rb}.{mat_k}\n"
+                    f"Methode, Materialkosten, Zeitaufwand, Wertsteigerung. Deutsch.",bilder=rep_b))
 
 # ════════════════════════════════════════════════════════════
 # TAB 6 — TRENDS (ECHTZEIT ENSEMBLE)
@@ -724,7 +740,10 @@ with T[6]:
     if st.button("🎭 Start",type="primary",use_container_width=True,key="v_start"):
         if va:
             st.session_state.sim=[]
-            r=ki(f"Verkäufer ({vt}) auf {vpl}. Artikel: {va} für €{vvk}. Erste Reaktion auf Verhandlungsfrage. 2-3 Sätze. Deutsch. Rolle!")
+            # Web sucht aktuelle Preise für bessere Simulation
+            web_v = google_suche(va+" Preis Deutschland Secondhand")
+            preis_k = f" Aktueller Marktpreis laut Web: {web_v[:100]}" if web_v else ""
+            r=ensemble_ki("Du bist Verkäufer (" + vt + ") auf " + vpl + ". Artikel: " + va + " für €" + str(vvk) + "." + preis_k + "\nErste Reaktion auf Verhandlungsfrage. 2-3 Sätze. Deutsch. Rolle bleiben!")
             st.session_state.sim.append({"r":"🏪","t":r}); st.rerun()
     if st.session_state.sim:
         st.markdown("---")
@@ -740,7 +759,7 @@ with T[6]:
                 if eingabe:
                     st.session_state.sim.append({"r":"🛒","t":eingabe})
                     verl="\n".join([f"{m['r']}: {m['t']}" for m in st.session_state.sim])
-                    r=ki(f"Verkäufer ({vt}) {va} €{vvk}. Verlauf:\n{verl}\nAntworte (2-3S, Deutsch, Rolle)!")
+                    r=ensemble_ki(f"Verkäufer ({vt}) {va} €{vvk}. Verlauf:\n{verl}\nAntworte als Verkäufer (2-3 Sätze, Deutsch, Rolle bleiben)!")
                     st.session_state.sim.append({"r":"🏪","t":r}); st.rerun()
         with c2:
             if st.button("🧠 Strategie",use_container_width=True,key="v_str"):
@@ -832,13 +851,23 @@ with T[9]:
     ms_k=st.selectbox("Kategorie",["Porzellan","Silber","Uhren","Schmuck","Elektronik","Kleidung","Spielzeug","Unbekannt"],key="ms_k")
     if st.button("🔬 Identifizieren",type="primary",use_container_width=True,key="ms_btn"):
         if ms_b:
-            with st.spinner("3 KIs identifizieren..."):
+            with st.spinner("3 KIs identifizieren + Web-Recherche..."):
                 b64=base64.b64encode(ms_b.read()).decode()
                 c1,c2=st.columns(2)
                 with c1: ms_b.seek(0); st.image(ms_b,caption="Stempel",use_column_width=True)
-                with c2: st.markdown(ensemble_ki(
-                    f"Marken-Experte {ms_k}. Identifiziere Stempel/Logo. Deutsch.\n"
-                    f"Marke, Herkunft, Jahr, Echtheit, Seltenheit, Wert €X, eBay-Suchbegriff.",bilder=[b64]))
+                with c2:
+                    marken_analyse = ensemble_ki(
+                        f"Marken-Experte {ms_k}. Identifiziere Stempel/Logo. Deutsch.\n"
+                        f"Marke, Herkunft, Jahr, Echtheit, Seltenheit, Wert €X, eBay-Suchbegriff.",bilder=[b64])
+                    st.markdown(marken_analyse)
+                    # Web sucht Marken-Infos
+                    marke_name = marken_analyse.split("\n")[0][:40] if marken_analyse else ""
+                    if marke_name:
+                        web_mk = multi_suche(marke_name+" "+ms_k+" Wert Preis eBay Auktion Deutschland")
+                        if web_mk:
+                            st.success("✅ Web-Recherche zur Marke:")
+                            mk_bewertung = ki(f"Bewerte diese Web-Infos zur Marke '{marke_name}' für Reseller.\n{web_mk[:500]}\nKurzes Fazit: Wert, Seltenheit, Empfehlung. Deutsch.")
+                            st.info("🌐 "+mk_bewertung)
 
 # ════════════════════════════════════════════════════════════
 # TAB 11 — TIMING
