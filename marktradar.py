@@ -280,14 +280,67 @@ with T[0]:
             elif "Ja"  in defekt_ja: defekt_beschr = "DEFEKT — funktioniert nicht!"
             else:                     defekt_beschr = "Defekt unbekannt — bitte prüfen"
 
-            with st.status("📡 Stufe 1: Daten sammeln...", expanded=True):
+            with st.status("📡 Stufe 1: Daten sammeln & KI-Voranalyse...", expanded=True):
                 if hat_url:
                     url_text = lies_url(url_inp)
-                    if url_text.startswith("[URL"): st.warning("⚠️ URL nicht erreichbar")
-                    else: st.success(f"✅ {len(url_text)} Zeichen ausgelesen")
-                if hat_fotos: st.success(f"✅ {len(st.session_state.fotos)} Foto(s) bereit")
+                    if url_text.startswith("[URL"):
+                        st.warning("⚠️ URL nicht erreichbar")
+                    else:
+                        st.success(f"✅ {len(url_text)} Zeichen ausgelesen")
+                        # KI analysiert URL-Inhalt sofort
+                        st.write("🤖 KI liest Webseite...")
+                        url_analyse = ki(
+                            "Du bist Experte für Secondhand und Reselling in Deutschland. "
+                            "Lies diesen Webseiten-Inhalt und extrahiere: "
+                            "1. Artikel-Name und Beschreibung "
+                            "2. Genannte Preise "
+                            "3. Zustand "
+                            "4. Besonderheiten "
+                            "Auf Deutsch, kurz und präzise:\n\n" + url_text[:3000]
+                        )
+                        st.info("📄 " + url_analyse)
+                        url_text = url_text + "\n\nKI-VORANALYSE DER WEBSEITE:\n" + url_analyse
 
-            with st.status("🔬 Stufe 2: KI analysiert jeden Artikel...", expanded=True):
+                if hat_fotos:
+                    st.success(f"✅ {len(st.session_state.fotos)} Foto(s) bereit")
+                    # Alle Vision-Modelle scannen die Fotos vor
+                    st.write("🔭 Alle Vision-KIs scannen Fotos vor...")
+                    vorscans = []
+                    vision_modelle_scan = [
+                        ("google/gemini-1.5-flash", "Gemini Flash"),
+                        ("google/gemini-1.5-pro",   "Gemini Pro"),
+                        ("openai/gpt-4o",            "GPT-4o"),
+                    ]
+                    import openai as _oai
+                    _client = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+                    for model_id, model_name in vision_modelle_scan:
+                        try:
+                            inhalt = []
+                            for b64 in st.session_state.fotos[:2]:
+                                inhalt.append({"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{komprimiere(b64)}"}})
+                            inhalt.append({"type":"text","text":"Was siehst du? Beschreibe kurz alle Artikel, Marken und besondere Merkmale. Auf Deutsch."})
+                            r = _client.chat.completions.create(
+                                model=model_id,
+                                messages=[{"role":"user","content":inhalt}],
+                                max_tokens=400,
+                                extra_headers={"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
+                            )
+                            scan = r.choices[0].message.content
+                            if scan and len(scan) > 20:
+                                vorscans.append(f"[{model_name}]: {scan}")
+                                st.write(f"✅ {model_name} bereit")
+                        except Exception:
+                            pass
+                    if vorscans:
+                        vorabinfo = "\n\n".join(vorscans)
+                        st.session_state["vorabinfo"] = vorabinfo
+                        st.success(f"✅ {len(vorscans)} KI-Modelle haben Fotos vorgelesen!")
+
+            with st.status("🔬 Stufe 2: Alle KIs analysieren gemeinsam...", expanded=True):
+                # Vorabinfo aus Stufe 1 einbeziehen
+                vorabinfo = st.session_state.get("vorabinfo", "")
+                vorab_kontext = ("\n\nVORAB-SCAN DER FOTOS (mehrere KIs):\n" + vorabinfo) if vorabinfo else ""
+
                 # Lern-Kontext
                 lern = ""
                 if st.session_state.mein_wissen:
@@ -302,7 +355,7 @@ with T[0]:
                 prompt = (
                     f"Ich bin ein Händler auf deutschen Flohmärkten (Kleinanzeigen, Vinted, Facebook, eBay).\n"
                     f"Gebrauchsspuren: {gebrauch_beschr}\n"
-                    f"Defekt-Status: {defekt_beschr}{extra}{lern}\n\n"
+                    f"Defekt-Status: {defekt_beschr}{extra}{vorab_kontext}{lern}\n\n"
                     f"Analysiere den/die Artikel im Bild auf Deutsch:\n\n"
                     f"Für JEDEN sichtbaren Artikel:\n"
                     f"**Artikel: [Name]**\n"
@@ -328,7 +381,7 @@ with T[0]:
                     f"📅 BESTER ZEITPUNKT: [Beste Monate] | Jetzt: [Ja/Warten bis...]\n\n"
                     f"📝 FERTIGE KLEINANZEIGE:\nTitel: [max 60 Zeichen]\nText: [3 Sätze]\nPreis: €X\n\n"
                     f"🗺️ BESTER BERLINER FLOHMARKT:\n"
-                    f"🥇 [Markt] am [Tag] — [Warum] — Preis €X — [Beste Uhrzeit]\n"
+                    f"🥇 [Markt] am [Tag] — [Warum] — Preis €X\n"
                     f"🥈 [Markt] — [Warum] — €X\n\n"
                     f"🌟 RARITÄTEN-CHECK: Seltenheit + Höchstpreis + Tipp\n\n"
                     f"💰 GEWINNPROGNOSE: EK €X → VK €X → Gewinn €X → ROI X%\n\n"
@@ -339,6 +392,7 @@ with T[0]:
                     ergebnis = ki(prompt, bilder=st.session_state.fotos if hat_fotos else None)
                 st.markdown(ergebnis)
                 st.session_state["ana_ergebnis"] = ergebnis
+                st.session_state["vorabinfo"] = ""  # Reset
 
                 suchbegriff = "Vintage Artikel"
                 for line in ergebnis.split("\n"):
@@ -348,18 +402,29 @@ with T[0]:
                             suchbegriff = teile[1].strip().strip("*[] ")[:40]
                         break
 
-            with st.status("📡 Stufe 3: Echtzeit-Preissuche...", expanded=True):
+            with st.status("📡 Stufe 3: Echtzeit-Preise + KI-Bewertung...", expanded=True):
                 ebay_url = f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote(suchbegriff)}&LH_Complete=1&LH_Sold=1"
                 ka_url   = f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
                 vi_url   = f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
                 fb_url   = f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
 
-                # Echte Preissuche mit Tavily/You.com
-                st.write(f"🔍 Suche aktuelle Preise für: **{suchbegriff}**")
+                # Echte Preissuche Tavily + You.com
+                st.write(f"🌐 Suche echte Preise für: **{suchbegriff}**")
                 preise_web = suche_preise(suchbegriff)
+
                 if preise_web:
-                    st.success("✅ Echte Preisdaten gefunden!")
+                    st.success("✅ Echte Web-Preise gefunden!")
+                    # KI bewertet die Web-Preise
+                    ki_bewertung = ki(
+                        f"Du bist Reselling-Experte. Bewerte diese Web-Preisdaten für '{suchbegriff}' auf Deutsch.\n"
+                        f"Web-Daten:\n{preise_web}\n\n"
+                        f"Gib eine kurze Einschätzung (3-4 Sätze):\n"
+                        f"- Ist der Preis realistisch?\n"
+                        f"- Was bedeutet das für den Händler?\n"
+                        f"- Empfohlener Verkaufspreis: €X"
+                    )
                     st.markdown(preise_web)
+                    st.info("🤖 KI-Bewertung: " + ki_bewertung)
                 else:
                     st.info("ℹ️ Web-Suche nicht verfügbar — KI-Schätzung wird verwendet")
 
@@ -367,7 +432,7 @@ with T[0]:
                 st.markdown("**🔗 Direkt suchen:**")
                 c1,c2 = st.columns(2)
                 with c1:
-                    st.markdown(f"🛒 [eBay beendete Verkäufe →]({ebay_url})")
+                    st.markdown(f"🛒 [eBay →]({ebay_url})")
                     st.markdown(f"📱 [Kleinanzeigen →]({ka_url})")
                 with c2:
                     st.markdown(f"👗 [Vinted →]({vi_url})")
