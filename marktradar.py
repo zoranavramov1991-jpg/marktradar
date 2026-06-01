@@ -196,24 +196,44 @@ with T[0]:
 
     if "Foto" in typ:
         st.markdown("##### 📷 Fotos hochladen")
-        hochgeladen = st.file_uploader("Foto(s) auswählen (mehrere möglich)",
-            type=["jpg","jpeg","png","webp"], accept_multiple_files=True, key=f"fu_{st.session_state.fcnt}")
-        if hochgeladen:
-            for f in hochgeladen:
-                f.seek(0)
-                b64 = base64.b64encode(f.read()).decode()
-                if b64 not in st.session_state.fotos:
-                    st.session_state.fotos.append(b64)
-        n = len(st.session_state.fotos)
-        if n > 0:
-            st.success(f"✅ {n} Foto(s) bereit für Analyse")
-            cols = st.columns(min(n,4))
-            for i,b64 in enumerate(st.session_state.fotos):
-                with cols[i%4]: st.image(base64.b64decode(b64), caption=f"Foto {i+1}", use_column_width=True)
-            if st.button("🗑️ Alle Fotos löschen", use_container_width=True):
+        st.caption("📱 Handy: Ein Foto auswählen → 'Foto hinzufügen' drücken → wiederholen für mehr")
+
+        # Einzelnes Foto hochladen (zuverlässiger auf Handy!)
+        neu_foto = st.file_uploader(
+            "📷 Foto auswählen",
+            type=["jpg","jpeg","png","webp"],
+            accept_multiple_files=False,
+            key=f"fu_{st.session_state.fcnt}"
+        )
+
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("➕ Foto hinzufügen", type="primary", use_container_width=True, key="foto_add"):
+                if neu_foto is not None:
+                    neu_foto.seek(0)
+                    b64 = base64.b64encode(neu_foto.read()).decode()
+                    if b64 not in st.session_state.fotos:
+                        st.session_state.fotos.append(b64)
+                        st.session_state.fcnt += 1
+                        st.rerun()
+                else:
+                    st.warning("⚠️ Zuerst Foto auswählen!")
+        with c2:
+            if st.button("🗑️ Alle löschen", use_container_width=True, key="foto_clear"):
                 st.session_state.fotos = []
                 st.session_state.fcnt += 1
                 st.rerun()
+
+        # Gespeicherte Fotos anzeigen
+        n = len(st.session_state.fotos)
+        if n > 0:
+            st.success(f"✅ {n} Foto(s) gespeichert und bereit!")
+            cols = st.columns(min(n, 3))
+            for i, b64 in enumerate(st.session_state.fotos):
+                with cols[i % 3]:
+                    st.image(base64.b64decode(b64), caption=f"Foto {i+1}", use_column_width=True)
+        else:
+            st.info("📷 Noch keine Fotos. Foto auswählen → 'Foto hinzufügen' drücken!")
 
     if "Link" in typ:
         url_inp = st.text_input("🔗 Link eingeben",
