@@ -39,9 +39,11 @@ def secret(k):
     try: return st.secrets[k]
     except: return os.environ.get(k,"")
 
-OR_KEY     = secret("OPENROUTER_API_KEY")
-TAVILY_KEY = secret("TAVILY_API_KEY")
-YOU_KEY    = secret("YOU_API_KEY")
+OR_KEY      = secret("OPENROUTER_API_KEY")
+TAVILY_KEY  = secret("TAVILY_API_KEY")
+YOU_KEY     = secret("YOU_API_KEY")
+GOOGLE_KEY  = secret("GOOGLE_API_KEY")
+GOOGLE_CSE  = secret("GOOGLE_CSE_ID")
 
 # ── WEB-SUCHE (TAVILY + YOU.COM) ─────────────────────────────
 def web_suche(query, max_results=5):
@@ -93,11 +95,50 @@ def web_suche(query, max_results=5):
             pass
     return None
 
+def google_suche(query, num=5):
+    """Echte Google-Suche über Custom Search API"""
+    if not GOOGLE_KEY or not GOOGLE_CSE:
+        return None
+    try:
+        r = requests.get(
+            "https://www.googleapis.com/customsearch/v1",
+            params={
+                "key": GOOGLE_KEY,
+                "cx":  GOOGLE_CSE,
+                "q":   query,
+                "num": num,
+                "hl":  "de",
+                "gl":  "de",
+            },
+            timeout=10
+        )
+        data = r.json()
+        if data.get("items"):
+            teile = ["🔍 GOOGLE-ERGEBNISSE:"]
+            for item in data["items"][:4]:
+                titel   = str(item.get("title", ""))
+                snippet = str(item.get("snippet", ""))[:200]
+                link    = str(item.get("link", ""))
+                teile.append("• " + titel + "\n  " + snippet + "\n  🔗 " + link)
+            return "\n\n".join(teile)
+    except Exception:
+        pass
+    return None
+
+
 def suche_preise(artikel):
-    """Suche aktuelle Marktpreise für einen Artikel"""
-    query = (artikel + " Secondhand Preis Deutschland "
-             "Kleinanzeigen eBay Vinted " + datetime.now().strftime("%Y"))
-    return web_suche(query)
+    """Suche aktuelle Marktpreise — Google zuerst, dann Tavily, dann You.com"""
+    query = artikel + " Preis kaufen Deutschland Kleinanzeigen eBay Vinted " + datetime.now().strftime("%Y")
+
+    # 1. Google (beste Ergebnisse)
+    r = google_suche(query)
+    if r: return "📊 GOOGLE: " + r
+
+    # 2. Tavily
+    r = web_suche(query)
+    if r: return r
+
+    return None
 
 # ── SESSION STATE ─────────────────────────────────────────────
 for k,v in {
@@ -296,8 +337,8 @@ with T[0]:
                         st.warning("⚠️ URL nicht erreichbar")
                     else:
                         st.success(f"✅ {len(url_text)} Zeichen ausgelesen")
-                        # KI analysiert URL-Inhalt sofort
-                        st.write("🤖 KI liest Webseite...")
+                        # KI + Google analysieren URL-Inhalt
+                        st.write("🤖 KI + Google analysieren...")
                         url_analyse = ki(
                             "Du bist Experte für Secondhand und Reselling in Deutschland. "
                             "Lies diesen Webseiten-Inhalt und extrahiere: "
@@ -307,6 +348,12 @@ with T[0]:
                             "4. Besonderheiten "
                             "Auf Deutsch, kurz und präzise:\n\n" + url_text[:3000]
                         )
+                        # Google sucht zusätzliche Infos zum Artikel
+                        artikel_name = url_analyse.split("\n")[0][:50] if url_analyse else ""
+                        if artikel_name:
+                            google_infos = google_suche(artikel_name + " Wert Preis Deutschland")
+                            if google_infos:
+                                url_analyse += "\n\nGOOGLE-ZUSATZINFOS:\n" + google_infos[:500]
                         st.info("📄 " + url_analyse)
                         url_text = url_text + "\n\nKI-VORANALYSE DER WEBSEITE:\n" + url_analyse
 
