@@ -39,7 +39,65 @@ def secret(k):
     try: return st.secrets[k]
     except: return os.environ.get(k,"")
 
-OR_KEY = secret("OPENROUTER_API_KEY")
+OR_KEY     = secret("OPENROUTER_API_KEY")
+TAVILY_KEY = secret("TAVILY_API_KEY")
+YOU_KEY    = secret("YOU_API_KEY")
+
+# ── WEB-SUCHE (TAVILY + YOU.COM) ─────────────────────────────
+def web_suche(query, max_results=5):
+    """Echte Websuche: Tavily zuerst, You.com als Fallback"""
+    # 1. TAVILY
+    if TAVILY_KEY:
+        try:
+            r = requests.post(
+                "https://api.tavily.com/search",
+                json={"api_key": TAVILY_KEY, "query": query,
+                      "search_depth": "advanced", "max_results": max_results,
+                      "include_answer": True},
+                timeout=15
+            )
+            data = r.json()
+            teile = []
+            if data.get("answer"):
+                teile.append("📊 ZUSAMMENFASSUNG: " + str(data["answer"]))
+            if data.get("results"):
+                teile.append("🔗 QUELLEN:")
+                for res in data["results"][:3]:
+                    titel   = str(res.get("title", ""))
+                    inhalt  = str(res.get("content", ""))[:200]
+                    teile.append("• " + titel + ": " + inhalt)
+            if teile:
+                return "\n".join(teile)
+        except Exception:
+            pass
+    # 2. YOU.COM Fallback
+    if YOU_KEY:
+        try:
+            r = requests.get(
+                "https://api.ydc-index.io/search",
+                headers={"X-API-Key": YOU_KEY},
+                params={"query": query, "num_web_results": max_results},
+                timeout=15
+            )
+            data = r.json()
+            if data.get("hits"):
+                teile = ["🔍 SUCHERGEBNISSE:"]
+                for hit in data["hits"][:3]:
+                    snippets = hit.get("snippets", [])
+                    titel    = str(hit.get("title", ""))
+                    if snippets:
+                        teile.append("• " + titel + ": " + str(snippets[0])[:200])
+                if len(teile) > 1:
+                    return "\n".join(teile)
+        except Exception:
+            pass
+    return None
+
+def suche_preise(artikel):
+    """Suche aktuelle Marktpreise für einen Artikel"""
+    query = (artikel + " Secondhand Preis Deutschland "
+             "Kleinanzeigen eBay Vinted " + datetime.now().strftime("%Y"))
+    return web_suche(query)
 
 # ── SESSION STATE ─────────────────────────────────────────────
 for k,v in {
@@ -270,14 +328,26 @@ with T[0]:
                             suchbegriff = teile[1].strip().strip("*[] ")[:40]
                         break
 
-            with st.status("📡 Stufe 3: Such-Links...", expanded=True):
+            with st.status("📡 Stufe 3: Echtzeit-Preissuche...", expanded=True):
                 ebay_url = f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote(suchbegriff)}&LH_Complete=1&LH_Sold=1"
                 ka_url   = f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
                 vi_url   = f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
                 fb_url   = f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
+
+                # Echte Preissuche mit Tavily/You.com
+                st.write(f"🔍 Suche aktuelle Preise für: **{suchbegriff}**")
+                preise_web = suche_preise(suchbegriff)
+                if preise_web:
+                    st.success("✅ Echte Preisdaten gefunden!")
+                    st.markdown(preise_web)
+                else:
+                    st.info("ℹ️ Web-Suche nicht verfügbar — KI-Schätzung wird verwendet")
+
+                st.markdown("---")
+                st.markdown("**🔗 Direkt suchen:**")
                 c1,c2 = st.columns(2)
                 with c1:
-                    st.markdown(f"🛒 [eBay →]({ebay_url})")
+                    st.markdown(f"🛒 [eBay beendete Verkäufe →]({ebay_url})")
                     st.markdown(f"📱 [Kleinanzeigen →]({ka_url})")
                 with c2:
                     st.markdown(f"👗 [Vinted →]({vi_url})")
@@ -425,8 +495,19 @@ with T[5]:
     with c1: tr_kat = st.selectbox("Kategorie:", ["Alles","Kleidung & Mode","Porzellan & Antiquitäten","Elektronik","Möbel","Spielzeug","Bücher"], key="tr_kat")
     with c2: tr_region = st.selectbox("Region:", ["Berlin","Deutschland gesamt"], key="tr_region")
     if st.button("🔥 Live-Analyse starten", type="primary", use_container_width=True, key="tr_btn"):
-        with st.spinner("🤖 KI analysiert..."):
-            r = ki(f"Markt-Analyst für {tr_region}, {datetime.now().strftime('%B %Y')}. Analysiere LIVE: {tr_kat}. Auf Deutsch.\n🔥 TOP 5 HEISSESTE ARTIKEL:\nName | Ø €X | Nachfrage | Trend↑↓\n📈 PREISE STEIGEN:\n📉 PREISE FALLEN:\n💎 GEHEIMTIPP {datetime.now().strftime('%B')}:\n🗓️ JETZT VERKAUFEN:\n🔍 GOLD-SUCHBEGRIFFE:")
+        with st.spinner("🌐 Suche echte Marktdaten..."):
+            web_data = web_suche("Secondhand Markt Trends " + tr_kat + " " + tr_region + " " + datetime.now().strftime("%B %Y") + " Preise")
+            web_kontext = ("\n\nECHTE WEB-DATEN:\n" + web_data) if web_data else ""
+            prompt_tr = ("Markt-Analyst fuer " + tr_region + ", " + datetime.now().strftime("%B %Y") + "." + web_kontext + "\n"
+                "Analysiere LIVE: " + tr_kat + ". Auf Deutsch.\n"
+                "TOP 5 HEISSESTE ARTIKEL: Name, Preis, Nachfrage, Trend.\n"
+                "PREISE STEIGEN: [was wird teurer?]\n"
+                "PREISE FALLEN: [was ist uebersaettigt?]\n"
+                "GEHEIMTIPP: [1 unterschaetzter Artikel]\n"
+                "JETZT VERKAUFEN: [was jetzt verkaufen?]\n"
+                "GOLD-SUCHBEGRIFFE: [5 Begriffe]")
+            r = ki(prompt_tr)
+            if web_data: st.success("✅ Echte Web-Daten eingeflossen!")
             st.markdown(r)
     st.markdown("---")
     tf = st.text_input("🤖 Frage:", placeholder="z.B. Wie läuft gerade Vintage Kleidung?", key="tf")
