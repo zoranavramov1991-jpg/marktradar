@@ -526,31 +526,99 @@ with T[0]:
                             suchbegriff = teile[1].strip().strip("*[] ")[:40]
                         break
 
-            with st.status("📡 Stufe 3: Echtzeit-Preise + KI-Bewertung...", expanded=True):
+            with st.status("📡 Stufe 3: Echtzeit-Preise + KI-Preis-Ensemble...", expanded=True):
                 ebay_url = f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote(suchbegriff)}&LH_Complete=1&LH_Sold=1"
                 ka_url   = f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
                 vi_url   = f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
                 fb_url   = f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
 
-                # Echte Preissuche Tavily + You.com
-                st.write(f"🌐 Suche echte Preise für: **{suchbegriff}**")
-                preise_web = suche_preise(suchbegriff)
+                # ── SCHRITT 1: Alle Quellen gleichzeitig suchen ──
+                st.write("🌐 Google + Tavily + You.com suchen gleichzeitig...")
 
-                if preise_web:
-                    st.success("✅ Echte Web-Preise gefunden!")
-                    # KI bewertet die Web-Preise
-                    ki_bewertung = ki(
-                        f"Du bist Reselling-Experte. Bewerte diese Web-Preisdaten für '{suchbegriff}' auf Deutsch.\n"
-                        f"Web-Daten:\n{preise_web}\n\n"
-                        f"Gib eine kurze Einschätzung (3-4 Sätze):\n"
-                        f"- Ist der Preis realistisch?\n"
-                        f"- Was bedeutet das für den Händler?\n"
-                        f"- Empfohlener Verkaufspreis: €X"
+                def hole_google():
+                    return google_suche(suchbegriff + " Preis eBay Kleinanzeigen Deutschland")
+
+                def hole_tavily():
+                    return web_suche(suchbegriff + " Secondhand Preis Deutschland " + datetime.now().strftime("%Y"))
+
+                google_data = tavily_data = None
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+                    f_google = ex.submit(hole_google)
+                    f_tavily = ex.submit(hole_tavily)
+                    google_data = f_google.result()
+                    tavily_data = f_tavily.result()
+
+                alle_web_daten = ""
+                if google_data:
+                    st.success("✅ Google: Echte Preise gefunden!")
+                    alle_web_daten += "GOOGLE ERGEBNISSE:\n" + google_data + "\n\n"
+                if tavily_data:
+                    st.success("✅ Tavily: Aktuelle Marktdaten!")
+                    alle_web_daten += "TAVILY ERGEBNISSE:\n" + tavily_data + "\n\n"
+                if not alle_web_daten:
+                    st.info("ℹ️ Web-Suche nicht verfügbar")
+
+                # ── SCHRITT 2: 3 KIs bewerten Preise gleichzeitig ──
+                if alle_web_daten:
+                    st.write("⚖️ 3 KI-Experten bewerten Preise gleichzeitig...")
+
+                    preis_prompt = (
+                        f"Du bist Preisexperte für deutschen Secondhand-Markt.\n"
+                        f"Artikel: {suchbegriff}\n"
+                        f"Zustand: {gebrauch_beschr} | {defekt_beschr}\n"
+                        f"Web-Daten:\n{alle_web_daten}\n\n"
+                        f"Bewerte auf Deutsch:\n"
+                        f"• Realistischer eBay-Preis: €X\n"
+                        f"• Realistischer Kleinanzeigen-Preis: €X\n"
+                        f"• Realistischer Flohmarkt-Preis: €X\n"
+                        f"• Empfohlener Verkaufspreis: €X\n"
+                        f"• Markt-Trend: [steigend/stabil/fallend]\n"
+                        f"• Fazit: [2 Sätze]"
                     )
-                    st.markdown(preise_web)
-                    st.info("🤖 KI-Bewertung: " + ki_bewertung)
-                else:
-                    st.info("ℹ️ Web-Suche nicht verfügbar — KI-Schätzung wird verwendet")
+
+                    def preis_experte(model_info):
+                        model_id, model_name = model_info
+                        try:
+                            _client = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+                            r = _client.chat.completions.create(
+                                model=model_id,
+                                messages=[{"role":"user","content":preis_prompt}],
+                                max_tokens=400,
+                                extra_headers={"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
+                            )
+                            antwort = r.choices[0].message.content
+                            if antwort and len(antwort) > 50:
+                                return (model_name, antwort)
+                        except Exception:
+                            pass
+                        return (model_name, None)
+
+                    preis_experten = [
+                        ("google/gemini-3-flash-preview", "Gemini 3"),
+                        ("google/gemini-2.5-flash",        "Gemini 2.5"),
+                        ("openai/gpt-4o-mini",             "GPT-4o-mini"),
+                    ]
+
+                    preis_meinungen = {}
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+                        futures = {ex.submit(preis_experte, e): e for e in preis_experten}
+                        for future in concurrent.futures.as_completed(futures):
+                            name, antwort = future.result()
+                            if antwort:
+                                preis_meinungen[name] = antwort
+                                st.write(f"✅ {name} bewertet!")
+
+                    if preis_meinungen:
+                        # Richter-KI für Preise
+                        preis_texte = "\n\n".join([f"[{n}]: {a}" for n,a in preis_meinungen.items()])
+                        preis_fazit = ki(
+                            f"3 Preisexperten haben {suchbegriff} bewertet.\n"
+                            f"Erstelle EINE finale Preis-Empfehlung auf Deutsch.\n"
+                            f"Nimm Durchschnitt bei Unterschieden.\n"
+                            f"Format: eBay €X | Kleinanzeigen €X | Flohmarkt €X | Empfehlung €X | Trend: [↑↓→]\n"
+                            f"Experten:\n{preis_texte}"
+                        )
+                        st.info("💰 **Preis-Konsens aller 3 KIs:** " + preis_fazit)
 
                 st.markdown("---")
                 st.markdown("**🔗 Direkt suchen:**")
