@@ -393,10 +393,10 @@ with T[0]:
                         st.session_state["vorabinfo"] = vorabinfo
                         st.success(f"✅ {len(vorscans)} KI-Modelle haben Fotos vorgelesen!")
 
-            with st.status("🔬 Stufe 2: Alle KIs analysieren gemeinsam...", expanded=True):
-                # Vorabinfo aus Stufe 1 einbeziehen
+            with st.status("🔬 Stufe 2: Experten-Ensemble analysiert...", expanded=True):
+                # Vorabinfo aus Stufe 1
                 vorabinfo = st.session_state.get("vorabinfo", "")
-                vorab_kontext = ("\n\nVORAB-SCAN DER FOTOS (mehrere KIs):\n" + vorabinfo) if vorabinfo else ""
+                vorab_kontext = ("\n\nVORAB-SCAN:\n" + vorabinfo) if vorabinfo else ""
 
                 # Lern-Kontext
                 lern = ""
@@ -406,50 +406,117 @@ with T[0]:
                     lern += "\n\nEchte Preise:\n" + "\n".join([f"- {k}: €{v}" for k,v in list(st.session_state.preis_korrekturen.items())[-5:]])
 
                 extra = ""
-                if beschr.strip(): extra += f" Händler schreibt: {beschr}."
-                if url_text and not url_text.startswith("[URL"): extra += f"\n\nWebseite:\n{url_text[:2000]}"
+                if beschr.strip(): extra += f" Händler: {beschr}."
+                if url_text and not url_text.startswith("[URL"): extra += f"\n\nWebseite:\n{url_text[:1500]}"
 
-                prompt = (
-                    f"Ich bin ein Händler auf deutschen Flohmärkten (Kleinanzeigen, Vinted, Facebook, eBay).\n"
+                # ── ENSEMBLE PROMPT ──────────────────────────────
+                ensemble_prompt = (
+                    f"Ich bin Händler auf deutschen Flohmärkten (Kleinanzeigen, Vinted, Facebook, eBay).\n"
                     f"Gebrauchsspuren: {gebrauch_beschr}\n"
-                    f"Defekt-Status: {defekt_beschr}{extra}{vorab_kontext}{lern}\n\n"
-                    f"Analysiere den/die Artikel im Bild auf Deutsch:\n\n"
-                    f"Für JEDEN sichtbaren Artikel:\n"
+                    f"Defekt: {defekt_beschr}{extra}{vorab_kontext}{lern}\n\n"
+                    f"Analysiere JEDEN sichtbaren Artikel. Auf Deutsch. Sei Experte!\n\n"
+                    f"Für JEDEN Artikel:\n"
                     f"**Artikel: [Name]**\n"
-                    f"- Was ist es? [Beschreibung, Marke, Material]\n"
-                    f"- Alter: [Herstellungsjahr / Epoche / Herkunftsland / Antik?]\n"
-                    f"- Zustand-Selbsteinschätzung: [Erkannter Zustand + sichtbare Mängel + Defektgrad %]\n"
+                    f"- Was genau? [Marke, Material, Modell]\n"
+                    f"- Alter: [Jahr / Epoche / Land / Antik?]\n"
+                    f"- Zustand: [Erkannter Zustand + Mängel + Defektgrad %]\n"
                     f"- Verkäuflichkeit: 🟢 schnell / 🟡 mittel / 🔴 langsam\n\n"
-                    f"PREISE (NUR eine konkrete Zahl — keine Spannen!):\n"
-                    f"Aktuell ({gebrauch_beschr}, {defekt_beschr}):\n"
-                    f"- eBay: €X | Kleinanzeigen: €X | Vinted: €X | Facebook: €X | Flohmarkt: €X\n"
-                    f"- Max. Ankaufspreis jetzt: €X\n\n"
-                    f"Nach Aufbereitung (wie neu):\n"
-                    f"- eBay: €X | Kleinanzeigen: €X | Flohmarkt: €X\n"
-                    f"- Mehrwert durch Aufbereitung: +€X (+X%)\n\n"
-                    f"🏆 BESTE VERKAUFS-STRATEGIE:\n"
-                    f"- Beste Plattform: [Welche + warum] für €X\n"
-                    f"- Flohmarkt geeignet: [Ja €X / Nein]\n"
-                    f"- Schnell-Tipp: [1 konkreter Tipp]\n\n"
-                    f"🎯 KONFIDENZ: Identifikation X% | Preis X% | Gesamt X%\n\n"
-                    f"⚠️ FÄLSCHUNGS-CHECK: Risiko [Niedrig/Mittel/Hoch] | Red Flags: [oder 'keine']\n\n"
-                    f"✨ AUFBEREITUNG: [Methode] → +€X möglich\n\n"
-                    f"👥 ZIELGRUPPE: [Wer kauft + wo finden]\n\n"
-                    f"📅 BESTER ZEITPUNKT: [Beste Monate] | Jetzt: [Ja/Warten bis...]\n\n"
-                    f"📝 FERTIGE KLEINANZEIGE:\nTitel: [max 60 Zeichen]\nText: [3 Sätze]\nPreis: €X\n\n"
-                    f"🗺️ BESTER BERLINER FLOHMARKT:\n"
-                    f"🥇 [Markt] am [Tag] — [Warum] — Preis €X\n"
-                    f"🥈 [Markt] — [Warum] — €X\n\n"
-                    f"🌟 RARITÄTEN-CHECK: Seltenheit + Höchstpreis + Tipp\n\n"
-                    f"💰 GEWINNPROGNOSE: EK €X → VK €X → Gewinn €X → ROI X%\n\n"
-                    f"---\nGESAMT: Gesamtwert €X | Max. Ankauf €X | Wertvollster: [Name]"
+                    f"PREISE (nur EINE Zahl pro Plattform!):\n"
+                    f"Jetzt ({gebrauch_beschr}):\n"
+                    f"eBay: €X | Kleinanzeigen: €X | Vinted: €X | Facebook: €X | Flohmarkt: €X\n"
+                    f"Max. Ankauf: €X\n\n"
+                    f"Nach Aufbereitung: eBay: €X | Kleinanzeigen: €X | Mehrwert: +€X (+X%)\n\n"
+                    f"🏆 BESTE PLATTFORM: [Welche + warum + Preis €X]\n"
+                    f"🎯 KONFIDENZ: X%\n"
+                    f"⚠️ FÄLSCHUNG: [Niedrig/Mittel/Hoch] | Red Flags: [oder keine]\n"
+                    f"✨ AUFBEREITUNG: [Methode] → +€X\n"
+                    f"👥 ZIELGRUPPE: [Wer kauft + wo]\n"
+                    f"📅 TIMING: [Beste Monate] | Jetzt: [Ja/Nein]\n"
+                    f"📝 ANZEIGE: Titel: [60 Zeichen] | Text: [3 Sätze] | Preis: €X\n"
+                    f"🗺️ BERLINER MARKT: 🥇[Markt+Tag+Preis] 🥈[Markt]\n"
+                    f"🌟 RARITÄT: [Seltenheit + Höchstpreis]\n"
+                    f"💰 GEWINN: EK €X → VK €X → Gewinn €X → ROI X%\n"
+                    f"---\nGESAMT: €X | Wertvollster: [Name]"
                 )
 
-                with st.spinner("🤖 KI arbeitet — bitte warten..."):
-                    ergebnis = ki(prompt, bilder=st.session_state.fotos if hat_fotos else None)
+                # ── 3 EXPERTEN GLEICHZEITIG ──────────────────────
+                import concurrent.futures
+                import openai as _oai
+
+                experten = [
+                    ("google/gemini-3-flash-preview",  "🥇 Gemini 3 Flash"),
+                    ("google/gemini-2.5-flash",         "🥈 Gemini 2.5 Flash"),
+                    ("anthropic/claude-sonnet-4-6",     "🥉 Claude Sonnet 4.6"),
+                ]
+
+                def experte_analysiert(model_info):
+                    model_id, model_name = model_info
+                    try:
+                        _client = _oai.OpenAI(
+                            api_key=OR_KEY,
+                            base_url="https://openrouter.ai/api/v1"
+                        )
+                        if hat_fotos:
+                            bilder_k = [komprimiere(b) for b in st.session_state.fotos[:3]]
+                            inhalt = []
+                            for b64 in bilder_k:
+                                inhalt.append({"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}})
+                            inhalt.append({"type":"text","text":ensemble_prompt})
+                            msgs = [{"role":"user","content":inhalt}]
+                        else:
+                            msgs = [{"role":"user","content":ensemble_prompt}]
+
+                        r = _client.chat.completions.create(
+                            model=model_id, messages=msgs, max_tokens=1500,
+                            extra_headers={"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
+                        )
+                        antwort = r.choices[0].message.content
+                        if antwort and len(antwort) > 100:
+                            return (model_name, antwort)
+                    except Exception as e:
+                        pass
+                    return (model_name, None)
+
+                # Alle 3 gleichzeitig starten!
+                st.write("🚀 3 Experten analysieren gleichzeitig...")
+                experten_antworten = {}
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    futures = {executor.submit(experte_analysiert, e): e for e in experten}
+                    for future in concurrent.futures.as_completed(futures):
+                        name, antwort = future.result()
+                        if antwort:
+                            experten_antworten[name] = antwort
+                            st.write(f"✅ {name} fertig!")
+
+                if not experten_antworten:
+                    # Fallback auf einzelnes Modell
+                    st.warning("⚠️ Ensemble fehlgeschlagen — Fallback...")
+                    with st.spinner("🤖 ..."):
+                        ergebnis = ki(ensemble_prompt, bilder=st.session_state.fotos if hat_fotos else None)
+                else:
+                    # ── RICHTER-KI: Alle Antworten zusammenfassen ──
+                    st.write(f"⚖️ Richter-KI fasst {len(experten_antworten)} Experten-Meinungen zusammen...")
+
+                    experten_text = ""
+                    for name, antwort in experten_antworten.items():
+                        experten_text += f"\n\n=== {name} ===\n{antwort[:800]}"
+
+                    richter_prompt = (
+                        f"Du bist der Chef-Experte für Secondhand und Reselling in Deutschland.\n"
+                        f"3 Experten haben diesen Artikel analysiert. Lies alle Meinungen und erstelle "
+                        f"EINE perfekte, vollständige finale Antwort auf Deutsch.\n"
+                        f"Nimm das Beste aus jeder Analyse. Bei Preis-Unterschieden: nimm den Durchschnitt.\n"
+                        f"Sei sehr präzise und konkret. Nutze die gleiche Struktur wie die Experten.\n"
+                        f"Experten-Analysen:{experten_text}\n\n"
+                        f"FINALE EXPERTEN-ANTWORT (vollständig, alle Punkte):"
+                    )
+
+                    with st.spinner("⚖️ Richter-KI arbeitet..."):
+                        ergebnis = ki(richter_prompt)
+
                 st.markdown(ergebnis)
                 st.session_state["ana_ergebnis"] = ergebnis
-                st.session_state["vorabinfo"] = ""  # Reset
+                st.session_state["vorabinfo"] = ""
 
                 suchbegriff = "Vintage Artikel"
                 for line in ergebnis.split("\n"):
