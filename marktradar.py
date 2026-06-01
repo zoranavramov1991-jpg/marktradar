@@ -975,9 +975,16 @@ with T[15]:
     st.header("📦 Lager-Optimierer")
     if st.session_state.lager:
         if st.button("🤖 Lager analysieren",type="primary",use_container_width=True,key="lo_btn"):
-            with st.spinner("3 KIs analysieren..."):
+            with st.spinner("3 KIs + Web prüft Marktpreise..."):
                 lt="\n".join([f"{it['artikel']}: EK€{it['ek']} VK€{it['vk']} {it['tage']}T {it['plattform']}" for it in st.session_state.lager])
-                p=f"Lager-Analyse:\n{lt}\nSofort verkaufen, Diese Woche, Bundle-Tipps, Preis-Anpassungen, Note 1-10. Deutsch."
+                # Web sucht aktuelle Preise für alle Artikel
+                artikel_namen=" ".join([it["artikel"] for it in st.session_state.lager[:3]])
+                web_lag=multi_suche(artikel_namen+" Preis Kleinanzeigen eBay "+datetime.now().strftime("%Y"))
+                web_k=f"\n\nAktuelle Web-Marktpreise:\n{web_lag[:400]}" if web_lag else ""
+                if web_lag: st.success("✅ Aktuelle Marktpreise geladen!")
+                p=(f"Lager-Analyse:\n{lt}{web_k}\n"
+                   f"Sofort verkaufen, Diese Woche, Bundle-Tipps, "
+                   f"Preis-Anpassungen (Web-Preise beachten!), Note 1-10. Deutsch.")
                 st.markdown(ensemble_ki(p))
     else: st.info("💡 Erst Artikel im Lager eintragen!")
 
