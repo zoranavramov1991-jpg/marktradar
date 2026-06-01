@@ -125,8 +125,17 @@ def ki(prompt, bilder=None):
         return "❌ Kein API-Key! Bitte OPENROUTER_API_KEY in Streamlit Secrets eintragen."
     client = OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
     hdrs = {"HTTP-Referer": "https://marktradar.streamlit.app", "X-Title": "MarktRadar"}
-    vision_modelle = ["google/gemini-1.5-flash","google/gemini-1.5-pro","qwen/qwen-vl-plus",
-                      "meta-llama/llama-3.2-11b-vision-instruct:free","openai/gpt-4o"]
+    vision_modelle = [
+        "google/gemini-3-flash-preview",              # 🥇 Neuestes & bestes Gemini 2026
+        "google/gemini-2.5-flash",                    # 🥈 Mit Thinking-Funktion
+        "google/gemini-2.5-flash-lite",               # 🥉 Ultra-schnell & günstig
+        "anthropic/claude-sonnet-4-6",                # 💎 Beste für Antiquitäten & Stempel
+        "google/gemini-1.5-flash",                    # Bewährt & zuverlässig
+        "google/gemini-1.5-pro",                      # Bewährt Pro
+        "qwen/qwen-vl-plus",                          # Alibaba Vision
+        "meta-llama/llama-3.2-11b-vision-instruct:free",  # Kostenlos!
+        "openai/gpt-4o",                              # Letzter Ausweg
+    ]
     verweigerungen = ["tut mir leid","kann nicht helfen","cannot assist","can't help","i'm sorry","unable to"]
     try:
         if bilder and len(bilder) > 0:
@@ -307,9 +316,10 @@ with T[0]:
                     st.write("🔭 Alle Vision-KIs scannen Fotos vor...")
                     vorscans = []
                     vision_modelle_scan = [
-                        ("google/gemini-1.5-flash", "Gemini Flash"),
-                        ("google/gemini-1.5-pro",   "Gemini Pro"),
-                        ("openai/gpt-4o",            "GPT-4o"),
+                        ("google/gemini-3-flash-preview",  "Gemini 3 Flash"),
+                        ("google/gemini-2.5-flash",        "Gemini 2.5 Flash"),
+                        ("anthropic/claude-sonnet-4-6",    "Claude Sonnet 4.6"),
+                        ("openai/gpt-4o",                  "GPT-4o"),
                     ]
                     import openai as _oai
                     _client = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
