@@ -1,233 +1,106 @@
+"""
+MarktRadar OS PRO — ULTIMATE EDITION v8.0
+=========================================
+• 9 Vision-Modelle mit Fallback-Kette
+• Ensemble-KI: 3 Experten gleichzeitig + Richter-KI
+• Google + Tavily + You.com Echtzeit-Suche
+• Preis-Ensemble: 3 KIs bewerten Preise gleichzeitig
+• Lern-System: KI lernt aus Ihren Korrekturen
+• 18 Tabs alle mit Ensemble-KI
+"""
 import streamlit as st
-import os, re, base64, urllib.parse, json
+import os, base64, urllib.parse, concurrent.futures
 from datetime import datetime
 import requests
 from openai import OpenAI
+import openai as _oai
 
 st.set_page_config(page_title="⚡ MarktRadar OS PRO", page_icon="⚡",
     layout="wide", initial_sidebar_state="collapsed")
 
-# ── CUSTOM CSS DESIGN ────────────────────────────────────────
-st.markdown("""
-<style>
-.stApp { background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 50%, #f0f9ff 100%); }
-[data-testid="stVerticalBlock"] > div { transition: transform 0.2s ease; }
-.stTabs [data-baseweb="tab-list"] { gap: 6px; background: rgba(255,255,255,0.7); border-radius: 16px; padding: 8px; flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9); backdrop-filter: blur(10px); }
-.stTabs [data-baseweb="tab"] { background: transparent; border-radius: 10px; color: #666; font-size: 13px; font-weight: 600; padding: 7px 14px; border: none; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1); }
-.stTabs [aria-selected="true"] { background: linear-gradient(135deg, #6c47ff 0%, #9b6dff 100%) !important; color: #fff !important; font-weight: 700 !important; box-shadow: 0 4px 15px rgba(108,71,255,0.4) !important; transform: translateY(-1px) scale(1.02) !important; }
-.stTabs [data-baseweb="tab"]:hover { background: rgba(108,71,255,0.1); color: #6c47ff; transform: translateY(-1px); }
-.stTabs [data-baseweb="tab-panel"] { background: rgba(255,255,255,0.6); border-radius: 16px; padding: 1.5rem; border: 0.5px solid rgba(255,255,255,0.9); margin-top: 10px; box-shadow: 0 8px 32px rgba(31,38,135,0.1), inset 0 1px 0 rgba(255,255,255,0.8); backdrop-filter: blur(12px); }
-.stButton > button { background: linear-gradient(135deg, #f5a623 0%, #f7c948 50%, #e8850a 100%) !important; color: #fff !important; font-weight: 700 !important; border: none !important; border-radius: 12px !important; padding: 0.65rem 1.5rem !important; font-size: 14px !important; box-shadow: 0 6px 20px rgba(245,166,35,0.35), inset 0 1px 0 rgba(255,255,255,0.3) !important; transform: perspective(500px) translateZ(0); transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1) !important; }
-.stButton > button:hover { transform: perspective(500px) translateZ(6px) translateY(-2px) !important; box-shadow: 0 10px 28px rgba(245,166,35,0.45) !important; }
-[data-testid="metric-container"] { background: rgba(255,255,255,0.8) !important; border-radius: 16px !important; padding: 1.2rem !important; box-shadow: 0 8px 24px rgba(31,38,135,0.08) !important; }
-[data-testid="metric-container"] [data-testid="stMetricValue"] { color: #6c47ff !important; font-size: 24px !important; font-weight: 800 !important; }
-.stTextInput > div > div > input, .stTextArea > div > div > textarea, .stNumberInput > div > div > input { background: rgba(255,255,255,0.9) !important; border: 1.5px solid rgba(108,71,255,0.15) !important; border-radius: 12px !important; color: #333 !important; }
-.stSelectbox > div > div { background: rgba(255,255,255,0.9) !important; border: 1.5px solid rgba(108,71,255,0.15) !important; border-radius: 12px !important; }
-[data-testid="stFileUploader"] { background: rgba(255,255,255,0.7) !important; border: 2px dashed rgba(108,71,255,0.3) !important; border-radius: 16px !important; }
-.stSlider [data-baseweb="thumb"] { background: linear-gradient(135deg, #6c47ff, #9b6dff) !important; border: 2px solid white !important; }
-.stSlider [data-baseweb="track"] > div:first-child { background: linear-gradient(90deg, #6c47ff, #f5a623) !important; }
-.stRadio label { background: rgba(255,255,255,0.8) !important; border: 1px solid rgba(108,71,255,0.15) !important; border-radius: 10px !important; padding: 6px 14px !important; cursor: pointer !important; transition: all 0.2s !important; }
-.stRadio label:has(input:checked) { background: linear-gradient(135deg, rgba(108,71,255,0.1), rgba(155,109,255,0.1)) !important; border-color: #6c47ff !important; color: #6c47ff !important; }
-.stAlert { border-radius: 12px !important; border: none !important; }
-::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: linear-gradient(#6c47ff, #f5a623); border-radius: 10px; }
-@media (max-width: 768px) { .stTabs [data-baseweb="tab"] { font-size: 11px !important; padding: 5px 8px !important; } }
-</style>
-""", unsafe_allow_html=True)
+# ── CSS ───────────────────────────────────────────────────────
+st.markdown("""<style>
+.stApp{background:linear-gradient(135deg,#f0f4ff 0%,#faf5ff 50%,#f0f9ff 100%)}
+.stTabs [data-baseweb="tab-list"]{gap:6px;background:rgba(255,255,255,0.7);border-radius:16px;padding:8px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,0.08);backdrop-filter:blur(10px)}
+.stTabs [data-baseweb="tab"]{background:transparent;border-radius:10px;color:#666;font-size:13px;font-weight:600;padding:7px 14px;border:none;transition:all 0.25s}
+.stTabs [aria-selected="true"]{background:linear-gradient(135deg,#6c47ff,#9b6dff)!important;color:#fff!important;font-weight:700!important;box-shadow:0 4px 15px rgba(108,71,255,0.4)!important;transform:translateY(-1px) scale(1.02)!important}
+.stTabs [data-baseweb="tab-panel"]{background:rgba(255,255,255,0.6);border-radius:16px;padding:1.5rem;border:0.5px solid rgba(255,255,255,0.9);margin-top:10px;box-shadow:0 8px 32px rgba(31,38,135,0.1);backdrop-filter:blur(12px)}
+.stButton>button{background:linear-gradient(135deg,#f5a623,#f7c948,#e8850a)!important;color:#fff!important;font-weight:700!important;border:none!important;border-radius:12px!important;padding:0.65rem 1.5rem!important;box-shadow:0 6px 20px rgba(245,166,35,0.35),inset 0 1px 0 rgba(255,255,255,0.3)!important;transition:all 0.2s!important}
+.stButton>button:hover{transform:perspective(500px) translateZ(6px) translateY(-2px)!important;box-shadow:0 10px 28px rgba(245,166,35,0.45)!important}
+[data-testid="metric-container"]{background:rgba(255,255,255,0.8)!important;border-radius:16px!important;padding:1.2rem!important;box-shadow:0 8px 24px rgba(31,38,135,0.08)!important}
+[data-testid="metric-container"] [data-testid="stMetricValue"]{color:#6c47ff!important;font-size:24px!important;font-weight:800!important}
+.stTextInput>div>div>input,.stTextArea>div>div>textarea,.stNumberInput>div>div>input{background:rgba(255,255,255,0.9)!important;border:1.5px solid rgba(108,71,255,0.15)!important;border-radius:12px!important}
+.stSelectbox>div>div{background:rgba(255,255,255,0.9)!important;border:1.5px solid rgba(108,71,255,0.15)!important;border-radius:12px!important}
+[data-testid="stFileUploader"]{background:rgba(255,255,255,0.7)!important;border:2px dashed rgba(108,71,255,0.3)!important;border-radius:16px!important}
+.stSlider [data-baseweb="thumb"]{background:linear-gradient(135deg,#6c47ff,#9b6dff)!important;border:2px solid white!important}
+.stSlider [data-baseweb="track"]>div:first-child{background:linear-gradient(90deg,#6c47ff,#f5a623)!important}
+.stRadio label{background:rgba(255,255,255,0.8)!important;border:1px solid rgba(108,71,255,0.15)!important;border-radius:10px!important;padding:6px 14px!important;cursor:pointer!important;transition:all 0.2s!important}
+.stRadio label:has(input:checked){background:linear-gradient(135deg,rgba(108,71,255,0.1),rgba(155,109,255,0.1))!important;border-color:#6c47ff!important;color:#6c47ff!important}
+.stAlert{border-radius:12px!important;border:none!important}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:linear-gradient(#6c47ff,#f5a623);border-radius:10px}
+@media(max-width:768px){.stTabs [data-baseweb="tab"]{font-size:11px!important;padding:5px 8px!important}}
+</style>""", unsafe_allow_html=True)
 
 # ── SECRETS ──────────────────────────────────────────────────
 def secret(k):
     try: return st.secrets[k]
     except: return os.environ.get(k,"")
 
-OR_KEY      = secret("OPENROUTER_API_KEY")
-TAVILY_KEY  = secret("TAVILY_API_KEY")
-YOU_KEY     = secret("YOU_API_KEY")
-GOOGLE_KEY  = secret("GOOGLE_API_KEY")
-GOOGLE_CSE  = secret("GOOGLE_CSE_ID")
-
-# ── WEB-SUCHE (TAVILY + YOU.COM) ─────────────────────────────
-def web_suche(query, max_results=5):
-    """Echte Websuche: Tavily zuerst, You.com als Fallback"""
-    # 1. TAVILY
-    if TAVILY_KEY:
-        try:
-            r = requests.post(
-                "https://api.tavily.com/search",
-                json={"api_key": TAVILY_KEY, "query": query,
-                      "search_depth": "advanced", "max_results": max_results,
-                      "include_answer": True},
-                timeout=15
-            )
-            data = r.json()
-            teile = []
-            if data.get("answer"):
-                teile.append("📊 ZUSAMMENFASSUNG: " + str(data["answer"]))
-            if data.get("results"):
-                teile.append("🔗 QUELLEN:")
-                for res in data["results"][:3]:
-                    titel   = str(res.get("title", ""))
-                    inhalt  = str(res.get("content", ""))[:200]
-                    teile.append("• " + titel + ": " + inhalt)
-            if teile:
-                return "\n".join(teile)
-        except Exception:
-            pass
-    # 2. YOU.COM Fallback
-    if YOU_KEY:
-        try:
-            r = requests.get(
-                "https://api.ydc-index.io/search",
-                headers={"X-API-Key": YOU_KEY},
-                params={"query": query, "num_web_results": max_results},
-                timeout=15
-            )
-            data = r.json()
-            if data.get("hits"):
-                teile = ["🔍 SUCHERGEBNISSE:"]
-                for hit in data["hits"][:3]:
-                    snippets = hit.get("snippets", [])
-                    titel    = str(hit.get("title", ""))
-                    if snippets:
-                        teile.append("• " + titel + ": " + str(snippets[0])[:200])
-                if len(teile) > 1:
-                    return "\n".join(teile)
-        except Exception:
-            pass
-    return None
-
-def google_suche(query, num=5):
-    """Echte Google-Suche über Custom Search API"""
-    if not GOOGLE_KEY or not GOOGLE_CSE:
-        return None
-    try:
-        r = requests.get(
-            "https://www.googleapis.com/customsearch/v1",
-            params={
-                "key": GOOGLE_KEY,
-                "cx":  GOOGLE_CSE,
-                "q":   query,
-                "num": num,
-                "hl":  "de",
-                "gl":  "de",
-            },
-            timeout=10
-        )
-        data = r.json()
-        if data.get("items"):
-            teile = ["🔍 GOOGLE-ERGEBNISSE:"]
-            for item in data["items"][:4]:
-                titel   = str(item.get("title", ""))
-                snippet = str(item.get("snippet", ""))[:200]
-                link    = str(item.get("link", ""))
-                teile.append("• " + titel + "\n  " + snippet + "\n  🔗 " + link)
-            return "\n\n".join(teile)
-    except Exception:
-        pass
-    return None
-
-
-def ensemble_ki(prompt, bilder=None, modelle=None, max_tokens=1000):
-    """
-    Ensemble-KI: Mehrere Modelle arbeiten gleichzeitig.
-    Richter-KI fasst alle Antworten zu EINER perfekten Antwort zusammen.
-    """
-    import concurrent.futures
-    import openai as _oai
-
-    if modelle is None:
-        if bilder:
-            modelle = [
-                ("google/gemini-3-flash-preview", "Gemini 3"),
-                ("google/gemini-2.5-flash",        "Gemini 2.5"),
-                ("anthropic/claude-sonnet-4-6",    "Claude Sonnet"),
-            ]
-        else:
-            modelle = [
-                ("openai/gpt-4o-mini",             "GPT-4o-mini"),
-                ("google/gemini-2.5-flash-lite",   "Gemini Lite"),
-                ("google/gemini-3-flash-preview",  "Gemini 3"),
-            ]
-
-    def ein_experte(model_info):
-        model_id, model_name = model_info
-        try:
-            _client = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
-            hdrs = {"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
-            if bilder:
-                bilder_k = [komprimiere(b) for b in bilder[:3]]
-                inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_k]
-                inhalt.append({"type":"text","text":prompt})
-                msgs = [{"role":"user","content":inhalt}]
-            else:
-                msgs = [{"role":"user","content":prompt}]
-            r = _client.chat.completions.create(
-                model=model_id, messages=msgs,
-                max_tokens=max_tokens, extra_headers=hdrs
-            )
-            antwort = r.choices[0].message.content
-            if antwort and len(antwort) > 30:
-                return (model_name, antwort)
-        except Exception:
-            pass
-        return (model_name, None)
-
-    # Alle gleichzeitig starten
-    antworten = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(modelle)) as ex:
-        futures = {ex.submit(ein_experte, m): m for m in modelle}
-        for future in concurrent.futures.as_completed(futures):
-            name, antwort = future.result()
-            if antwort:
-                antworten[name] = antwort
-
-    if not antworten:
-        # Fallback auf einzelne KI
-        return ki(prompt, bilder=bilder)
-
-    if len(antworten) == 1:
-        return list(antworten.values())[0]
-
-    # Richter-KI fasst zusammen
-    experten_text = "\n\n".join([f"[{n}]:\n{a[:600]}" for n,a in antworten.items()])
-    richter = ki(
-        f"Du bist Chef-Experte. {len(antworten)} Experten haben geantwortet.\n"
-        f"Erstelle EINE perfekte finale Antwort auf Deutsch.\n"
-        f"Nimm das Beste aus jeder Antwort. Sei präzise und vollständig.\n"
-        f"Experten-Antworten:\n{experten_text}\n\n"
-        f"FINALE ANTWORT:"
-    )
-    return richter
-
-
-def suche_preise(artikel):
-    """Suche aktuelle Marktpreise — Google zuerst, dann Tavily, dann You.com"""
-    query = artikel + " Preis kaufen Deutschland Kleinanzeigen eBay Vinted " + datetime.now().strftime("%Y")
-
-    # 1. Google (beste Ergebnisse)
-    r = google_suche(query)
-    if r: return "📊 GOOGLE: " + r
-
-    # 2. Tavily
-    r = web_suche(query)
-    if r: return r
-
-    return None
+OR_KEY     = secret("OPENROUTER_API_KEY")
+TAVILY_KEY = secret("TAVILY_API_KEY")
+YOU_KEY    = secret("YOU_API_KEY")
+GOOGLE_KEY = secret("GOOGLE_API_KEY")
+GOOGLE_CSE = secret("GOOGLE_CSE_ID")
 
 # ── SESSION STATE ─────────────────────────────────────────────
 for k,v in {
     "lager":[],"sim":[],"gwlog":[],"fotos":[],"fcnt":0,
-    "feedback_log":[],"analyse_history":[],"mein_wissen":[],"preis_korrekturen":{},
-    "chat_history":[],"trends_auto":"",
+    "feedback_log":[],"analyse_history":[],"mein_wissen":[],
+    "preis_korrekturen":{},"chat_history":[],"vorabinfo":"",
 }.items():
     if k not in st.session_state: st.session_state[k]=v
 
-# ── KI ENGINE ─────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# KI ENGINE — ULTIMATE
+# ══════════════════════════════════════════════════════════════
+
+# Vision-Fallback-Kette (9 Modelle)
+VISION_KETTE = [
+    "google/gemini-3-flash-preview",
+    "google/gemini-2.5-flash",
+    "google/gemini-2.5-flash-lite",
+    "anthropic/claude-sonnet-4-6",
+    "google/gemini-1.5-flash",
+    "google/gemini-1.5-pro",
+    "qwen/qwen-vl-plus",
+    "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "openai/gpt-4o",
+]
+
+# Ensemble-Modelle (3 beste gleichzeitig)
+ENSEMBLE_VISION = [
+    ("google/gemini-3-flash-preview", "🥇 Gemini 3 Flash"),
+    ("google/gemini-2.5-flash",       "🥈 Gemini 2.5 Flash"),
+    ("anthropic/claude-sonnet-4-6",   "🥉 Claude Sonnet"),
+]
+ENSEMBLE_TEXT = [
+    ("google/gemini-3-flash-preview", "🥇 Gemini 3"),
+    ("google/gemini-2.5-flash",       "🥈 Gemini 2.5"),
+    ("openai/gpt-4o-mini",            "🥉 GPT-4o-mini"),
+]
+
+def _client():
+    return OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+
+def _hdrs():
+    return {"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
+
 def komprimiere(b64):
     try:
         from PIL import Image
         import io as _io
         img = Image.open(_io.BytesIO(base64.b64decode(b64)))
-        if img.mode not in ("RGB",): img = img.convert("RGB")
+        if img.mode != "RGB": img = img.convert("RGB")
         img.thumbnail((1024,1024), Image.Resampling.LANCZOS)
         buf = _io.BytesIO()
         img.save(buf, format="JPEG", quality=80)
@@ -235,45 +108,182 @@ def komprimiere(b64):
     except: return b64
 
 def ki(prompt, bilder=None):
-    if not OR_KEY:
-        return "❌ Kein API-Key! Bitte OPENROUTER_API_KEY in Streamlit Secrets eintragen."
-    client = OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
-    hdrs = {"HTTP-Referer": "https://marktradar.streamlit.app", "X-Title": "MarktRadar"}
-    vision_modelle = [
-        "google/gemini-3-flash-preview",              # 🥇 Neuestes & bestes Gemini 2026
-        "google/gemini-2.5-flash",                    # 🥈 Mit Thinking-Funktion
-        "google/gemini-2.5-flash-lite",               # 🥉 Ultra-schnell & günstig
-        "anthropic/claude-sonnet-4-6",                # 💎 Beste für Antiquitäten & Stempel
-        "google/gemini-1.5-flash",                    # Bewährt & zuverlässig
-        "google/gemini-1.5-pro",                      # Bewährt Pro
-        "qwen/qwen-vl-plus",                          # Alibaba Vision
-        "meta-llama/llama-3.2-11b-vision-instruct:free",  # Kostenlos!
-        "openai/gpt-4o",                              # Letzter Ausweg
-    ]
-    verweigerungen = ["tut mir leid","kann nicht helfen","cannot assist","can't help","i'm sorry","unable to"]
+    """Einzelne KI mit Fallback-Kette"""
+    if not OR_KEY: return "❌ Kein API-Key!"
+    c = _client()
+    verweigerungen = ["tut mir leid","kann nicht helfen","cannot assist","i'm sorry"]
     try:
-        if bilder and len(bilder) > 0:
+        if bilder:
             bilder_k = [komprimiere(b) for b in bilder[:4]]
-            def mache_msgs(bl):
-                inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bl]
-                inhalt.append({"type":"text","text":prompt})
-                return [{"role":"user","content":inhalt}]
-            for model in vision_modelle:
+            for model in VISION_KETTE:
                 try:
-                    r = client.chat.completions.create(model=model, messages=mache_msgs(bilder_k), max_tokens=2500, extra_headers=hdrs)
-                    antwort = r.choices[0].message.content
-                    hat_preise = "eur" in antwort.lower() or "€" in antwort
-                    ist_verw = any(v in antwort.lower() for v in verweigerungen)
-                    if hat_preise or (not ist_verw and len(antwort) > 200): return antwort
-                except Exception as e:
-                    continue
-            return ki(prompt)
+                    inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_k]
+                    inhalt.append({"type":"text","text":prompt})
+                    r = c.chat.completions.create(model=model,
+                        messages=[{"role":"user","content":inhalt}],
+                        max_tokens=2500, extra_headers=_hdrs())
+                    a = r.choices[0].message.content
+                    if a and ("€" in a or "eur" in a.lower() or len(a)>200) and not any(v in a.lower() for v in verweigerungen):
+                        return a
+                except: continue
+            return "❌ Alle Vision-Modelle nicht verfügbar"
         else:
-            r = client.chat.completions.create(model="openai/gpt-4o-mini",
-                messages=[{"role":"user","content":prompt}], max_tokens=2500, extra_headers=hdrs)
+            r = c.chat.completions.create(model="openai/gpt-4o-mini",
+                messages=[{"role":"user","content":prompt}],
+                max_tokens=2500, extra_headers=_hdrs())
             return r.choices[0].message.content
     except Exception as e:
         return f"❌ Fehler: {str(e)}"
+
+def ensemble_ki(prompt, bilder=None, zeige_status=False, max_tokens=1200):
+    """
+    ULTIMATE ENSEMBLE:
+    3 Top-Modelle arbeiten GLEICHZEITIG.
+    Richter-KI (GPT-4o) fasst zu EINER perfekten Antwort zusammen.
+    """
+    if not OR_KEY: return ki(prompt, bilder=bilder)
+
+    modelle = ENSEMBLE_VISION if bilder else ENSEMBLE_TEXT
+
+    def ein_experte(info):
+        model_id, name = info
+        try:
+            c2 = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+            if bilder:
+                bk = [komprimiere(b) for b in bilder[:3]]
+                inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
+                inhalt.append({"type":"text","text":prompt})
+                msgs = [{"role":"user","content":inhalt}]
+            else:
+                msgs = [{"role":"user","content":prompt}]
+            r = c2.chat.completions.create(model=model_id, messages=msgs,
+                max_tokens=max_tokens, extra_headers=_hdrs())
+            a = r.choices[0].message.content
+            if a and len(a) > 30: return (name, a)
+        except: pass
+        return (name, None)
+
+    # Alle 3 gleichzeitig!
+    antworten = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+        futures = {ex.submit(ein_experte, m): m for m in modelle}
+        for f in concurrent.futures.as_completed(futures):
+            name, a = f.result()
+            if a: antworten[name] = a
+
+    if not antworten: return ki(prompt, bilder=bilder)
+    if len(antworten) == 1: return list(antworten.values())[0]
+
+    # Richter-KI fasst zusammen
+    experten_text = "\n\n".join([f"[{n}]:\n{a[:700]}" for n,a in antworten.items()])
+    return ki(
+        f"Du bist Chef-Experte. {len(antworten)} Experten haben analysiert.\n"
+        f"Erstelle EINE perfekte, vollständige finale Antwort auf Deutsch.\n"
+        f"Nimm das Beste + Präziseste aus jeder Antwort.\n"
+        f"Bei Preis-Unterschieden: nimm den Durchschnitt.\n"
+        f"Experten-Analysen:\n{experten_text}\n\nFINALE ANTWORT:"
+    )
+
+# ── WEB-SUCHE ─────────────────────────────────────────────────
+def google_suche(query):
+    if not GOOGLE_KEY or not GOOGLE_CSE: return None
+    try:
+        r = requests.get("https://www.googleapis.com/customsearch/v1",
+            params={"key":GOOGLE_KEY,"cx":GOOGLE_CSE,"q":query,"num":5,"hl":"de","gl":"de"},
+            timeout=10)
+        data = r.json()
+        if data.get("items"):
+            teile = ["🔍 GOOGLE:"]
+            for item in data["items"][:4]:
+                teile.append("• " + item.get("title","") + ": " + item.get("snippet","")[:150])
+            return "\n".join(teile)
+    except: pass
+    return None
+
+def tavily_suche(query):
+    if not TAVILY_KEY: return None
+    try:
+        r = requests.post("https://api.tavily.com/search",
+            json={"api_key":TAVILY_KEY,"query":query,"search_depth":"advanced",
+                  "max_results":5,"include_answer":True},
+            timeout=15)
+        data = r.json()
+        teile = []
+        if data.get("answer"): teile.append("📊 " + str(data["answer"]))
+        if data.get("results"):
+            teile.append("🔗 QUELLEN:")
+            for res in data["results"][:3]:
+                teile.append("• " + res.get("title","") + ": " + res.get("content","")[:150])
+        return "\n".join(teile) if teile else None
+    except: pass
+    return None
+
+def you_suche(query):
+    if not YOU_KEY: return None
+    try:
+        r = requests.get("https://api.ydc-index.io/search",
+            headers={"X-API-Key":YOU_KEY},
+            params={"query":query,"num_web_results":5}, timeout=15)
+        data = r.json()
+        if data.get("hits"):
+            teile = ["🔍 YOU.COM:"]
+            for hit in data["hits"][:3]:
+                s = hit.get("snippets",[])
+                if s: teile.append("• " + hit.get("title","") + ": " + str(s[0])[:150])
+            return "\n".join(teile) if len(teile)>1 else None
+    except: pass
+    return None
+
+def multi_suche(query):
+    """Google + Tavily + You.com gleichzeitig"""
+    ergebnisse = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+        fg = ex.submit(google_suche, query)
+        ft = ex.submit(tavily_suche, query)
+        fy = ex.submit(you_suche, query)
+        if fg.result(): ergebnisse["Google"] = fg.result()
+        if ft.result(): ergebnisse["Tavily"] = ft.result()
+        if fy.result(): ergebnisse["You.com"] = fy.result()
+    if not ergebnisse: return None
+    return "\n\n".join([f"=={k}==\n{v}" for k,v in ergebnisse.items()])
+
+def preis_ensemble(artikel, zustand, web_daten):
+    """3 KIs bewerten Preise gleichzeitig → Konsens"""
+    if not web_daten: return None
+    prompt = (
+        f"Preisexperte Secondhand Deutschland.\n"
+        f"Artikel: {artikel} | Zustand: {zustand}\n"
+        f"Web-Daten:\n{web_daten[:1000]}\n\n"
+        f"Bewerte: eBay €X | Kleinanzeigen €X | Flohmarkt €X | Empfehlung €X | Trend ↑↓→"
+    )
+    modelle_p = [
+        ("google/gemini-3-flash-preview", "G3"),
+        ("google/gemini-2.5-flash",       "G25"),
+        ("openai/gpt-4o-mini",            "GPT"),
+    ]
+    def p_experte(info):
+        mid, name = info
+        try:
+            c2 = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+            r = c2.chat.completions.create(model=mid,
+                messages=[{"role":"user","content":prompt}],
+                max_tokens=200, extra_headers=_hdrs())
+            a = r.choices[0].message.content
+            if a and "€" in a: return (name, a)
+        except: pass
+        return (name, None)
+
+    pw = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+        futures = {ex.submit(p_experte, m): m for m in modelle_p}
+        for f in concurrent.futures.as_completed(futures):
+            n, a = f.result()
+            if a: pw[n] = a
+
+    if not pw: return None
+    if len(pw) == 1: return list(pw.values())[0]
+    pt = "\n".join([f"[{n}]: {a}" for n,a in pw.items()])
+    return ki(f"3 Preisexperten:\n{pt}\nErstelle Preis-Konsens (eine Zeile): eBay €X | KA €X | FM €X | Best: €X | Trend: ↑/↓/→")
 
 # ── URL LESEN ─────────────────────────────────────────────────
 def lies_url(url):
@@ -289,413 +299,255 @@ def lies_url(url):
 
 # ── HEADER ────────────────────────────────────────────────────
 st.markdown("""
-<div style='background:rgba(255,255,255,0.7);padding:24px;border-radius:20px;margin-bottom:20px;text-align:center;
-border:0.5px solid rgba(255,255,255,0.95);box-shadow:0 20px 60px rgba(108,71,255,0.12),inset 0 1px 0 rgba(255,255,255,1);backdrop-filter:blur(20px);position:relative;overflow:hidden'>
-<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6c47ff,#f5a623,#6c47ff);border-radius:20px 20px 0 0"></div>
+<div style='background:rgba(255,255,255,0.7);padding:24px;border-radius:20px;
+margin-bottom:20px;text-align:center;border:0.5px solid rgba(255,255,255,0.95);
+box-shadow:0 20px 60px rgba(108,71,255,0.12);backdrop-filter:blur(20px);position:relative;overflow:hidden'>
+<div style="position:absolute;top:0;left:0;right:0;height:3px;
+background:linear-gradient(90deg,#6c47ff,#f5a623,#6c47ff);border-radius:20px 20px 0 0"></div>
 <div style='font-size:3em;margin-bottom:8px'>⚡</div>
-<h1 style='background:linear-gradient(135deg,#6c47ff,#f5a623);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;font-size:2em;font-weight:900'>MarktRadar OS PRO</h1>
-<p style='color:#888;margin:10px 0 0;font-size:12px;letter-spacing:2px;font-weight:600'>KLEINANZEIGEN &nbsp;·&nbsp; VINTED &nbsp;·&nbsp; FACEBOOK &nbsp;·&nbsp; EBAY &nbsp;·&nbsp; FLOHMÄRKTE</p>
-</div>""", unsafe_allow_html=True)
+<h1 style='background:linear-gradient(135deg,#6c47ff,#f5a623);
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+background-clip:text;margin:0;font-size:2em;font-weight:900'>MarktRadar OS PRO</h1>
+<p style='color:#888;margin:10px 0 0;font-size:12px;letter-spacing:2px;font-weight:600'>
+KLEINANZEIGEN &nbsp;·&nbsp; VINTED &nbsp;·&nbsp; FACEBOOK &nbsp;·&nbsp; EBAY &nbsp;·&nbsp; FLOHMÄRKTE
+</p></div>""", unsafe_allow_html=True)
 
 # ── TABS ──────────────────────────────────────────────────────
 T = st.tabs([
-    "🔍 Analyse","💬 Anschreib-Bot","📦 Lager","📚 OCR Scanner",
+    "🔍 Analyse","💬 Anschreib","📦 Lager","📚 OCR",
     "🔧 Reparatur","📈 Trends","🎭 Verhandlung","📸 Foto-Coach",
-    "🗺️ Flohmärkte","🔬 Marken-Scanner","📅 Timing","✨ Anzeigen-KI",
-    "🤖 Reselling-Chat","🔎 Konkurrenz","📊 Business-Coach",
-    "📦 Lager-KI","📰 Markt-News","✍️ Profi-Text",
+    "🗺️ Flohmärkte","🔬 Marken","📅 Timing","✨ Anzeigen-KI",
+    "🤖 Chat","🔎 Konkurrenz","📊 Business","📦 Lager-KI",
+    "📰 Markt-News","✍️ Profi-Text",
 ])
 
 # ════════════════════════════════════════════════════════════
-# TAB 1 — ANALYSE
+# TAB 1 — ANALYSE (ULTIMATE)
 # ════════════════════════════════════════════════════════════
 with T[0]:
-    st.header("🔍 Artikel-Analyse")
-    st.markdown("Fotos + Links werden **vollständig** analysiert — jeder Artikel einzeln mit Preisen!")
+    st.header("🔍 Artikel-Analyse — Ultimate Edition")
+    st.markdown("**9 Vision-KIs · 3 Experten gleichzeitig · Google+Tavily+You.com · Richter-KI**")
 
-    typ = st.radio("Was analysieren?",["📸 Foto","🔗 Link","📸 + 🔗 Beides"], horizontal=True, key="a_typ")
+    typ = st.radio("Was analysieren?",["📸 Foto","🔗 Link","📸 + 🔗 Beides"],horizontal=True,key="a_typ")
     url_text = ""
     url_inp  = ""
 
     if "Foto" in typ:
         st.markdown("##### 📷 Fotos hochladen")
-        st.caption("📱 Handy: Ein Foto auswählen → 'Foto hinzufügen' drücken → wiederholen für mehr")
-
-        # Einzelnes Foto hochladen (zuverlässiger auf Handy!)
-        neu_foto = st.file_uploader(
-            "📷 Foto auswählen",
-            type=["jpg","jpeg","png","webp"],
-            accept_multiple_files=False,
-            key=f"fu_{st.session_state.fcnt}"
-        )
-
-        c1, c2 = st.columns(2)
+        st.caption("📱 Foto auswählen → 'Foto hinzufügen' → wiederholen für mehr")
+        neu_foto = st.file_uploader("Foto auswählen",type=["jpg","jpeg","png","webp"],
+            accept_multiple_files=False, key=f"fu_{st.session_state.fcnt}")
+        c1,c2 = st.columns(2)
         with c1:
-            if st.button("➕ Foto hinzufügen", type="primary", use_container_width=True, key="foto_add"):
-                if neu_foto is not None:
+            if st.button("➕ Foto hinzufügen",type="primary",use_container_width=True,key="foto_add"):
+                if neu_foto:
                     neu_foto.seek(0)
                     b64 = base64.b64encode(neu_foto.read()).decode()
                     if b64 not in st.session_state.fotos:
                         st.session_state.fotos.append(b64)
-                        st.session_state.fcnt += 1
-                        st.rerun()
-                else:
-                    st.warning("⚠️ Zuerst Foto auswählen!")
+                    st.session_state.fcnt += 1
+                    st.rerun()
+                else: st.warning("Zuerst Foto auswählen!")
         with c2:
-            if st.button("🗑️ Alle löschen", use_container_width=True, key="foto_clear"):
-                st.session_state.fotos = []
-                st.session_state.fcnt += 1
-                st.rerun()
-
-        # Gespeicherte Fotos anzeigen
+            if st.button("🗑️ Alle löschen",use_container_width=True,key="foto_clear"):
+                st.session_state.fotos=[]; st.session_state.fcnt+=1; st.rerun()
         n = len(st.session_state.fotos)
         if n > 0:
-            st.success(f"✅ {n} Foto(s) gespeichert und bereit!")
-            cols = st.columns(min(n, 3))
-            for i, b64 in enumerate(st.session_state.fotos):
-                with cols[i % 3]:
-                    st.image(base64.b64decode(b64), caption=f"Foto {i+1}", use_column_width=True)
+            st.success(f"✅ {n} Foto(s) bereit!")
+            cols = st.columns(min(n,3))
+            for i,b64 in enumerate(st.session_state.fotos):
+                with cols[i%3]: st.image(base64.b64decode(b64),caption=f"Foto {i+1}",use_column_width=True)
         else:
-            st.info("📷 Noch keine Fotos. Foto auswählen → 'Foto hinzufügen' drücken!")
+            st.info("📷 Foto auswählen → 'Foto hinzufügen' drücken!")
 
     if "Link" in typ:
-        url_inp = st.text_input("🔗 Link eingeben",
-            placeholder="https://luedtke-auktion-online.de/... oder Kleinanzeigen/Vinted-Link", key="a_url")
+        url_inp = st.text_input("🔗 Link",placeholder="https://luedtke-auktion-online.de/...",key="a_url")
 
     st.markdown("---")
-
-    # ── OPTIONEN ──
-    col1, col2 = st.columns([2,1])
+    col1,col2 = st.columns([2,1])
     with col1:
-        beschr = st.text_area("📝 Eigene Beschreibung (optional)",
-            placeholder="z.B. 'Kaffeeservice 6-teilig, kleiner Chip am Rand'",
-            height=70, key="a_beschr")
+        beschr = st.text_area("📝 Beschreibung (optional)",height=70,key="a_beschr")
     with col2:
-        # ── GEBRAUCHSSPUREN SLIDER ──
         st.markdown("**🔍 Gebrauchsspuren**")
-        gebrauch = st.slider("", 1, 100, 15, 5, key="a_gebrauch",
-            help="1 = Keine Spuren | 50 = Deutlich gebraucht | 100 = Sehr stark")
-        if   gebrauch <= 20: st.success(f"🟢 {gebrauch}% — Kaum Spuren")
-        elif gebrauch <= 50: st.warning(f"🟡 {gebrauch}% — Gebraucht")
-        elif gebrauch <= 80: st.error(f"🔴 {gebrauch}% — Stark gebraucht")
-        else:                 st.error(f"⛔ {gebrauch}% — Sehr stark")
+        gebrauch = st.slider("",1,100,15,5,key="a_gebrauch")
+        if   gebrauch<=20: st.success(f"🟢 {gebrauch}% Kaum Spuren")
+        elif gebrauch<=50: st.warning(f"🟡 {gebrauch}% Gebraucht")
+        elif gebrauch<=80: st.error(f"🔴 {gebrauch}% Stark gebraucht")
+        else:               st.error(f"⛔ {gebrauch}% Sehr stark")
+        st.markdown("**🔧 Defekt?**")
+        defekt_ja = st.radio("",["❓ Weiß nicht","✅ Nein","❌ Ja — defekt"],key="a_defekt_radio")
 
-        # ── DEFEKT RADIO ──
-        st.markdown("**🔧 Defekt vorhanden?**")
-        defekt_ja = st.radio("", ["❓ Weiß nicht", "✅ Nein — funktioniert", "❌ Ja — defekt"],
-            key="a_defekt_radio")
+    hat_fotos = len(st.session_state.fotos) > 0
+    hat_url   = bool(url_inp.strip())
 
-    hat_fotos  = len(st.session_state.fotos) > 0
-    hat_url    = bool(url_inp.strip())
-    hat_beschr = bool(beschr.strip())
-
-    if st.button("🚀 VOLLANALYSE STARTEN", type="primary", use_container_width=True, key="a_start"):
-        if not (hat_fotos or hat_url or hat_beschr):
-            st.warning("⚠️ Bitte Foto hochladen, Link eingeben oder Artikel beschreiben!")
+    if st.button("🚀 ULTIMATE ANALYSE STARTEN",type="primary",use_container_width=True,key="a_start"):
+        if not (hat_fotos or hat_url or beschr.strip()):
+            st.warning("⚠️ Bitte Foto hochladen, Link eingeben oder beschreiben!")
         else:
-            # Zustand aufbereiten
-            if   gebrauch <= 20: gebrauch_beschr = f"Kaum Gebrauchsspuren ({gebrauch}%)"
-            elif gebrauch <= 50: gebrauch_beschr = f"Sichtbare Gebrauchsspuren ({gebrauch}%)"
-            elif gebrauch <= 80: gebrauch_beschr = f"Starke Gebrauchsspuren ({gebrauch}%)"
-            else:                gebrauch_beschr = f"Sehr starke Gebrauchsspuren ({gebrauch}%)"
+            if   gebrauch<=20: g_beschr=f"Kaum Gebrauchsspuren ({gebrauch}%)"
+            elif gebrauch<=50: g_beschr=f"Sichtbare Gebrauchsspuren ({gebrauch}%)"
+            elif gebrauch<=80: g_beschr=f"Starke Gebrauchsspuren ({gebrauch}%)"
+            else:               g_beschr=f"Sehr starke Gebrauchsspuren ({gebrauch}%)"
+            if "Nein" in defekt_ja: d_beschr="Kein Defekt"
+            elif "Ja"  in defekt_ja: d_beschr="DEFEKT!"
+            else:                    d_beschr="Defekt unbekannt"
 
-            if "Nein"  in defekt_ja: defekt_beschr = "Kein Defekt — funktioniert einwandfrei"
-            elif "Ja"  in defekt_ja: defekt_beschr = "DEFEKT — funktioniert nicht!"
-            else:                     defekt_beschr = "Defekt unbekannt — bitte prüfen"
-
-            with st.status("📡 Stufe 1: Daten sammeln & KI-Voranalyse...", expanded=True):
+            # ── STUFE 1: Daten + Vorab-KI ──
+            with st.status("📡 Stufe 1: Daten sammeln + KI-Vorab-Scan...",expanded=True):
                 if hat_url:
                     url_text = lies_url(url_inp)
-                    if url_text.startswith("[URL"):
-                        st.warning("⚠️ URL nicht erreichbar")
+                    if url_text.startswith("[URL"): st.warning("⚠️ URL nicht erreichbar")
                     else:
                         st.success(f"✅ {len(url_text)} Zeichen ausgelesen")
-                        # KI + Google analysieren URL-Inhalt
-                        st.write("🤖 KI + Google analysieren...")
-                        url_analyse = ki(
-                            "Du bist Experte für Secondhand und Reselling in Deutschland. "
-                            "Lies diesen Webseiten-Inhalt und extrahiere: "
-                            "1. Artikel-Name und Beschreibung "
-                            "2. Genannte Preise "
-                            "3. Zustand "
-                            "4. Besonderheiten "
-                            "Auf Deutsch, kurz und präzise:\n\n" + url_text[:3000]
-                        )
-                        # Google sucht zusätzliche Infos zum Artikel
-                        artikel_name = url_analyse.split("\n")[0][:50] if url_analyse else ""
-                        if artikel_name:
-                            google_infos = google_suche(artikel_name + " Wert Preis Deutschland")
-                            if google_infos:
-                                url_analyse += "\n\nGOOGLE-ZUSATZINFOS:\n" + google_infos[:500]
-                        st.info("📄 " + url_analyse)
-                        url_text = url_text + "\n\nKI-VORANALYSE DER WEBSEITE:\n" + url_analyse
+                        url_ki = ki("Secondhand-Experte. Extrahiere: Artikel, Preis, Zustand. Kurz Deutsch:\n"+url_text[:2000])
+                        st.info("📄 "+url_ki)
+                        # Google sucht zusätzlich
+                        artikel_name = url_ki.split("\n")[0][:40]
+                        g = google_suche(artikel_name+" Wert Preis")
+                        if g: url_text += "\nGOOGLE:\n"+g[:300]
 
                 if hat_fotos:
                     st.success(f"✅ {len(st.session_state.fotos)} Foto(s) bereit")
-                    # Alle Vision-Modelle scannen die Fotos vor
-                    st.write("🔭 Alle Vision-KIs scannen Fotos vor...")
-                    vorscans = []
-                    vision_modelle_scan = [
-                        ("google/gemini-3-flash-preview",  "Gemini 3 Flash"),
-                        ("google/gemini-2.5-flash",        "Gemini 2.5 Flash"),
-                        ("anthropic/claude-sonnet-4-6",    "Claude Sonnet 4.6"),
-                        ("openai/gpt-4o",                  "GPT-4o"),
+                    st.write("🔭 4 Vision-KIs scannen gleichzeitig vor...")
+                    scan_modelle = [
+                        ("google/gemini-3-flash-preview","Gemini 3"),
+                        ("google/gemini-2.5-flash","Gemini 2.5"),
+                        ("anthropic/claude-sonnet-4-6","Claude Sonnet"),
+                        ("openai/gpt-4o","GPT-4o"),
                     ]
-                    import openai as _oai
-                    _client = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
-                    for model_id, model_name in vision_modelle_scan:
+                    def vorab_scan(info):
+                        mid, name = info
                         try:
-                            inhalt = []
-                            for b64 in st.session_state.fotos[:2]:
-                                inhalt.append({"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{komprimiere(b64)}"}})
-                            inhalt.append({"type":"text","text":"Was siehst du? Beschreibe kurz alle Artikel, Marken und besondere Merkmale. Auf Deutsch."})
-                            r = _client.chat.completions.create(
-                                model=model_id,
+                            c2 = _oai.OpenAI(api_key=OR_KEY,base_url="https://openrouter.ai/api/v1")
+                            bk = [komprimiere(b) for b in st.session_state.fotos[:2]]
+                            inhalt=[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
+                            inhalt.append({"type":"text","text":"Was siehst du? Beschreibe kurz Artikel, Marke, Besonderheiten. Deutsch."})
+                            r = c2.chat.completions.create(model=mid,
                                 messages=[{"role":"user","content":inhalt}],
-                                max_tokens=400,
-                                extra_headers={"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
-                            )
-                            scan = r.choices[0].message.content
-                            if scan and len(scan) > 20:
-                                vorscans.append(f"[{model_name}]: {scan}")
-                                st.write(f"✅ {model_name} bereit")
-                        except Exception:
-                            pass
-                    if vorscans:
-                        vorabinfo = "\n\n".join(vorscans)
-                        st.session_state["vorabinfo"] = vorabinfo
-                        st.success(f"✅ {len(vorscans)} KI-Modelle haben Fotos vorgelesen!")
+                                max_tokens=300, extra_headers=_hdrs())
+                            a = r.choices[0].message.content
+                            if a and len(a)>20: return (name,a)
+                        except: pass
+                        return (name,None)
+                    vorab = {}
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+                        fs={ex.submit(vorab_scan,m):m for m in scan_modelle}
+                        for f in concurrent.futures.as_completed(fs):
+                            n,a=f.result()
+                            if a: vorab[n]=a; st.write(f"✅ {n} bereit!")
+                    if vorab:
+                        st.session_state.vorabinfo="\n\n".join([f"[{n}]: {a}" for n,a in vorab.items()])
+                        st.success(f"✅ {len(vorab)} KIs haben Fotos vorgelesen!")
 
-            with st.status("🔬 Stufe 2: Experten-Ensemble analysiert...", expanded=True):
-                # Vorabinfo aus Stufe 1
-                vorabinfo = st.session_state.get("vorabinfo", "")
-                vorab_kontext = ("\n\nVORAB-SCAN:\n" + vorabinfo) if vorabinfo else ""
-
-                # Lern-Kontext
-                lern = ""
+            # ── STUFE 2: ENSEMBLE HAUPT-ANALYSE ──
+            with st.status("🔬 Stufe 2: 3 Experten-KIs analysieren gleichzeitig...",expanded=True):
+                vorab_k=("\n\nVORAB:\n"+st.session_state.vorabinfo) if st.session_state.vorabinfo else ""
+                lern=""
                 if st.session_state.mein_wissen:
-                    lern += "\n\nMein Wissen:\n" + "\n".join([f"- {w}" for w in st.session_state.mein_wissen[-5:]])
+                    lern+="\n\nMein Wissen:\n"+"\n".join([f"- {w}" for w in st.session_state.mein_wissen[-5:]])
                 if st.session_state.preis_korrekturen:
-                    lern += "\n\nEchte Preise:\n" + "\n".join([f"- {k}: €{v}" for k,v in list(st.session_state.preis_korrekturen.items())[-5:]])
+                    lern+="\n\nEchte Preise:\n"+"\n".join([f"- {k}: €{v}" for k,v in list(st.session_state.preis_korrekturen.items())[-5:]])
+                extra=""
+                if beschr.strip(): extra+=f" Händler: {beschr}."
+                if url_text and not url_text.startswith("[URL"): extra+=f"\n\nWebseite:\n{url_text[:1500]}"
 
-                extra = ""
-                if beschr.strip(): extra += f" Händler: {beschr}."
-                if url_text and not url_text.startswith("[URL"): extra += f"\n\nWebseite:\n{url_text[:1500]}"
-
-                # ── ENSEMBLE PROMPT ──────────────────────────────
-                ensemble_prompt = (
-                    f"Ich bin Händler auf deutschen Flohmärkten (Kleinanzeigen, Vinted, Facebook, eBay).\n"
-                    f"Gebrauchsspuren: {gebrauch_beschr}\n"
-                    f"Defekt: {defekt_beschr}{extra}{vorab_kontext}{lern}\n\n"
-                    f"Analysiere JEDEN sichtbaren Artikel. Auf Deutsch. Sei Experte!\n\n"
-                    f"Für JEDEN Artikel:\n"
+                prompt=(
+                    f"Ich bin Händler (Kleinanzeigen,Vinted,Facebook,eBay,Flohmärkte).\n"
+                    f"Gebrauchsspuren: {g_beschr}\nDefekt: {d_beschr}{extra}{vorab_k}{lern}\n\n"
+                    f"Analysiere JEDEN Artikel im Bild. Auf Deutsch. Sei Profi-Experte!\n\n"
                     f"**Artikel: [Name]**\n"
                     f"- Was genau? [Marke, Material, Modell]\n"
-                    f"- Alter: [Jahr / Epoche / Land / Antik?]\n"
-                    f"- Zustand: [Erkannter Zustand + Mängel + Defektgrad %]\n"
-                    f"- Verkäuflichkeit: 🟢 schnell / 🟡 mittel / 🔴 langsam\n\n"
-                    f"PREISE (nur EINE Zahl pro Plattform!):\n"
-                    f"Jetzt ({gebrauch_beschr}):\n"
-                    f"eBay: €X | Kleinanzeigen: €X | Vinted: €X | Facebook: €X | Flohmarkt: €X\n"
-                    f"Max. Ankauf: €X\n\n"
-                    f"Nach Aufbereitung: eBay: €X | Kleinanzeigen: €X | Mehrwert: +€X (+X%)\n\n"
-                    f"🏆 BESTE PLATTFORM: [Welche + warum + Preis €X]\n"
-                    f"🎯 KONFIDENZ: X%\n"
-                    f"⚠️ FÄLSCHUNG: [Niedrig/Mittel/Hoch] | Red Flags: [oder keine]\n"
-                    f"✨ AUFBEREITUNG: [Methode] → +€X\n"
-                    f"👥 ZIELGRUPPE: [Wer kauft + wo]\n"
-                    f"📅 TIMING: [Beste Monate] | Jetzt: [Ja/Nein]\n"
-                    f"📝 ANZEIGE: Titel: [60 Zeichen] | Text: [3 Sätze] | Preis: €X\n"
-                    f"🗺️ BERLINER MARKT: 🥇[Markt+Tag+Preis] 🥈[Markt]\n"
+                    f"- Alter: [Jahr/Epoche/Land/Antik?]\n"
+                    f"- Zustand: [Erkannt + Mängel + Defektgrad%]\n"
+                    f"- Verkäuflichkeit: 🟢schnell / 🟡mittel / 🔴langsam\n\n"
+                    f"PREISE (NUR eine Zahl!):\nJetzt:\neBay: €X | KA: €X | Vinted: €X | FB: €X | FM: €X | Ankauf: €X\n"
+                    f"Nach Aufbereitung: eBay: €X | KA: €X | FM: €X | Mehrwert: +€X (+X%)\n\n"
+                    f"🏆 BESTE PLATTFORM: [Plattform + warum + €X]\n"
+                    f"🎯 KONFIDENZ: X% | ⚠️ FÄLSCHUNG: [Niedrig/Mittel/Hoch]\n"
+                    f"✨ AUFBEREITUNG: [Methode + +€X]\n"
+                    f"👥 ZIELGRUPPE: [Wer + wo]\n"
+                    f"📅 TIMING: [Beste Monate + Jetzt: Ja/Nein]\n"
+                    f"📝 ANZEIGE: Titel:[60Z] | Text:[3S] | Preis:€X\n"
+                    f"🗺️ BERLIN: 🥇[Markt+Tag+€X] 🥈[Markt+€X]\n"
                     f"🌟 RARITÄT: [Seltenheit + Höchstpreis]\n"
-                    f"💰 GEWINN: EK €X → VK €X → Gewinn €X → ROI X%\n"
+                    f"💰 GEWINN: EK€X → VK€X → Gewinn€X → ROI X%\n"
                     f"---\nGESAMT: €X | Wertvollster: [Name]"
                 )
 
-                # ── 3 EXPERTEN GLEICHZEITIG ──────────────────────
-                import concurrent.futures
-                import openai as _oai
-
-                experten = [
-                    ("google/gemini-3-flash-preview",  "🥇 Gemini 3 Flash"),
-                    ("google/gemini-2.5-flash",         "🥈 Gemini 2.5 Flash"),
-                    ("anthropic/claude-sonnet-4-6",     "🥉 Claude Sonnet 4.6"),
+                st.write("🚀 Starte 3 Experten gleichzeitig...")
+                modelle_e=[
+                    ("google/gemini-3-flash-preview","🥇 Gemini 3 Flash"),
+                    ("google/gemini-2.5-flash","🥈 Gemini 2.5 Flash"),
+                    ("anthropic/claude-sonnet-4-6","🥉 Claude Sonnet"),
                 ]
-
-                def experte_analysiert(model_info):
-                    model_id, model_name = model_info
+                def experte_analysiert(info):
+                    mid,name=info
                     try:
-                        _client = _oai.OpenAI(
-                            api_key=OR_KEY,
-                            base_url="https://openrouter.ai/api/v1"
-                        )
+                        c2=_oai.OpenAI(api_key=OR_KEY,base_url="https://openrouter.ai/api/v1")
                         if hat_fotos:
-                            bilder_k = [komprimiere(b) for b in st.session_state.fotos[:3]]
-                            inhalt = []
-                            for b64 in bilder_k:
-                                inhalt.append({"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b64}"}})
-                            inhalt.append({"type":"text","text":ensemble_prompt})
-                            msgs = [{"role":"user","content":inhalt}]
+                            bk=[komprimiere(b) for b in st.session_state.fotos[:3]]
+                            inhalt=[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
+                            inhalt.append({"type":"text","text":prompt})
+                            msgs=[{"role":"user","content":inhalt}]
                         else:
-                            msgs = [{"role":"user","content":ensemble_prompt}]
+                            msgs=[{"role":"user","content":prompt}]
+                        r=c2.chat.completions.create(model=mid,messages=msgs,max_tokens=1500,extra_headers=_hdrs())
+                        a=r.choices[0].message.content
+                        if a and len(a)>100: return (name,a)
+                    except: pass
+                    return (name,None)
 
-                        r = _client.chat.completions.create(
-                            model=model_id, messages=msgs, max_tokens=1500,
-                            extra_headers={"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
-                        )
-                        antwort = r.choices[0].message.content
-                        if antwort and len(antwort) > 100:
-                            return (model_name, antwort)
-                    except Exception as e:
-                        pass
-                    return (model_name, None)
+                ea={}
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+                    fs={ex.submit(experte_analysiert,m):m for m in modelle_e}
+                    for f in concurrent.futures.as_completed(fs):
+                        n,a=f.result()
+                        if a: ea[n]=a; st.write(f"✅ {n} fertig!")
 
-                # Alle 3 gleichzeitig starten!
-                st.write("🚀 3 Experten analysieren gleichzeitig...")
-                experten_antworten = {}
-                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                    futures = {executor.submit(experte_analysiert, e): e for e in experten}
-                    for future in concurrent.futures.as_completed(futures):
-                        name, antwort = future.result()
-                        if antwort:
-                            experten_antworten[name] = antwort
-                            st.write(f"✅ {name} fertig!")
-
-                if not experten_antworten:
-                    # Fallback auf einzelnes Modell
+                if not ea:
                     st.warning("⚠️ Ensemble fehlgeschlagen — Fallback...")
-                    with st.spinner("🤖 ..."):
-                        ergebnis = ki(ensemble_prompt, bilder=st.session_state.fotos if hat_fotos else None)
+                    ergebnis=ki(prompt,bilder=st.session_state.fotos if hat_fotos else None)
                 else:
-                    # ── RICHTER-KI: Alle Antworten zusammenfassen ──
-                    st.write(f"⚖️ Richter-KI fasst {len(experten_antworten)} Experten-Meinungen zusammen...")
-
-                    experten_text = ""
-                    for name, antwort in experten_antworten.items():
-                        experten_text += f"\n\n=== {name} ===\n{antwort[:800]}"
-
-                    richter_prompt = (
-                        f"Du bist der Chef-Experte für Secondhand und Reselling in Deutschland.\n"
-                        f"3 Experten haben diesen Artikel analysiert. Lies alle Meinungen und erstelle "
-                        f"EINE perfekte, vollständige finale Antwort auf Deutsch.\n"
-                        f"Nimm das Beste aus jeder Analyse. Bei Preis-Unterschieden: nimm den Durchschnitt.\n"
-                        f"Sei sehr präzise und konkret. Nutze die gleiche Struktur wie die Experten.\n"
-                        f"Experten-Analysen:{experten_text}\n\n"
-                        f"FINALE EXPERTEN-ANTWORT (vollständig, alle Punkte):"
+                    st.write(f"⚖️ Richter-KI fasst {len(ea)} Experten zusammen...")
+                    et="\n\n".join([f"=={n}==\n{a[:800]}" for n,a in ea.items()])
+                    ergebnis=ki(
+                        f"Chef-Experte Secondhand Deutschland.\n"
+                        f"{len(ea)} Experten haben analysiert.\n"
+                        f"Erstelle EINE perfekte vollständige finale Antwort auf Deutsch.\n"
+                        f"Bestes aus jeder Analyse. Bei Preisen: Durchschnitt.\n"
+                        f"Experten:\n{et}\n\nFINALE EXPERTEN-ANTWORT:"
                     )
-
-                    with st.spinner("⚖️ Richter-KI arbeitet..."):
-                        ergebnis = ki(richter_prompt)
 
                 st.markdown(ergebnis)
-                st.session_state["ana_ergebnis"] = ergebnis
-                st.session_state["vorabinfo"] = ""
-
-                suchbegriff = "Vintage Artikel"
+                st.session_state["ana_ergebnis"]=ergebnis
+                st.session_state.vorabinfo=""
+                suchbegriff="Vintage Artikel"
                 for line in ergebnis.split("\n"):
                     if "**Artikel:" in line:
-                        teile = line.split(":")
-                        if len(teile) > 1:
-                            suchbegriff = teile[1].strip().strip("*[] ")[:40]
+                        t=line.split(":")
+                        if len(t)>1: suchbegriff=t[1].strip().strip("*[] ")[:40]
                         break
 
-            with st.status("📡 Stufe 3: Echtzeit-Preise + KI-Preis-Ensemble...", expanded=True):
-                ebay_url = f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote(suchbegriff)}&LH_Complete=1&LH_Sold=1"
-                ka_url   = f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
-                vi_url   = f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
-                fb_url   = f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
+            # ── STUFE 3: PREIS-ENSEMBLE + WEB ──
+            with st.status("📡 Stufe 3: Google+Tavily+You.com + 3 Preis-KIs...",expanded=True):
+                ebay_url=f"https://www.ebay.de/sch/i.html?_nkw={urllib.parse.quote(suchbegriff)}&LH_Complete=1&LH_Sold=1"
+                ka_url=f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
+                vi_url=f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
+                fb_url=f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
 
-                # ── SCHRITT 1: Alle Quellen gleichzeitig suchen ──
                 st.write("🌐 Google + Tavily + You.com suchen gleichzeitig...")
-
-                def hole_google():
-                    return google_suche(suchbegriff + " Preis eBay Kleinanzeigen Deutschland")
-
-                def hole_tavily():
-                    return web_suche(suchbegriff + " Secondhand Preis Deutschland " + datetime.now().strftime("%Y"))
-
-                google_data = tavily_data = None
-                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-                    f_google = ex.submit(hole_google)
-                    f_tavily = ex.submit(hole_tavily)
-                    google_data = f_google.result()
-                    tavily_data = f_tavily.result()
-
-                alle_web_daten = ""
-                if google_data:
-                    st.success("✅ Google: Echte Preise gefunden!")
-                    alle_web_daten += "GOOGLE ERGEBNISSE:\n" + google_data + "\n\n"
-                if tavily_data:
-                    st.success("✅ Tavily: Aktuelle Marktdaten!")
-                    alle_web_daten += "TAVILY ERGEBNISSE:\n" + tavily_data + "\n\n"
-                if not alle_web_daten:
+                web_daten=multi_suche(suchbegriff+" Preis Deutschland Secondhand")
+                if web_daten:
+                    st.success("✅ Echte Preisdaten aus dem Web!")
+                    st.markdown(web_daten[:400]+"...")
+                    st.write("⚖️ 3 Preis-Experten bewerten gleichzeitig...")
+                    pk=preis_ensemble(suchbegriff,g_beschr,web_daten)
+                    if pk: st.info("💰 **Preis-Konsens:** "+pk)
+                else:
                     st.info("ℹ️ Web-Suche nicht verfügbar")
 
-                # ── SCHRITT 2: 3 KIs bewerten Preise gleichzeitig ──
-                if alle_web_daten:
-                    st.write("⚖️ 3 KI-Experten bewerten Preise gleichzeitig...")
-
-                    preis_prompt = (
-                        f"Du bist Preisexperte für deutschen Secondhand-Markt.\n"
-                        f"Artikel: {suchbegriff}\n"
-                        f"Zustand: {gebrauch_beschr} | {defekt_beschr}\n"
-                        f"Web-Daten:\n{alle_web_daten}\n\n"
-                        f"Bewerte auf Deutsch:\n"
-                        f"• Realistischer eBay-Preis: €X\n"
-                        f"• Realistischer Kleinanzeigen-Preis: €X\n"
-                        f"• Realistischer Flohmarkt-Preis: €X\n"
-                        f"• Empfohlener Verkaufspreis: €X\n"
-                        f"• Markt-Trend: [steigend/stabil/fallend]\n"
-                        f"• Fazit: [2 Sätze]"
-                    )
-
-                    def preis_experte(model_info):
-                        model_id, model_name = model_info
-                        try:
-                            _client = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
-                            r = _client.chat.completions.create(
-                                model=model_id,
-                                messages=[{"role":"user","content":preis_prompt}],
-                                max_tokens=400,
-                                extra_headers={"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
-                            )
-                            antwort = r.choices[0].message.content
-                            if antwort and len(antwort) > 50:
-                                return (model_name, antwort)
-                        except Exception:
-                            pass
-                        return (model_name, None)
-
-                    preis_experten = [
-                        ("google/gemini-3-flash-preview", "Gemini 3"),
-                        ("google/gemini-2.5-flash",        "Gemini 2.5"),
-                        ("openai/gpt-4o-mini",             "GPT-4o-mini"),
-                    ]
-
-                    preis_meinungen = {}
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
-                        futures = {ex.submit(preis_experte, e): e for e in preis_experten}
-                        for future in concurrent.futures.as_completed(futures):
-                            name, antwort = future.result()
-                            if antwort:
-                                preis_meinungen[name] = antwort
-                                st.write(f"✅ {name} bewertet!")
-
-                    if preis_meinungen:
-                        # Richter-KI für Preise
-                        preis_texte = "\n\n".join([f"[{n}]: {a}" for n,a in preis_meinungen.items()])
-                        preis_fazit = ki(
-                            f"3 Preisexperten haben {suchbegriff} bewertet.\n"
-                            f"Erstelle EINE finale Preis-Empfehlung auf Deutsch.\n"
-                            f"Nimm Durchschnitt bei Unterschieden.\n"
-                            f"Format: eBay €X | Kleinanzeigen €X | Flohmarkt €X | Empfehlung €X | Trend: [↑↓→]\n"
-                            f"Experten:\n{preis_texte}"
-                        )
-                        st.info("💰 **Preis-Konsens aller 3 KIs:** " + preis_fazit)
-
-                st.markdown("---")
                 st.markdown("**🔗 Direkt suchen:**")
-                c1,c2 = st.columns(2)
+                c1,c2=st.columns(2)
                 with c1:
                     st.markdown(f"🛒 [eBay →]({ebay_url})")
                     st.markdown(f"📱 [Kleinanzeigen →]({ka_url})")
@@ -703,373 +555,388 @@ with T[0]:
                     st.markdown(f"👗 [Vinted →]({vi_url})")
                     st.markdown(f"👥 [Facebook →]({fb_url})")
 
-            with st.status("✅ Stufe 4: Zusammenfassung...", expanded=True):
-                ana_text = st.session_state.get("ana_ergebnis","")
-                if len(ana_text) > 200 and "€" in ana_text:
-                    fazit = ki(f"Kurze Zusammenfassung (5 Zeilen max) aus dieser Analyse. Nur Fakten. Deutsch.\nFormat:\n• Artikel: [Namen]\n• 🟢 Schnell: [Namen]\n• 🟡 Mittel: [Namen]\n• 🔴 Langsam: [Namen]\n• Gesamtwert: €X\n\nAnalyse:\n{ana_text[:800]}")
-                    st.info(f"📊 {fazit}")
+            # ── STUFE 4: ZUSAMMENFASSUNG ──
+            with st.status("✅ Stufe 4: Finale Zusammenfassung...",expanded=True):
+                ana=st.session_state.get("ana_ergebnis","")
+                if len(ana)>200 and "€" in ana:
+                    st.info("📊 "+ki(f"Kurze Zusammenfassung 5 Zeilen. Fakten. Deutsch.\n• Artikel:\n• 🟢 Schnell:\n• 🟡 Mittel:\n• 🔴 Langsam:\n• Gesamtwert: €X\n\nAnalyse:\n{ana[:800]}"))
                 else:
                     st.warning("⚠️ Keine vollständige Analyse vorhanden.")
 
-    # ── LERN-SYSTEM ──
-    if st.session_state.get("ana_ergebnis","") and len(st.session_state.get("ana_ergebnis","")) > 200:
-        st.markdown("---")
-        st.markdown("### 🧠 KI verbessern")
-        with st.expander("👍 Preis korrigieren"):
-            c1,c2,c3 = st.columns(3)
-            fb_art  = c1.text_input("Artikel", key="fb_art")
-            fb_echt = c2.number_input("Echter Preis (€)", min_value=1.0, value=50.0, key="fb_echt")
-            fb_pl   = c3.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"], key="fb_pl")
-            if st.button("💾 Speichern", use_container_width=True, key="fb_save"):
-                if fb_art:
-                    st.session_state.preis_korrekturen[f"{fb_art} auf {fb_pl}"] = fb_echt
-                    st.success(f"✅ Gespeichert!")
-        with st.expander("📝 Eigenes Wissen hinzufügen"):
-            fb_know = st.text_input("Ihr Wissen:", placeholder="z.B. 'Peg Perego in Berlin meist €150'", key="fb_know")
-            if st.button("💾 Hinzufügen", use_container_width=True, key="fb_know_save"):
-                if fb_know:
-                    st.session_state.mein_wissen.append(fb_know)
-                    st.success("✅ Gespeichert!")
-        total = len(st.session_state.feedback_log) + len(st.session_state.mein_wissen) + len(st.session_state.preis_korrekturen)
-        if total > 0:
-            st.info(f"🧠 KI kennt bereits **{total}** Informationen von Ihnen!")
+            # ── LERN-SYSTEM ──
+            st.markdown("---")
+            st.markdown("### 🧠 KI verbessern")
+            with st.expander("👍 Preis korrigieren"):
+                c1,c2,c3=st.columns(3)
+                fb_art=c1.text_input("Artikel",key="fb_art")
+                fb_echt=c2.number_input("Echter Preis €",min_value=1.0,value=50.0,key="fb_echt")
+                fb_pl=c3.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"],key="fb_pl")
+                if st.button("💾 Speichern",use_container_width=True,key="fb_save"):
+                    if fb_art:
+                        st.session_state.preis_korrekturen[f"{fb_art} auf {fb_pl}"]=fb_echt
+                        st.success("✅ Gespeichert!")
+            with st.expander("📝 Eigenes Wissen"):
+                fb_k=st.text_input("Ihr Wissen:",key="fb_know")
+                if st.button("💾 Hinzufügen",use_container_width=True,key="fb_ks"):
+                    if fb_k: st.session_state.mein_wissen.append(fb_k); st.success("✅!")
+            total=len(st.session_state.mein_wissen)+len(st.session_state.preis_korrekturen)
+            if total>0: st.info(f"🧠 KI kennt **{total}** Infos von Ihnen!")
 
 # ════════════════════════════════════════════════════════════
-# TAB 2 — ANSCHREIB-BOT
+# TAB 2 — ANSCHREIB
 # ════════════════════════════════════════════════════════════
 with T[1]:
     st.header("💬 Anschreib-Bot")
-    c1,c2 = st.columns(2)
+    c1,c2=st.columns(2)
     with c1:
-        ab_art = st.text_input("Artikel", placeholder="z.B. Vintage Kamera", key="ab_art")
-        ab_mp  = st.number_input("Mein Angebot (€)", min_value=1.0, value=20.0, key="ab_mp")
-        ab_vk  = st.number_input("Verkäufer-Preis (€)", min_value=1.0, value=50.0, key="ab_vk")
+        ab_art=st.text_input("Artikel",key="ab_art")
+        ab_mp=st.number_input("Mein Angebot €",min_value=1.0,value=20.0,key="ab_mp")
+        ab_vk=st.number_input("Verkäufer-Preis €",min_value=1.0,value=50.0,key="ab_vk")
     with c2:
-        ab_stil = st.selectbox("Stil", ["Freundlich & charmant","Bestimmt & direkt","Dringend (heute)","Paket-Deal","Letztes Angebot"], key="ab_stil")
-        ab_pl   = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Facebook","Vinted","Flohmarkt"], key="ab_pl")
-    ab_kunde = st.text_area("📩 Nachricht des Kunden (optional):", placeholder="Kunden-Nachricht einfügen — KI antwortet darauf!", height=80, key="ab_kunde")
-    if st.button("✍️ Nachricht generieren", type="primary", use_container_width=True, key="ab_btn"):
+        ab_stil=st.selectbox("Stil",["Freundlich","Bestimmt","Dringend","Paket-Deal","Letztes Angebot"],key="ab_stil")
+        ab_pl=st.selectbox("Plattform",["Kleinanzeigen","eBay","Facebook","Vinted","Flohmarkt"],key="ab_pl")
+    ab_kunde=st.text_area("📩 Kunden-Nachricht (optional):",height=80,key="ab_kunde")
+    if st.button("✍️ Generieren",type="primary",use_container_width=True,key="ab_btn"):
         if ab_art:
-            with st.spinner("✍️ ..."):
-                kt = f"\nKunden-Nachricht: '{ab_kunde}'" if ab_kunde.strip() else ""
-                r = ki(f"Verhandlungs-Nachricht auf Deutsch. Stil: {ab_stil} | Plattform: {ab_pl}\nArtikel: {ab_art} | Angebot: EUR{ab_mp} | Verkäufer: EUR{ab_vk}{kt}\nMax 5 Sätze, NUR die fertige Nachricht!")
-                st.text_area("📩 Kopieren:", value=r, height=180, key="ab_r")
+            with st.spinner("✍️ 3 KIs schreiben..."):
+                kt=f"\nKunden-Nachricht: '{ab_kunde}'" if ab_kunde.strip() else ""
+                p=(f"Verhandlungs-Nachricht auf Deutsch. Stil: {ab_stil} | {ab_pl}\n"
+                   f"Artikel: {ab_art} | Angebot: €{ab_mp} | Verkäufer: €{ab_vk}{kt}\n"
+                   f"Max 5 Sätze. Psychologisch optimiert. NUR die fertige Nachricht!")
+                st.text_area("📩 Kopieren:",value=ensemble_ki(p),height=180,key="ab_r")
 
 # ════════════════════════════════════════════════════════════
 # TAB 3 — LAGER
 # ════════════════════════════════════════════════════════════
 with T[2]:
     st.header("📦 Lagerbestand")
-    c1,c2 = st.columns(2)
+    c1,c2=st.columns(2)
     with c1:
-        la  = st.text_input("Artikel", key="la")
-        lek = st.number_input("EK (€)", min_value=0.0, value=10.0, key="lek")
-        lvk = st.number_input("Ziel-VK (€)", min_value=0.0, value=45.0, key="lvk")
+        la=st.text_input("Artikel",key="la"); lek=st.number_input("EK €",min_value=0.0,value=10.0,key="lek")
+        lvk=st.number_input("Ziel-VK €",min_value=0.0,value=45.0,key="lvk")
     with c2:
-        lzu = st.selectbox("Zustand",["Sehr gut","Gut","Gebraucht","Beschädigt"],key="lzu")
-        lpl = st.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"],key="lpl")
-        lta = st.number_input("Liegezeit (Tage)",min_value=0,value=0,key="lta")
+        lzu=st.selectbox("Zustand",["Sehr gut","Gut","Gebraucht","Beschädigt"],key="lzu")
+        lpl=st.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"],key="lpl")
+        lta=st.number_input("Liegezeit Tage",min_value=0,value=0,key="lta")
     if st.button("📦 Hinzufügen",type="primary",use_container_width=True,key="la_btn"):
         if la:
-            g = lvk - lek - (lvk*0.05)
+            g=lvk-lek-(lvk*0.05)
             st.session_state.lager.append({"artikel":la,"ek":lek,"vk":lvk,"zustand":lzu,"plattform":lpl,"tage":lta,"gewinn":round(g,2)})
-            st.success(f"✅ Gewinn: EUR{g:.2f}")
-            st.rerun()
+            st.success(f"✅ Gewinn: €{g:.2f}"); st.rerun()
     if st.session_state.lager:
-        c1,c2,c3 = st.columns(3)
+        c1,c2,c3=st.columns(3)
         c1.metric("Artikel",len(st.session_state.lager))
         c2.metric("Kapital",f"€{sum(i['ek'] for i in st.session_state.lager):.2f}")
         c3.metric("Gewinn",f"€{sum(i['gewinn'] for i in st.session_state.lager):.2f}")
         st.markdown("---")
         for it in st.session_state.lager:
-            c1,c2,c3,c4 = st.columns([3,1,1,1])
+            c1,c2,c3,c4=st.columns([3,1,1,1])
             c1.markdown(f"**{it['artikel']}** ({it['zustand']}) — {it['plattform']}")
             c2.markdown(f"€{it['ek']:.0f}"); c3.markdown(f"→ €{it['vk']:.0f}"); c4.markdown(f"**+€{it['gewinn']:.0f}**")
             if it["tage"]>30: st.warning(f"⏰ {it['artikel']}: {it['tage']} Tage!")
 
 # ════════════════════════════════════════════════════════════
-# TAB 4 — OCR SCANNER
+# TAB 4 — OCR
 # ════════════════════════════════════════════════════════════
 with T[3]:
     st.header("📚 OCR Medien-Scanner")
-    ocr_b = st.file_uploader("📷 Stapel fotografieren",type=["jpg","jpeg","png"],key="ocr_b")
-    ocr_t = st.selectbox("Typ",["Bücher","CDs/Vinyl","Video-Spiele","DVDs","Gemischt"],key="ocr_t")
+    ocr_b=st.file_uploader("📷 Stapel fotografieren",type=["jpg","jpeg","png"],key="ocr_b")
+    ocr_t=st.selectbox("Typ",["Bücher","CDs/Vinyl","Video-Spiele","DVDs","Gemischt"],key="ocr_t")
     if st.button("🔍 Analysieren",type="primary",use_container_width=True,key="ocr_btn"):
         if ocr_b:
-            with st.spinner("🤖 ..."):
-                b64 = base64.b64encode(ocr_b.read()).decode()
-                r = ensemble_ki(f"Scanne ALLE {ocr_t} im Foto. Für jeden: [Titel] | eBay: €X | Kleinanzeigen: €X | Vinted: €X | Flohmarkt: €X\nTop-3 wertvollste + Gesamtwert. Auf Deutsch.", bilder=[b64])
-                st.markdown(r)
+            with st.spinner("🤖 3 KIs scannen..."):
+                b64=base64.b64encode(ocr_b.read()).decode()
+                p=(f"Scanne ALLE {ocr_t}. Für jeden: Titel | eBay:€X | KA:€X | Vinted:€X | FM:€X\n"
+                   f"Top-3 wertvollste + Gesamtwert. Deutsch.")
+                st.markdown(ensemble_ki(p,bilder=[b64]))
 
 # ════════════════════════════════════════════════════════════
 # TAB 5 — REPARATUR
 # ════════════════════════════════════════════════════════════
 with T[4]:
     st.header("🔧 Reparatur-Rechner")
-    rep_fotos = st.file_uploader("📷 Fotos (mehrere möglich)", type=["jpg","jpeg","png"], accept_multiple_files=True, key="rep_fotos")
+    rep_fotos=st.file_uploader("📷 Fotos",type=["jpg","jpeg","png"],accept_multiple_files=True,key="rep_fotos")
     if rep_fotos:
-        cols = st.columns(min(len(rep_fotos),4))
+        cols=st.columns(min(len(rep_fotos),4))
         for i,f in enumerate(rep_fotos):
-            with cols[i%4]: st.image(f, caption=f"Foto {i+1}", use_column_width=True)
-    c1,c2 = st.columns(2)
+            with cols[i%4]: st.image(f,caption=f"Foto {i+1}",use_column_width=True)
+    c1,c2=st.columns(2)
     with c1:
-        ra   = st.text_input("Artikel",key="ra")
-        rek2 = st.number_input("EK (€)",min_value=0.0,value=15.0,key="rek2")
-        rm   = st.number_input("Material (€)",min_value=0.0,value=25.0,key="rm")
-        rs   = st.number_input("Stunden",min_value=0.5,value=3.0,step=0.5,key="rs")
+        ra=st.text_input("Artikel",key="ra"); rek2=st.number_input("EK €",min_value=0.0,value=15.0,key="rek2")
+        rm=st.number_input("Material €",min_value=0.0,value=25.0,key="rm"); rs=st.number_input("Stunden",min_value=0.5,value=3.0,step=0.5,key="rs")
     with c2:
-        rvk = st.number_input("VK (€)",min_value=0.0,value=120.0,key="rvk")
-        rpl = st.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"],key="rpl")
-        rb  = st.text_area("Was reparieren?",height=70,key="rb")
+        rvk=st.number_input("VK €",min_value=0.0,value=120.0,key="rvk")
+        rpl=st.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"],key="rpl")
+        rb=st.text_area("Was reparieren?",height=70,key="rb")
     if st.button("🔧 Berechnen",type="primary",use_container_width=True,key="r_btn"):
-        geb = rvk*(0.119 if "eBay" in rpl else 0.05 if "Vinted" in rpl else 0.02)
-        gk = rek2+rm+(rvk*0.02)+geb; gw = rvk-gk; sl = gw/rs if rs>0 else 0
-        c1,c2,c3,c4 = st.columns(4)
+        geb=rvk*(0.119 if "eBay" in rpl else 0.05 if "Vinted" in rpl else 0.02)
+        gk=rek2+rm+(rvk*0.02)+geb; gw=rvk-gk; sl=gw/rs if rs>0 else 0
+        c1,c2,c3,c4=st.columns(4)
         c1.metric("Kosten",f"€{gk:.2f}"); c2.metric("Gewinn",f"€{gw:.2f}")
         c3.metric("Stundenlohn",f"€{sl:.2f}/h"); c4.metric("ROI",f"{(gw/gk*100) if gk>0 else 0:.0f}%")
         if sl>=15: st.success("✅ LOHNT SICH!")
         elif sl>=8: st.warning("⚠️ Grenzfall")
         else: st.error("❌ Lohnt nicht")
         if rb:
-            with st.spinner("💡 ..."):
-                rep_b = [base64.b64encode(f.read()).decode() for f in rep_fotos] if rep_fotos else None
-                st.markdown(ensemble_ki(f"3 Reparatur-Tipps für '{ra}': {rb}. Auf Deutsch.", bilder=rep_b))
+            with st.spinner("💡 3 KIs geben Tipps..."):
+                rep_b=[base64.b64encode(f.read()).decode() for f in rep_fotos] if rep_fotos else None
+                st.markdown(ensemble_ki(f"3 Reparatur-Tipps für '{ra}': {rb}. Deutsch.",bilder=rep_b))
 
 # ════════════════════════════════════════════════════════════
-# TAB 6 — TRENDS (ECHTZEIT KI)
+# TAB 6 — TRENDS (ECHTZEIT ENSEMBLE)
 # ════════════════════════════════════════════════════════════
 with T[5]:
-    st.header("📈 Markt-Trends — Echtzeit KI")
-    st.markdown(f"**Live-Analyse vom {datetime.now().strftime('%d.%m.%Y')}**")
-    c1,c2 = st.columns(2)
-    with c1: tr_kat = st.selectbox("Kategorie:", ["Alles","Kleidung & Mode","Porzellan & Antiquitäten","Elektronik","Möbel","Spielzeug","Bücher"], key="tr_kat")
-    with c2: tr_region = st.selectbox("Region:", ["Berlin","Deutschland gesamt"], key="tr_region")
-    if st.button("🔥 Live-Analyse starten", type="primary", use_container_width=True, key="tr_btn"):
-        with st.spinner("🌐 Suche echte Marktdaten..."):
-            web_data = web_suche("Secondhand Markt Trends " + tr_kat + " " + tr_region + " " + datetime.now().strftime("%B %Y") + " Preise")
-            web_kontext = ("\n\nECHTE WEB-DATEN:\n" + web_data) if web_data else ""
-            prompt_tr = ("Markt-Analyst fuer " + tr_region + ", " + datetime.now().strftime("%B %Y") + "." + web_kontext + "\n"
-                "Analysiere LIVE: " + tr_kat + ". Auf Deutsch.\n"
-                "TOP 5 HEISSESTE ARTIKEL: Name, Preis, Nachfrage, Trend.\n"
-                "PREISE STEIGEN: [was wird teurer?]\n"
-                "PREISE FALLEN: [was ist uebersaettigt?]\n"
-                "GEHEIMTIPP: [1 unterschaetzter Artikel]\n"
-                "JETZT VERKAUFEN: [was jetzt verkaufen?]\n"
-                "GOLD-SUCHBEGRIFFE: [5 Begriffe]")
-            r = ensemble_ki(prompt_tr)
-            if web_data: st.success("✅ Echte Web-Daten eingeflossen!")
-            st.markdown(r)
+    st.header("📈 Markt-Trends — Echtzeit Ensemble")
+    st.markdown(f"Live {datetime.now().strftime('%d.%m.%Y')} · 3 KIs + Google/Tavily/You.com")
+    c1,c2=st.columns(2)
+    with c1: tr_kat=st.selectbox("Kategorie:",["Alles","Kleidung","Porzellan","Elektronik","Möbel","Spielzeug","Bücher"],key="tr_kat")
+    with c2: tr_region=st.selectbox("Region:",["Berlin","Deutschland"],key="tr_region")
+    if st.button("🔥 Live-Ensemble Analyse",type="primary",use_container_width=True,key="tr_btn"):
+        with st.spinner("🌐 Web + 3 KIs analysieren..."):
+            web=multi_suche(tr_kat+" Secondhand Markt Trend "+datetime.now().strftime("%B %Y")+" "+tr_region)
+            web_k=("\n\nWEB-DATEN:\n"+web) if web else ""
+            if web: st.success("✅ Echte Web-Daten!")
+            p=(f"Markt-Analyst {tr_region} {datetime.now().strftime('%B %Y')}.{web_k}\n"
+               f"Analysiere: {tr_kat}. Deutsch.\n"
+               f"TOP 5 Artikel+Preis+Trend | Preise steigen | Preise fallen | Geheimtipp | Jetzt verkaufen | Gold-Suchbegriffe")
+            st.markdown(ensemble_ki(p))
     st.markdown("---")
-    tf = st.text_input("🤖 Frage:", placeholder="z.B. Wie läuft gerade Vintage Kleidung?", key="tf")
-    if st.button("Analysieren", key="t_btn"):
+    tf=st.text_input("🤖 Frage:",key="tf")
+    if st.button("Analysieren",key="t_btn"):
         if tf:
             with st.spinner("..."):
-                st.markdown(ki(f"Reselling-Experte {tr_region} {datetime.now().strftime('%B %Y')}. Konkret auf Deutsch: {tf}"))
+                web2=tavily_suche(tf+" "+datetime.now().strftime("%B %Y"))
+                p2=f"Experte {tr_region} {datetime.now().strftime('%B %Y')}. {('Web: '+web2) if web2 else ''}\nKonkret Deutsch: {tf}"
+                st.markdown(ensemble_ki(p2))
 
 # ════════════════════════════════════════════════════════════
 # TAB 7 — VERHANDLUNG
 # ════════════════════════════════════════════════════════════
 with T[6]:
     st.header("🎭 Verhandlungs-Simulator")
-    c1,c2 = st.columns(2)
+    c1,c2=st.columns(2)
     with c1:
-        va  = st.text_input("Artikel",key="va")
-        vvk = st.number_input("Verkäufer-Preis (€)",min_value=1.0,value=80.0,key="vvk")
-        vz  = st.number_input("Ihr Ziel (€)",min_value=1.0,value=40.0,key="vz")
+        va=st.text_input("Artikel",key="va"); vvk=st.number_input("Verkäufer €",min_value=1.0,value=80.0,key="vvk")
+        vz=st.number_input("Ihr Ziel €",min_value=1.0,value=40.0,key="vz")
     with c2:
-        vt  = st.selectbox("Verkäufer-Typ",["Sturköpfig","Freundlich","Gestresst","Unentschlossen","Profi"],key="vt")
-        vpl = st.selectbox("Wo?",["Flohmarkt","Kleinanzeigen","Facebook"],key="vpl")
+        vt=st.selectbox("Typ",["Sturköpfig","Freundlich","Gestresst","Unentschlossen","Profi"],key="vt")
+        vpl=st.selectbox("Wo?",["Flohmarkt","Kleinanzeigen","Facebook"],key="vpl")
     if st.button("🎭 Start",type="primary",use_container_width=True,key="v_start"):
         if va:
-            st.session_state.sim = []
-            r = ki(f"Du bist Verkäufer ({vt}) auf {vpl}. Artikel: {va} für EUR{vvk}. Erste Reaktion wenn Käufer fragt ob Preis verhandelbar. 2-3 Sätze. Deutsch. In Rolle!")
-            st.session_state.sim.append({"r":"🏪","t":r})
-            st.rerun()
+            st.session_state.sim=[]
+            r=ki(f"Verkäufer ({vt}) auf {vpl}. Artikel: {va} für €{vvk}. Erste Reaktion auf Verhandlungsfrage. 2-3 Sätze. Deutsch. Rolle!")
+            st.session_state.sim.append({"r":"🏪","t":r}); st.rerun()
     if st.session_state.sim:
         st.markdown("---")
         for m in st.session_state.sim:
-            if m["r"]=="🏪": st.info(f"**🏪 Verkäufer:** {m['t']}")
-            else: st.success(f"**🛒 Sie:** {m['t']}")
-        kunden_msg = st.text_area("📩 Kunden-Nachricht (optional):", placeholder="Nachricht einfügen — KI antwortet optimal", height=70, key="v_kunde")
-        ai = st.text_input("Ihre Antwort:", key="v_inp")
-        c1,c2 = st.columns(2)
+            if m["r"]=="🏪": st.info(f"**🏪:** {m['t']}")
+            else: st.success(f"**🛒:** {m['t']}")
+        km=st.text_area("📩 Kunden-Nachricht:",height=60,key="v_kunde")
+        ai=st.text_input("Ihre Antwort:",key="v_inp")
+        c1,c2=st.columns(2)
         with c1:
             if st.button("📤 Senden",type="primary",use_container_width=True,key="v_send"):
-                eingabe = kunden_msg.strip() if kunden_msg.strip() else ai
+                eingabe=km.strip() if km.strip() else ai
                 if eingabe:
                     st.session_state.sim.append({"r":"🛒","t":eingabe})
-                    verl = "\n".join([f"{m['r']}: {m['t']}" for m in st.session_state.sim])
-                    r = ki(f"Verkäufer ({vt}) von {va} (EUR{vvk}). Verlauf:\n{verl}\nAntworte als Verkäufer (2-3 Sätze, Deutsch, Rolle)!")
-                    st.session_state.sim.append({"r":"🏪","t":r})
-                    st.rerun()
+                    verl="\n".join([f"{m['r']}: {m['t']}" for m in st.session_state.sim])
+                    r=ki(f"Verkäufer ({vt}) {va} €{vvk}. Verlauf:\n{verl}\nAntworte (2-3S, Deutsch, Rolle)!")
+                    st.session_state.sim.append({"r":"🏪","t":r}); st.rerun()
         with c2:
             if st.button("🧠 Strategie",use_container_width=True,key="v_str"):
-                verl = "\n".join([f"{m['r']}: {m['t']}" for m in st.session_state.sim])
-                st.markdown(ki(f"Verhandlungsanalyse für {va}, Ziel EUR{vz}. Verlauf:\n{verl}\n1.Was gut? 2.Was besser? 3.Nächste Nachricht? Deutsch."))
+                verl="\n".join([f"{m['r']}: {m['t']}" for m in st.session_state.sim])
+                st.markdown(ensemble_ki(f"Verhandlungsanalyse {va}, Ziel €{vz}.\n{verl}\n1.Was gut? 2.Besser? 3.Nächste Nachricht? Deutsch."))
 
 # ════════════════════════════════════════════════════════════
 # TAB 8 — FOTO-COACH
 # ════════════════════════════════════════════════════════════
 with T[7]:
     st.header("📸 Foto-Coach")
-    fc_b = st.file_uploader("Foto hochladen",type=["jpg","jpeg","png"],key="fc_b")
-    fc_p = st.selectbox("Plattform",["Kleinanzeigen","Vinted","eBay","Facebook","Alle"],key="fc_p")
+    fc_b=st.file_uploader("Foto hochladen",type=["jpg","jpeg","png"],key="fc_b")
+    fc_p=st.selectbox("Plattform",["Kleinanzeigen","Vinted","eBay","Facebook","Alle"],key="fc_p")
     if st.button("📸 Analysieren",type="primary",use_container_width=True,key="fc_btn"):
         if fc_b:
-            with st.spinner("🔍 ..."):
-                b64 = base64.b64encode(fc_b.read()).decode()
-                c1,c2 = st.columns(2)
+            with st.spinner("🔍 3 KIs bewerten..."):
+                b64=base64.b64encode(fc_b.read()).decode()
+                c1,c2=st.columns(2)
                 with c1: fc_b.seek(0); st.image(fc_b,caption="Ihr Foto",use_column_width=True)
-                with c2: st.markdown(ensemble_ki(f"Foto-Experte für {fc_p}. Bewerte dieses Foto. Auf Deutsch.\nBewertung (1-10): Helligkeit, Hintergrund, Schärfe, Winkel\nProbleme + Verbesserungen + Tipps + Preis-Potenzial +X%", bilder=[b64]))
+                with c2: st.markdown(ensemble_ki(
+                    f"Foto-Experte {fc_p}. Bewerte + verbessere. Deutsch.\n"
+                    f"Note 1-10: Helligkeit,Hintergrund,Schärfe,Winkel\n"
+                    f"Probleme + 3 Verbesserungen + Perfektes Foto + Preis-Potenzial +X%",bilder=[b64]))
 
 # ════════════════════════════════════════════════════════════
-# TAB 9 — FLOHMÄRKTE BERLIN (ECHTZEIT)
+# TAB 9 — FLOHMÄRKTE
 # ════════════════════════════════════════════════════════════
 with T[8]:
     st.header("🗺️ Berliner Flohmärkte")
-    st.markdown(f"Markt-Daten + **Live KI-Updates** vom {datetime.now().strftime('%d.%m.%Y')}")
-    heute_de = {"Monday":"Montag","Tuesday":"Dienstag","Wednesday":"Mittwoch","Thursday":"Donnerstag","Friday":"Freitag","Saturday":"Samstag","Sunday":"Sonntag"}.get(datetime.now().strftime("%A"),"Heute")
-    if st.button(f"🔴 Live-Update für {heute_de} abrufen", type="primary", use_container_width=True, key="floh_live"):
-        with st.spinner("🤖 ..."):
-            st.info(ki(f"Berliner Flohmarkt-Experte. Heute ist {heute_de}, {datetime.now().strftime('%d.%m.%Y')}. Welche Märkte sind heute offen? Was ist heute empfehlenswert? Aktuelle Tipps. Auf Deutsch."))
+    st.markdown(f"Live KI-Updates · {datetime.now().strftime('%d.%m.%Y')}")
+    tage_de={"Monday":"Montag","Tuesday":"Dienstag","Wednesday":"Mittwoch",
+              "Thursday":"Donnerstag","Friday":"Freitag","Saturday":"Samstag","Sunday":"Sonntag"}
+    heute_de=tage_de.get(datetime.now().strftime("%A"),"Heute")
+    if st.button(f"🔴 Live-Update {heute_de}",type="primary",use_container_width=True,key="floh_live"):
+        with st.spinner("🤖 KI + Web..."):
+            web=google_suche(f"Flohmarkt Berlin {heute_de} {datetime.now().strftime('%d.%m.%Y')} offen")
+            web_k=("\nAktuelle Infos:\n"+web) if web else ""
+            st.info(ki(f"Berliner Flohmarkt-Experte. {heute_de} {datetime.now().strftime('%d.%m.%Y')}.{web_k}\nWelche Märkte heute offen? Tipps. Deutsch."))
     st.markdown("---")
-    maerkte = [
-        ("Montag","Rathaus Steglitz","Schloßstraße 37","Mo–Sa 9–18h","+49 30 79706820","🏠 Haushalt","⭐⭐⭐","Günstige Alltagsartikel","https://maps.google.com/?q=Rathaus+Steglitz+Berlin"),
-        ("Dienstag","Fehrbelliner Platz","Fehrbelliner Pl. 10707","Di & Fr 8–15h","+49 30 28097272","🏺 Antiquitäten, Porzellan","⭐⭐⭐⭐","Top für Porzellan & Silber!","https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
-        ("Mittwoch","Alexanderplatz","Alexanderplatz 10178","Täglich 10–19h","+49 30 24632425","🏙️ Gemischt","⭐⭐⭐","Täglich offen","https://maps.google.com/?q=Alexanderplatz+Flohmarkt+Berlin"),
-        ("Donnerstag","Winterfeldtplatz","Winterfeldtplatz 10781","Do & Sa 8–14h","+49 30 7262290","🌿 Vintage, Mode","⭐⭐⭐⭐","Do ruhiger & günstiger!","https://maps.google.com/?q=Winterfeldtplatz+Berlin"),
-        ("Freitag","Fehrbelliner Platz","Fehrbelliner Pl. 10707","Di & Fr 8–15h","+49 30 28097272","🏺 Antiquitäten","⭐⭐⭐⭐⭐","Freitags BESTE Auswahl!","https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
-        ("Freitag","Ostbahnhof","Erich-Steinfurth-Str. 1","Fr–So 9–16h","+49 30 2936028","🛍️ Gemischt","⭐⭐⭐⭐","Freitags wenig Leute!","https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"),
-        ("Samstag","RAW Flohmarkt","Revaler Str. 99","Sa & So 10–18h","+49 30 29367840","🕶️ Vintage Mode, Vinyl","⭐⭐⭐⭐⭐","BESTE Vintage-Kleidung!","https://maps.google.com/?q=RAW+Gelände+Berlin"),
-        ("Samstag","Winterfeldtmarkt","Winterfeldtplatz 10781","Jeden Sa 8–14h","+49 30 7262290","🌿 Bio, Vintage, Kunst","⭐⭐⭐⭐⭐","Einer der besten Märkte!","https://maps.google.com/?q=Winterfeldtmarkt+Berlin"),
-        ("Sonntag","Mauerpark","Bernauer Str. 63","So 9–18h","+49 30 40505380","🎭 Gemischt, Vintage","⭐⭐⭐⭐⭐","MUSS! Vor 10 Uhr!","https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"),
-        ("Sonntag","Boxhagener Platz","Boxhagener Pl. 10245","So 10–18h","+49 30 29362596","🏺 Antiquitäten, Porzellan","⭐⭐⭐⭐⭐","Top für Porzellan!","https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"),
-        ("Sonntag","Treptower Park","Treptower Park 12435","So 8–16h","+49 30 5321555","🔧 Elektronik, DDR","⭐⭐⭐⭐","Gut für DDR & Elektronik!","https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"),
-        ("Sonntag","RAW Flohmarkt","Revaler Str. 99","Sa & So 10–18h","+49 30 29367840","🕶️ Vintage Mode","⭐⭐⭐⭐⭐","So entspannter als Sa","https://maps.google.com/?q=RAW+Gelände+Berlin"),
-        ("Sonntag","Arkonaplatz","Arkonaplatz 10435","So 10–16h","+49 30 7861003","🏛️ Antiquitäten, Raritäten","⭐⭐⭐⭐","Klein aber fein!","https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"),
+    maerkte=[
+        ("Mo","Rathaus Steglitz","Schloßstr.37","Mo-Sa 9-18h","+49 30 79706820","🏠 Haushalt","⭐⭐⭐","Alltagsartikel","https://maps.google.com/?q=Rathaus+Steglitz+Berlin"),
+        ("Di","Fehrbelliner Platz","Fehrbelliner Pl.","Di&Fr 8-15h","+49 30 28097272","🏺 Antiquitäten","⭐⭐⭐⭐","Top Porzellan&Silber!","https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
+        ("Mi","Alexanderplatz","Alexanderplatz","Tägl. 10-19h","+49 30 24632425","🏙️ Gemischt","⭐⭐⭐","Täglich offen","https://maps.google.com/?q=Alexanderplatz+Flohmarkt+Berlin"),
+        ("Do","Winterfeldtplatz","Winterfeldtpl.","Do&Sa 8-14h","+49 30 7262290","🌿 Vintage","⭐⭐⭐⭐","Do günstiger!","https://maps.google.com/?q=Winterfeldtplatz+Berlin"),
+        ("Fr","Fehrbelliner Platz","Fehrbelliner Pl.","Di&Fr 8-15h","+49 30 28097272","🏺 Antiquitäten","⭐⭐⭐⭐⭐","Fr BESTE Auswahl!","https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
+        ("Fr","Ostbahnhof","Erich-Steinfurth-Str.1","Fr-So 9-16h","+49 30 2936028","🛍️ Gemischt","⭐⭐⭐⭐","Fr wenig Leute!","https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"),
+        ("Sa","RAW Flohmarkt","Revaler Str.99","Sa&So 10-18h","+49 30 29367840","🕶️ Vintage","⭐⭐⭐⭐⭐","BESTE Vintage Berlin!","https://maps.google.com/?q=RAW+Gelände+Berlin"),
+        ("Sa","Winterfeldtmarkt","Winterfeldtpl.","Sa 8-14h","+49 30 7262290","🌿 Bio,Vintage","⭐⭐⭐⭐⭐","Einer der besten!","https://maps.google.com/?q=Winterfeldtmarkt+Berlin"),
+        ("So","Mauerpark","Bernauer Str.63","So 9-18h","+49 30 40505380","🎭 Vintage","⭐⭐⭐⭐⭐","MUSS! Vor 10 Uhr!","https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"),
+        ("So","Boxhagener Platz","Boxhagener Pl.","So 10-18h","+49 30 29362596","🏺 Antiquitäten","⭐⭐⭐⭐⭐","Top Porzellan!","https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"),
+        ("So","Treptower Park","Treptower Park","So 8-16h","+49 30 5321555","🔧 Elektronik,DDR","⭐⭐⭐⭐","Gut für DDR!","https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"),
+        ("So","Arkonaplatz","Arkonaplatz","So 10-16h","+49 30 7861003","🏛️ Raritäten","⭐⭐⭐⭐","Klein aber fein!","https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"),
     ]
-    tage = ["Alle","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
-    fw = st.radio("📅 Tag:",tage,horizontal=True,key="fw")
+    tage=["Alle","Mo","Di","Mi","Do","Fr","Sa","So"]
+    fw=st.radio("📅",tage,horizontal=True,key="fw")
     st.markdown("---")
-    liste = maerkte if fw=="Alle" else [m for m in maerkte if m[0]==fw]
+    liste=maerkte if fw=="Alle" else [m for m in maerkte if m[0]==fw]
     if fw=="Alle":
         for tag in tage[1:]:
-            tm = [m for m in maerkte if m[0]==tag]
+            tm=[m for m in maerkte if m[0]==tag]
             if tm:
                 st.markdown(f"### 📅 {tag}")
                 for m in tm:
                     with st.expander(f"{m[6]} **{m[1]}**"):
-                        c1,c2 = st.columns([2,1])
+                        c1,c2=st.columns([2,1])
                         with c1: st.markdown(f"📍 {m[2]}\n\n🕐 {m[3]}\n\n📞 **{m[4]}**\n\n🏷️ {m[5]}\n\n💡 *{m[7]}*")
-                        with c2: st.markdown(m[6]); st.link_button("🗺️ Maps",m[8],use_container_width=True)
+                        with c2: st.markdown(m[6]); st.link_button("🗺️",m[8],use_container_width=True)
     else:
         for m in liste:
             with st.expander(f"{m[6]} **{m[1]}**"):
-                c1,c2 = st.columns([2,1])
+                c1,c2=st.columns([2,1])
                 with c1: st.markdown(f"📍 {m[2]}\n\n🕐 {m[3]}\n\n📞 **{m[4]}**\n\n🏷️ {m[5]}\n\n💡 *{m[7]}*")
-                with c2: st.markdown(m[6]); st.link_button("🗺️ Maps",m[8],use_container_width=True)
+                with c2: st.markdown(m[6]); st.link_button("🗺️",m[8],use_container_width=True)
     st.markdown("---")
-    fq = st.text_input("🤖 Frage:", placeholder="z.B. Wo finde ich heute gute Antiquitäten?", key="fq")
-    if st.button("🗺️ KI fragen", type="primary", use_container_width=True, key="f_btn"):
+    fq=st.text_input("🤖 Frage:",key="fq")
+    if st.button("Fragen",type="primary",use_container_width=True,key="f_btn"):
         if fq:
-            with st.spinner("..."): st.markdown(ki(f"Berliner Flohmarkt-Experte {datetime.now().strftime('%B %Y')}. Konkret auf Deutsch: {fq}"))
+            with st.spinner("..."):
+                wf=google_suche(fq+" Flohmarkt Berlin")
+                p=f"Berliner Flohmarkt-Experte {datetime.now().strftime('%B %Y')}. {('Web: '+wf[:200]) if wf else ''}\nDeutsch: {fq}"
+                st.markdown(ensemble_ki(p))
 
 # ════════════════════════════════════════════════════════════
-# TAB 10 — MARKEN-SCANNER
+# TAB 10 — MARKEN
 # ════════════════════════════════════════════════════════════
 with T[9]:
     st.header("🔬 Marken-Scanner")
-    ms_b = st.file_uploader("📷 Stempel/Logo fotografieren",type=["jpg","jpeg","png"],key="ms_b")
-    ms_k = st.selectbox("Kategorie",["Porzellan & Keramik","Silber & Besteck","Uhren","Schmuck","Elektronik","Kleidung","Spielzeug","Unbekannt"],key="ms_k")
+    ms_b=st.file_uploader("📷 Stempel/Logo",type=["jpg","jpeg","png"],key="ms_b")
+    ms_k=st.selectbox("Kategorie",["Porzellan","Silber","Uhren","Schmuck","Elektronik","Kleidung","Spielzeug","Unbekannt"],key="ms_k")
     if st.button("🔬 Identifizieren",type="primary",use_container_width=True,key="ms_btn"):
         if ms_b:
-            with st.spinner("..."):
-                b64 = base64.b64encode(ms_b.read()).decode()
-                c1,c2 = st.columns(2)
+            with st.spinner("3 KIs identifizieren..."):
+                b64=base64.b64encode(ms_b.read()).decode()
+                c1,c2=st.columns(2)
                 with c1: ms_b.seek(0); st.image(ms_b,caption="Stempel",use_column_width=True)
-                with c2: st.markdown(ensemble_ki(f"Marken-Experte für {ms_k}. Identifiziere Stempel/Logo. Auf Deutsch.\nMarke, Herkunft, Jahr, Echtheit, Wert, eBay-Suchbegriff.", bilder=[b64]))
+                with c2: st.markdown(ensemble_ki(
+                    f"Marken-Experte {ms_k}. Identifiziere Stempel/Logo. Deutsch.\n"
+                    f"Marke, Herkunft, Jahr, Echtheit, Seltenheit, Wert €X, eBay-Suchbegriff.",bilder=[b64]))
 
 # ════════════════════════════════════════════════════════════
 # TAB 11 — TIMING
 # ════════════════════════════════════════════════════════════
 with T[10]:
     st.header("📅 Saisonaler Timing-Planer")
-    ti_a = st.text_input("Artikel",placeholder="z.B. Winterjacke, Weihnachtsdeko",key="ti_a")
-    ti_m = st.selectbox("Monat",["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],index=datetime.now().month-1,key="ti_m")
-    if st.button("📅 Timing analysieren",type="primary",use_container_width=True,key="ti_btn"):
+    ti_a=st.text_input("Artikel",key="ti_a")
+    ti_m=st.selectbox("Monat",["Januar","Februar","März","April","Mai","Juni",
+        "Juli","August","September","Oktober","November","Dezember"],index=datetime.now().month-1,key="ti_m")
+    if st.button("📅 Analysieren",type="primary",use_container_width=True,key="ti_btn"):
         if ti_a:
-            with st.spinner("..."):
-                st.markdown(ensemble_ki(f"Timing-Experte. Artikel: {ti_a} | Monat: {ti_m}. Beste/schlechteste Monate + Monatstabelle + Jetzt-Empfehlung. Auf Deutsch."))
+            with st.spinner("3 KIs + Web..."):
+                web=google_suche(ti_a+" Secondhand Saison Trend "+ti_m)
+                p=(f"Timing-Experte. Artikel: {ti_a} | {ti_m}. {('Web: '+web[:200]) if web else ''}\n"
+                   f"Beste/schlechteste Monate + Monatstabelle + Jetzt-Empfehlung. Deutsch.")
+                st.markdown(ensemble_ki(p))
 
 # ════════════════════════════════════════════════════════════
 # TAB 12 — ANZEIGEN-KI
 # ════════════════════════════════════════════════════════════
 with T[11]:
     st.header("✨ Anzeigen-Optimierer")
-    ao_fotos = st.file_uploader("📷 Fotos (mehrere möglich)", type=["jpg","jpeg","png"], accept_multiple_files=True, key="ao_fotos")
+    ao_fotos=st.file_uploader("📷 Fotos",type=["jpg","jpeg","png"],accept_multiple_files=True,key="ao_fotos")
     if ao_fotos:
-        cols = st.columns(min(len(ao_fotos),4))
-        for i,f in enumerate(ao_fotos):
-            with cols[i%4]: st.image(f, caption=f"Foto {i+1}", use_column_width=True)
-    c1,c2 = st.columns(2)
+        cols=st.columns(min(len(ao_fotos),4))
+        for i,f in enumerate(ao_fotos): cols[i%4].image(f,caption=f"Foto {i+1}",use_column_width=True)
+    c1,c2=st.columns(2)
     with c1:
-        ao_l  = st.selectbox("Plattform",["Kleinanzeigen","Vinted","eBay","Facebook"],key="ao_l")
-        ao_p  = st.number_input("Preis (€)",min_value=0.0,value=45.0,key="ao_p")
+        ao_l=st.selectbox("Plattform",["Kleinanzeigen","Vinted","eBay","Facebook"],key="ao_l")
+        ao_p=st.number_input("Preis €",min_value=0.0,value=45.0,key="ao_p")
     with c2:
-        ao_k  = st.selectbox("Kategorie",["Haushalt","Kleidung","Elektronik","Möbel","Spielzeug","Sonstiges"],key="ao_k")
-        ao_t2 = st.number_input("Tage online",min_value=0,value=7,key="ao_t2")
-    ao_ti = st.text_input("Aktueller Titel:",key="ao_ti")
-    ao_tx = st.text_area("Aktuelle Beschreibung:",height=100,key="ao_tx")
+        ao_k=st.selectbox("Kategorie",["Haushalt","Kleidung","Elektronik","Möbel","Spielzeug","Sonstiges"],key="ao_k")
+        ao_t2=st.number_input("Tage online",min_value=0,value=7,key="ao_t2")
+    ao_ti=st.text_input("Titel:",key="ao_ti"); ao_tx=st.text_area("Beschreibung:",height=80,key="ao_tx")
     if st.button("✨ Optimieren",type="primary",use_container_width=True,key="ao_btn"):
         if ao_ti or ao_tx or ao_fotos:
-            with st.spinner("..."):
-                ao_b = [base64.b64encode(f.read()).decode() for f in ao_fotos] if ao_fotos else None
-                st.markdown(ensemble_ki(f"Anzeigen-Experte für {ao_l}. Kategorie: {ao_k}. Preis: €{ao_p}. {ao_t2} Tage online.\nTitel: {ao_ti}\nText: {ao_tx}\nAnalysiere + verbessere. Note 1-10 + Schwächen + Neuer Titel + Neue Beschreibung + Preis-Empfehlung + Keywords + Tipps. Auf Deutsch.", bilder=ao_b))
+            with st.spinner("3 KIs optimieren..."):
+                ao_b=[base64.b64encode(f.read()).decode() for f in ao_fotos] if ao_fotos else None
+                web=google_suche(f"{ao_ti} {ao_k} Preis Kleinanzeigen eBay Deutschland")
+                p=(f"Anzeigen-Experte {ao_l}. {ao_k}. €{ao_p}. {ao_t2} Tage online.\n"
+                   f"Titel: {ao_ti}\nText: {ao_tx}\n{('Web-Preise: '+web[:200]) if web else ''}\n"
+                   f"Note 1-10 + Schwächen + Neuer Titel + Neue Beschreibung + Preis + Keywords + Tipps. Deutsch.")
+                st.markdown(ensemble_ki(p,bilder=ao_b))
 
 # ════════════════════════════════════════════════════════════
-# TAB 13 — RESELLING-CHAT
+# TAB 13 — CHAT
 # ════════════════════════════════════════════════════════════
 with T[12]:
     st.header("🤖 KI-Reselling-Chat")
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
-    if prompt_chat := st.chat_input("Fragen Sie alles über Reselling, Preise, Flohmärkte..."):
+    if prompt_chat:=st.chat_input("Fragen Sie alles über Reselling, Preise, Flohmärkte..."):
         st.session_state.chat_history.append({"role":"user","content":prompt_chat})
         with st.chat_message("user"): st.markdown(prompt_chat)
         with st.chat_message("assistant"):
-            with st.spinner("🤖 ..."):
-                antwort = ki("Erfahrener deutscher Reselling-Experte. Kleinanzeigen, Vinted, Facebook, eBay. Deutsch, konkret, praktisch. Frage: " + prompt_chat)
+            with st.spinner("🤖 3 KIs denken nach..."):
+                web=tavily_suche(prompt_chat+" "+datetime.now().strftime("%B %Y"))
+                p=(f"Reselling-Experte Deutschland. Kleinanzeigen,Vinted,Facebook,eBay. Deutsch, konkret.\n"
+                   f"{('Aktuelle Web-Infos: '+web[:200]) if web else ''}\nFrage: {prompt_chat}")
+                antwort=ensemble_ki(p)
                 st.markdown(antwort)
         st.session_state.chat_history.append({"role":"assistant","content":antwort})
-    if st.button("🗑️ Chat löschen", key="chat_clear"): st.session_state.chat_history = []; st.rerun()
+    if st.button("🗑️ Löschen",key="chat_clear"): st.session_state.chat_history=[]; st.rerun()
 
 # ════════════════════════════════════════════════════════════
 # TAB 14 — KONKURRENZ
 # ════════════════════════════════════════════════════════════
 with T[13]:
     st.header("🔎 Konkurrenz-Checker")
-    kk_url   = st.text_input("🔗 Konkurrenz-Link:", key="kk_url")
-    kk_art   = st.text_input("Ihr Artikel:", key="kk_art")
-    kk_preis = st.number_input("Ihr Preis (€):", min_value=0.0, value=80.0, key="kk_preis")
-    if st.button("🔎 Analysieren", type="primary", use_container_width=True, key="kk_btn"):
+    kk_url=st.text_input("🔗 Konkurrenz-Link:",key="kk_url")
+    kk_art=st.text_input("Ihr Artikel:",key="kk_art"); kk_preis=st.number_input("Ihr Preis €:",min_value=0.0,value=80.0,key="kk_preis")
+    if st.button("🔎 Analysieren",type="primary",use_container_width=True,key="kk_btn"):
         if kk_url:
-            with st.spinner("..."):
-                seite = lies_url(kk_url)
-                st.markdown(ensemble_ki(f"Konkurrenz-Analyse. Inhalt:\n{seite[:2000]}\nMein Artikel: {kk_art} | Mein Preis: €{kk_preis}\nKonkurrenz-Analyse + Wie ich besser sein kann + Optimaler Preis + Fazit. Auf Deutsch."))
+            with st.spinner("3 KIs + Web analysieren..."):
+                seite=lies_url(kk_url)
+                web=multi_suche(kk_art+" Preis Deutschland Secondhand") if kk_art else None
+                p=(f"Konkurrenz-Analyse. Mein Artikel: {kk_art} | Mein Preis: €{kk_preis}\n"
+                   f"Konkurrenz-Seite:\n{seite[:1500]}\n"
+                   f"{('Web-Marktpreise:\n'+web[:300]) if web else ''}\n"
+                   f"Analyse: Konkurrenz-Preis, Stärken/Schwächen, Wie besser sein, Mein optimaler Preis, Fazit. Deutsch.")
+                st.markdown(ensemble_ki(p))
 
 # ════════════════════════════════════════════════════════════
-# TAB 15 — BUSINESS-COACH
+# TAB 15 — BUSINESS
 # ════════════════════════════════════════════════════════════
 with T[14]:
     st.header("📊 Business-Coach")
     if st.session_state.gwlog:
-        c1,c2,c3 = st.columns(3)
-        ges_g = sum(i["g"] for i in st.session_state.gwlog); ges_e = sum(i["ek"] for i in st.session_state.gwlog)
-        c1.metric("Verkäufe",len(st.session_state.gwlog)); c2.metric("Gewinn",f"€{ges_g:.2f}"); c3.metric("ROI",f"{(ges_g/ges_e*100) if ges_e>0 else 0:.0f}%")
-        if st.button("🤖 Analysieren", type="primary", use_container_width=True, key="bc_btn"):
-            with st.spinner("..."):
-                log = "\n".join([f"{e['a']}: EK€{e['ek']} VK€{e['vk']} G€{e['g']} {e['pl']}" for e in st.session_state.gwlog])
-                st.markdown(ki(f"Business-Coach für deutschen Reseller. Verkäufe:\n{log}\nStärken, Schwächen, Top-3 Empfehlungen, Gewinn-Potenzial. Auf Deutsch."))
+        gg=sum(i["g"] for i in st.session_state.gwlog); ge=sum(i["ek"] for i in st.session_state.gwlog)
+        c1,c2,c3=st.columns(3)
+        c1.metric("Verkäufe",len(st.session_state.gwlog)); c2.metric("Gewinn",f"€{gg:.2f}"); c3.metric("ROI",f"{(gg/ge*100) if ge>0 else 0:.0f}%")
+        if st.button("🤖 Analysieren",type="primary",use_container_width=True,key="bc_btn"):
+            with st.spinner("3 KIs analysieren Ihr Business..."):
+                log="\n".join([f"{e['a']}: EK€{e['ek']} VK€{e['vk']} G€{e['g']} {e['pl']}" for e in st.session_state.gwlog])
+                web=google_suche("Reselling Deutschland Tipps "+datetime.now().strftime("%Y"))
+                p=(f"Business-Coach Reseller Deutschland.\n{('Market-Tipps: '+web[:200]) if web else ''}\n"
+                   f"Verkäufe:\n{log}\nStärken, Schwächen, Top-3 Empfehlungen, Potenzial, Beste Plattform. Deutsch.")
+                st.markdown(ensemble_ki(p))
     else: st.info("💡 Erst Verkäufe eintragen!")
 
 # ════════════════════════════════════════════════════════════
@@ -1078,10 +945,11 @@ with T[14]:
 with T[15]:
     st.header("📦 Lager-Optimierer")
     if st.session_state.lager:
-        if st.button("🤖 Lager analysieren", type="primary", use_container_width=True, key="lo_btn"):
-            with st.spinner("..."):
-                lt = "\n".join([f"{it['artikel']}: EK€{it['ek']} VK€{it['vk']} {it['tage']}T {it['plattform']}" for it in st.session_state.lager])
-                st.markdown(ki(f"Lager-Analyse:\n{lt}\nSofort verkaufen, Diese Woche, Bundle-Tipps, Preis-Anpassungen, Note 1-10. Auf Deutsch."))
+        if st.button("🤖 Lager analysieren",type="primary",use_container_width=True,key="lo_btn"):
+            with st.spinner("3 KIs analysieren..."):
+                lt="\n".join([f"{it['artikel']}: EK€{it['ek']} VK€{it['vk']} {it['tage']}T {it['plattform']}" for it in st.session_state.lager])
+                p=f"Lager-Analyse:\n{lt}\nSofort verkaufen, Diese Woche, Bundle-Tipps, Preis-Anpassungen, Note 1-10. Deutsch."
+                st.markdown(ensemble_ki(p))
     else: st.info("💡 Erst Artikel im Lager eintragen!")
 
 # ════════════════════════════════════════════════════════════
@@ -1089,34 +957,44 @@ with T[15]:
 # ════════════════════════════════════════════════════════════
 with T[16]:
     st.header("📰 Markt-News")
-    mn_kat = st.selectbox("Kategorie:", ["Alles","Kleidung","Elektronik","Porzellan","Spielzeug","Möbel","Bücher"], key="mn_kat")
-    if st.button("📰 Aktuelle Trends", type="primary", use_container_width=True, key="mn_btn"):
-        with st.spinner("..."):
-            st.markdown(ensemble_ki(f"Markt-Analyst {datetime.now().strftime('%B %Y')}. Report für {mn_kat}.\nTOP-5 meistgesucht + Preise steigen + Preise fallen + Geheimtipp + Saisonaler Tipp {datetime.now().strftime('%B')}. Auf Deutsch."))
+    mn_kat=st.selectbox("Kategorie:",["Alles","Kleidung","Elektronik","Porzellan","Spielzeug","Möbel","Bücher"],key="mn_kat")
+    if st.button("📰 Live-Analyse",type="primary",use_container_width=True,key="mn_btn"):
+        with st.spinner("Web + 3 KIs..."):
+            web=multi_suche(mn_kat+" Secondhand Markt Trend "+datetime.now().strftime("%B %Y")+" Deutschland")
+            if web: st.success("✅ Echte Web-Daten!")
+            p=(f"Markt-Analyst {datetime.now().strftime('%B %Y')}. {('Web:\n'+web[:400]) if web else ''}\n"
+               f"Report {mn_kat}: TOP-5 gesucht+Preise, Steigen, Fallen, Geheimtipp, Saisontipp. Deutsch.")
+            st.markdown(ensemble_ki(p))
 
 # ════════════════════════════════════════════════════════════
 # TAB 18 — PROFI-TEXT
 # ════════════════════════════════════════════════════════════
 with T[17]:
     st.header("✍️ Profi-Text Generator")
-    pt_fotos = st.file_uploader("📷 Fotos (mehrere möglich)", type=["jpg","jpeg","png"], accept_multiple_files=True, key="pt_fotos")
+    pt_fotos=st.file_uploader("📷 Fotos",type=["jpg","jpeg","png"],accept_multiple_files=True,key="pt_fotos")
     if pt_fotos:
-        cols = st.columns(min(len(pt_fotos),4))
-        for i,f in enumerate(pt_fotos):
-            with cols[i%4]: st.image(f, caption=f"Foto {i+1}", use_column_width=True)
-    c1,c2 = st.columns(2)
+        cols=st.columns(min(len(pt_fotos),4))
+        for i,f in enumerate(pt_fotos): cols[i%4].image(f,caption=f"Foto {i+1}",use_column_width=True)
+    c1,c2=st.columns(2)
     with c1:
-        pt_art   = st.text_input("Artikel:", key="pt_art")
-        pt_zust  = st.selectbox("Zustand:", ["Wie neu","Sehr gut","Gut","Gebraucht"], key="pt_zust")
-        pt_preis = st.number_input("Preis (€):", min_value=0.0, value=120.0, key="pt_preis")
-    with c2:
-        pt_det = st.text_area("Details:", height=100, key="pt_details")
-    if st.button("✍️ Texte erstellen", type="primary", use_container_width=True, key="pt_btn"):
+        pt_art=st.text_input("Artikel:",key="pt_art"); pt_zust=st.selectbox("Zustand:",["Wie neu","Sehr gut","Gut","Gebraucht"],key="pt_zust")
+        pt_preis=st.number_input("Preis €:",min_value=0.0,value=120.0,key="pt_preis")
+    with c2: pt_det=st.text_area("Details:",height=100,key="pt_details")
+    if st.button("✍️ Texte erstellen",type="primary",use_container_width=True,key="pt_btn"):
         if pt_art or pt_fotos:
-            with st.spinner("..."):
-                pt_b = [base64.b64encode(f.read()).decode() for f in pt_fotos] if pt_fotos else None
-                st.markdown(ki(f"Profi-Verkaufstexte für alle Plattformen. Artikel: {pt_art} | Zustand: {pt_zust} | Preis: €{pt_preis}\nDetails: {pt_det}\nKleinanzeigen-Titel+Text, Vinted, Facebook, eBay, Keywords. Auf Deutsch.", bilder=pt_b))
+            with st.spinner("3 KIs schreiben..."):
+                pt_b=[base64.b64encode(f.read()).decode() for f in pt_fotos] if pt_fotos else None
+                web=google_suche(f"{pt_art} Kleinanzeigen eBay Preis")
+                p=(f"Profi-Verkaufstexte alle Plattformen. Artikel: {pt_art} | {pt_zust} | €{pt_preis}\n"
+                   f"Details: {pt_det}\n{('Web: '+web[:150]) if web else ''}\n"
+                   f"Kleinanzeigen-Titel+Text, Vinted, Facebook, eBay, Keywords. Deutsch.")
+                st.markdown(ensemble_ki(p,bilder=pt_b))
 
 # ── FOOTER ────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown(f"<p style='text-align:center;color:#666'>⚡ MarktRadar OS PRO v7.0 · Zoran Berlin · {datetime.now().strftime('%d.%m.%Y')}</p>", unsafe_allow_html=True)
+st.markdown(
+    f"<p style='text-align:center;color:#888;font-size:12px'>"
+    f"⚡ MarktRadar OS PRO v8.0 ULTIMATE · 9 Vision-KIs · Ensemble · Google+Tavily+You.com · "
+    f"Zoran Berlin · {datetime.now().strftime('%d.%m.%Y')}</p>",
+    unsafe_allow_html=True
+)
