@@ -126,6 +126,79 @@ def google_suche(query, num=5):
     return None
 
 
+def ensemble_ki(prompt, bilder=None, modelle=None, max_tokens=1000):
+    """
+    Ensemble-KI: Mehrere Modelle arbeiten gleichzeitig.
+    Richter-KI fasst alle Antworten zu EINER perfekten Antwort zusammen.
+    """
+    import concurrent.futures
+    import openai as _oai
+
+    if modelle is None:
+        if bilder:
+            modelle = [
+                ("google/gemini-3-flash-preview", "Gemini 3"),
+                ("google/gemini-2.5-flash",        "Gemini 2.5"),
+                ("anthropic/claude-sonnet-4-6",    "Claude Sonnet"),
+            ]
+        else:
+            modelle = [
+                ("openai/gpt-4o-mini",             "GPT-4o-mini"),
+                ("google/gemini-2.5-flash-lite",   "Gemini Lite"),
+                ("google/gemini-3-flash-preview",  "Gemini 3"),
+            ]
+
+    def ein_experte(model_info):
+        model_id, model_name = model_info
+        try:
+            _client = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+            hdrs = {"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
+            if bilder:
+                bilder_k = [komprimiere(b) for b in bilder[:3]]
+                inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_k]
+                inhalt.append({"type":"text","text":prompt})
+                msgs = [{"role":"user","content":inhalt}]
+            else:
+                msgs = [{"role":"user","content":prompt}]
+            r = _client.chat.completions.create(
+                model=model_id, messages=msgs,
+                max_tokens=max_tokens, extra_headers=hdrs
+            )
+            antwort = r.choices[0].message.content
+            if antwort and len(antwort) > 30:
+                return (model_name, antwort)
+        except Exception:
+            pass
+        return (model_name, None)
+
+    # Alle gleichzeitig starten
+    antworten = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(modelle)) as ex:
+        futures = {ex.submit(ein_experte, m): m for m in modelle}
+        for future in concurrent.futures.as_completed(futures):
+            name, antwort = future.result()
+            if antwort:
+                antworten[name] = antwort
+
+    if not antworten:
+        # Fallback auf einzelne KI
+        return ki(prompt, bilder=bilder)
+
+    if len(antworten) == 1:
+        return list(antworten.values())[0]
+
+    # Richter-KI fasst zusammen
+    experten_text = "\n\n".join([f"[{n}]:\n{a[:600]}" for n,a in antworten.items()])
+    richter = ki(
+        f"Du bist Chef-Experte. {len(antworten)} Experten haben geantwortet.\n"
+        f"Erstelle EINE perfekte finale Antwort auf Deutsch.\n"
+        f"Nimm das Beste aus jeder Antwort. Sei präzise und vollständig.\n"
+        f"Experten-Antworten:\n{experten_text}\n\n"
+        f"FINALE ANTWORT:"
+    )
+    return richter
+
+
 def suche_preise(artikel):
     """Suche aktuelle Marktpreise — Google zuerst, dann Tavily, dann You.com"""
     query = artikel + " Preis kaufen Deutschland Kleinanzeigen eBay Vinted " + datetime.now().strftime("%Y")
@@ -725,7 +798,7 @@ with T[3]:
         if ocr_b:
             with st.spinner("🤖 ..."):
                 b64 = base64.b64encode(ocr_b.read()).decode()
-                r = ki(f"Scanne ALLE {ocr_t} im Foto. Für jeden: [Titel] | eBay: €X | Kleinanzeigen: €X | Vinted: €X | Flohmarkt: €X\nTop-3 wertvollste + Gesamtwert. Auf Deutsch.", bilder=[b64])
+                r = ensemble_ki(f"Scanne ALLE {ocr_t} im Foto. Für jeden: [Titel] | eBay: €X | Kleinanzeigen: €X | Vinted: €X | Flohmarkt: €X\nTop-3 wertvollste + Gesamtwert. Auf Deutsch.", bilder=[b64])
                 st.markdown(r)
 
 # ════════════════════════════════════════════════════════════
@@ -760,7 +833,7 @@ with T[4]:
         if rb:
             with st.spinner("💡 ..."):
                 rep_b = [base64.b64encode(f.read()).decode() for f in rep_fotos] if rep_fotos else None
-                st.markdown(ki(f"3 Reparatur-Tipps für '{ra}': {rb}. Auf Deutsch.", bilder=rep_b))
+                st.markdown(ensemble_ki(f"3 Reparatur-Tipps für '{ra}': {rb}. Auf Deutsch.", bilder=rep_b))
 
 # ════════════════════════════════════════════════════════════
 # TAB 6 — TRENDS (ECHTZEIT KI)
@@ -783,7 +856,7 @@ with T[5]:
                 "GEHEIMTIPP: [1 unterschaetzter Artikel]\n"
                 "JETZT VERKAUFEN: [was jetzt verkaufen?]\n"
                 "GOLD-SUCHBEGRIFFE: [5 Begriffe]")
-            r = ki(prompt_tr)
+            r = ensemble_ki(prompt_tr)
             if web_data: st.success("✅ Echte Web-Daten eingeflossen!")
             st.markdown(r)
     st.markdown("---")
@@ -847,7 +920,7 @@ with T[7]:
                 b64 = base64.b64encode(fc_b.read()).decode()
                 c1,c2 = st.columns(2)
                 with c1: fc_b.seek(0); st.image(fc_b,caption="Ihr Foto",use_column_width=True)
-                with c2: st.markdown(ki(f"Foto-Experte für {fc_p}. Bewerte dieses Foto. Auf Deutsch.\nBewertung (1-10): Helligkeit, Hintergrund, Schärfe, Winkel\nProbleme + Verbesserungen + Tipps + Preis-Potenzial +X%", bilder=[b64]))
+                with c2: st.markdown(ensemble_ki(f"Foto-Experte für {fc_p}. Bewerte dieses Foto. Auf Deutsch.\nBewertung (1-10): Helligkeit, Hintergrund, Schärfe, Winkel\nProbleme + Verbesserungen + Tipps + Preis-Potenzial +X%", bilder=[b64]))
 
 # ════════════════════════════════════════════════════════════
 # TAB 9 — FLOHMÄRKTE BERLIN (ECHTZEIT)
@@ -914,7 +987,7 @@ with T[9]:
                 b64 = base64.b64encode(ms_b.read()).decode()
                 c1,c2 = st.columns(2)
                 with c1: ms_b.seek(0); st.image(ms_b,caption="Stempel",use_column_width=True)
-                with c2: st.markdown(ki(f"Marken-Experte für {ms_k}. Identifiziere Stempel/Logo. Auf Deutsch.\nMarke, Herkunft, Jahr, Echtheit, Wert, eBay-Suchbegriff.", bilder=[b64]))
+                with c2: st.markdown(ensemble_ki(f"Marken-Experte für {ms_k}. Identifiziere Stempel/Logo. Auf Deutsch.\nMarke, Herkunft, Jahr, Echtheit, Wert, eBay-Suchbegriff.", bilder=[b64]))
 
 # ════════════════════════════════════════════════════════════
 # TAB 11 — TIMING
@@ -926,7 +999,7 @@ with T[10]:
     if st.button("📅 Timing analysieren",type="primary",use_container_width=True,key="ti_btn"):
         if ti_a:
             with st.spinner("..."):
-                st.markdown(ki(f"Timing-Experte. Artikel: {ti_a} | Monat: {ti_m}. Beste/schlechteste Monate + Monatstabelle + Jetzt-Empfehlung. Auf Deutsch."))
+                st.markdown(ensemble_ki(f"Timing-Experte. Artikel: {ti_a} | Monat: {ti_m}. Beste/schlechteste Monate + Monatstabelle + Jetzt-Empfehlung. Auf Deutsch."))
 
 # ════════════════════════════════════════════════════════════
 # TAB 12 — ANZEIGEN-KI
@@ -951,7 +1024,7 @@ with T[11]:
         if ao_ti or ao_tx or ao_fotos:
             with st.spinner("..."):
                 ao_b = [base64.b64encode(f.read()).decode() for f in ao_fotos] if ao_fotos else None
-                st.markdown(ki(f"Anzeigen-Experte für {ao_l}. Kategorie: {ao_k}. Preis: €{ao_p}. {ao_t2} Tage online.\nTitel: {ao_ti}\nText: {ao_tx}\nAnalysiere + verbessere. Note 1-10 + Schwächen + Neuer Titel + Neue Beschreibung + Preis-Empfehlung + Keywords + Tipps. Auf Deutsch.", bilder=ao_b))
+                st.markdown(ensemble_ki(f"Anzeigen-Experte für {ao_l}. Kategorie: {ao_k}. Preis: €{ao_p}. {ao_t2} Tage online.\nTitel: {ao_ti}\nText: {ao_tx}\nAnalysiere + verbessere. Note 1-10 + Schwächen + Neuer Titel + Neue Beschreibung + Preis-Empfehlung + Keywords + Tipps. Auf Deutsch.", bilder=ao_b))
 
 # ════════════════════════════════════════════════════════════
 # TAB 13 — RESELLING-CHAT
@@ -982,7 +1055,7 @@ with T[13]:
         if kk_url:
             with st.spinner("..."):
                 seite = lies_url(kk_url)
-                st.markdown(ki(f"Konkurrenz-Analyse. Inhalt:\n{seite[:2000]}\nMein Artikel: {kk_art} | Mein Preis: €{kk_preis}\nKonkurrenz-Analyse + Wie ich besser sein kann + Optimaler Preis + Fazit. Auf Deutsch."))
+                st.markdown(ensemble_ki(f"Konkurrenz-Analyse. Inhalt:\n{seite[:2000]}\nMein Artikel: {kk_art} | Mein Preis: €{kk_preis}\nKonkurrenz-Analyse + Wie ich besser sein kann + Optimaler Preis + Fazit. Auf Deutsch."))
 
 # ════════════════════════════════════════════════════════════
 # TAB 15 — BUSINESS-COACH
@@ -1019,7 +1092,7 @@ with T[16]:
     mn_kat = st.selectbox("Kategorie:", ["Alles","Kleidung","Elektronik","Porzellan","Spielzeug","Möbel","Bücher"], key="mn_kat")
     if st.button("📰 Aktuelle Trends", type="primary", use_container_width=True, key="mn_btn"):
         with st.spinner("..."):
-            st.markdown(ki(f"Markt-Analyst {datetime.now().strftime('%B %Y')}. Report für {mn_kat}.\nTOP-5 meistgesucht + Preise steigen + Preise fallen + Geheimtipp + Saisonaler Tipp {datetime.now().strftime('%B')}. Auf Deutsch."))
+            st.markdown(ensemble_ki(f"Markt-Analyst {datetime.now().strftime('%B %Y')}. Report für {mn_kat}.\nTOP-5 meistgesucht + Preise steigen + Preise fallen + Geheimtipp + Saisonaler Tipp {datetime.now().strftime('%B')}. Auf Deutsch."))
 
 # ════════════════════════════════════════════════════════════
 # TAB 18 — PROFI-TEXT
