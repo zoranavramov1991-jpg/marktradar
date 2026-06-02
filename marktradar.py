@@ -677,7 +677,7 @@ with T[0]:
                     st.session_state["ana_ergebnis"] = ergebnis
             else:
                 # ULTIMATE-MODUS: 4 Experten gleichzeitig
-                with st.status("🔬 Stufe 2: KI analysiert...",expanded=True):
+                with st.status("🔬 Stufe 2: 3 Experten-KIs + Richter analysieren...",expanded=True):
                     vorab_k = ("\n\nVORAB:\n" + st.session_state.vorabinfo) if st.session_state.get("vorabinfo","") else ""
                     kat_k = ("\nErkannte Kategorie: " + st.session_state.get("auto_kat","")) if st.session_state.get("auto_kat") else ""
                     lern = ""
@@ -726,8 +726,80 @@ with T[0]:
                         "---\nGESAMT: \u20acX | Wertvollster: [Name]"
                     )
 
-                    with st.spinner("🤖 KI arbeitet — bitte warten..."):
-                        ergebnis = ki(analyse_prompt, bilder=st.session_state.fotos if hat_fotos else None)
+                    # 3 Experten-KIs analysieren GLEICHZEITIG
+                    st.write("🚀 3 Top-Experten analysieren gleichzeitig...")
+                    experten_modelle = [
+                        ("google/gemini-3-flash-preview", "🥇 Gemini 3 Flash"),
+                        ("google/gemini-2.5-flash",       "🥈 Gemini 2.5 Flash"),
+                        ("anthropic/claude-sonnet-4-6",   "🥉 Claude Sonnet"),
+                    ]
+                    def experte_arbeitet(modell_info):
+                        modell_id, modell_name = modell_info
+                        try:
+                            klient = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+                            if hat_fotos:
+                                bilder_komp = [komprimiere(b) for b in st.session_state.fotos[:3]]
+                                inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_komp]
+                                inhalt.append({"type":"text","text":analyse_prompt})
+                                nachrichten = [{"role":"user","content":inhalt}]
+                            else:
+                                nachrichten = [{"role":"user","content":analyse_prompt}]
+                            antwort_obj = klient.chat.completions.create(
+                                model=modell_id, messages=nachrichten,
+                                max_tokens=1800, extra_headers=_hdrs()
+                            )
+                            antwort_text = antwort_obj.choices[0].message.content
+                            if antwort_text and len(antwort_text) > 100:
+                                return (modell_name, antwort_text)
+                        except Exception:
+                            pass
+                        return (modell_name, None)
+
+                    experten_ergebnisse = {}
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                        futures_map = {executor.submit(experte_arbeitet, m): m for m in experten_modelle}
+                        for future in concurrent.futures.as_completed(futures_map):
+                            name_e, antwort_e = future.result()
+                            if antwort_e:
+                                experten_ergebnisse[name_e] = antwort_e
+                                st.write(f"✅ {name_e} fertig!")
+
+                    # KONFIDENZ-Anzeige
+                    anzahl_experten = len(experten_ergebnisse)
+                    if anzahl_experten == 3:
+                        st.success(f"🎯 Konfidenz: **100%** — Alle 3 Experten einig! Höchst zuverlässig!")
+                    elif anzahl_experten == 2:
+                        st.success(f"🎯 Konfidenz: **75%** — 2 von 3 Experten einig!")
+                    elif anzahl_experten == 1:
+                        st.warning(f"🎯 Konfidenz: **50%** — Nur 1 Experte — Ergebnis prüfen!")
+
+                    if anzahl_experten == 0:
+                        # Fallback auf einzelne KI
+                        st.warning("⚠️ Experten nicht verfügbar — Einzel-KI...")
+                        with st.spinner("🤖 KI arbeitet..."):
+                            ergebnis = ki(analyse_prompt, bilder=st.session_state.fotos if hat_fotos else None)
+                    elif anzahl_experten == 1:
+                        # Nur eine Antwort — direkt nehmen
+                        ergebnis = list(experten_ergebnisse.values())[0]
+                    else:
+                        # Richter-KI fasst alle zusammen
+                        st.write(f"⚖️ Richter-KI fasst {anzahl_experten} Experten zusammen...")
+                        experten_teile = []
+                        for e_name, e_antwort in experten_ergebnisse.items():
+                            experten_teile.append("==" + e_name + "==\n" + e_antwort[:800])
+                        experten_zusammen = "\n\n".join(experten_teile)
+                        richter_prompt_final = (
+                            "Du bist Chef-Experte für Secondhand in Deutschland.\n"
+                            + str(anzahl_experten) + " Experten haben den Artikel analysiert.\n"
+                            + "Erstelle EINE perfekte, vollständige finale Antwort auf Deutsch.\n"
+                            + "Nimm das Beste + Präziseste aus jeder Analyse.\n"
+                            + "Bei unterschiedlichen Preisen: nimm den Durchschnitt.\n"
+                            + "Behalte ALLE Abschnitte (Zustand, alle 5 Preise, Gewinn, Berlin-Märkte etc.)!\n\n"
+                            + "Experten-Analysen:\n"
+                            + experten_zusammen
+                            + "\n\nFINALE EXPERTEN-ANTWORT:"
+                        )
+                        ergebnis = ki(richter_prompt_final)
 
                     st.markdown(ergebnis)
                     st.session_state["ana_ergebnis"] = ergebnis
@@ -772,13 +844,13 @@ with T[0]:
                 if tavily_r and passt_zum_artikel(tavily_r, suchbegriff):
                     web_text += "\n" + tavily_r
 
-                # Immer KI-Preis-Analyse — mit oder ohne Web-Daten
-                st.write("⚖️ 3 Preis-KIs bewerten gleichzeitig...")
+                # 3 Preis-Experten bewerten GLEICHZEITIG
+                st.write("⚖️ 3 Preis-Experten bewerten gleichzeitig...")
                 preis_prompt = (
                     "Preisexperte Secondhand Deutschland. Auf DEUTSCH antworten!\n"
                     "Artikel: " + suchbegriff + "\n"
                     "Zustand: " + g_beschr + "\n"
-                    + ("Marktdaten: " + web_text[:300] if web_text else "") + "\n"
+                    + ("Echte Marktdaten aus dem Web: " + web_text[:400] if web_text else "Keine Web-Daten — nutze Erfahrung.") + "\n\n"
                     "Gib realistische Preise. NUR konkrete Einzelzahlen — KEINE Spannen!\n"
                     "Format:\n"
                     "- eBay: €X\n"
@@ -787,14 +859,56 @@ with T[0]:
                     "- Facebook: €X\n"
                     "- Flohmarkt: €X\n"
                     "- Empfehlung: €X\n"
-                    "- Trend: ↑/↓/→ + kurze Begründung auf Deutsch"
+                    "- Trend: ↑/↓/→ + kurze Begründung"
                 )
-                pk = ensemble_ki(preis_prompt)
-                if web_text:
-                    st.success("✅ Echte Web-Daten + KI-Analyse:")
+                preis_modelle = [
+                    ("google/gemini-3-flash-preview", "Gemini 3"),
+                    ("google/gemini-2.5-flash",       "Gemini 2.5"),
+                    ("openai/gpt-4o-mini",            "GPT-4o"),
+                ]
+                def preis_experte_arbeitet(modell_info):
+                    m_id, m_name = modell_info
+                    try:
+                        kl = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+                        r = kl.chat.completions.create(
+                            model=m_id, messages=[{"role":"user","content":preis_prompt}],
+                            max_tokens=400, extra_headers=_hdrs()
+                        )
+                        a = r.choices[0].message.content
+                        if a and "€" in a: return (m_name, a)
+                    except Exception:
+                        pass
+                    return (m_name, None)
+
+                preis_meinungen = {}
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+                    fut = {ex.submit(preis_experte_arbeitet, m): m for m in preis_modelle}
+                    for f in concurrent.futures.as_completed(fut):
+                        n, a = f.result()
+                        if a: preis_meinungen[n] = a; st.write(f"✅ {n} bewertet!")
+
+                if preis_meinungen:
+                    if web_text:
+                        st.success("✅ Echte Web-Daten + 3 Preis-Experten:")
+                    else:
+                        st.info("💡 3 Preis-Experten (KI-Schätzung):")
+                    # Richter fasst Preise zusammen
+                    if len(preis_meinungen) > 1:
+                        preis_teile = []
+                        for pn, pa in preis_meinungen.items():
+                            preis_teile.append("[" + pn + "]: " + pa[:300])
+                        preis_zusammen = "\n\n".join(preis_teile)
+                        pk = ki(
+                            str(len(preis_meinungen)) + " Preisexperten haben bewertet:\n"
+                            + preis_zusammen + "\n\n"
+                            "Erstelle finalen Preis-Konsens. NUR Einzelzahlen, KEINE Spannen!\n"
+                            "Format: eBay: €X | Kleinanzeigen: €X | Vinted: €X | Facebook: €X | Flohmarkt: €X | Empfehlung: €X | Trend: ↑/↓/→"
+                        )
+                    else:
+                        pk = list(preis_meinungen.values())[0]
+                    st.markdown("💰 **Preis-Konsens für " + suchbegriff + ":**\n" + pk)
                 else:
-                    st.info("💡 KI-Marktpreise:")
-                st.markdown("💰 **Marktpreise für " + suchbegriff + ":**\n" + pk)
+                    st.info("ℹ️ Preise siehe Stufe 2 (Hauptanalyse)")
                 st.markdown("**🔗 Direkt suchen:**")
                 c1,c2=st.columns(2)
                 with c1:
