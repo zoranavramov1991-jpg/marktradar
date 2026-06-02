@@ -1450,6 +1450,7 @@ with T[8]:
 
     ]
     tage=["Alle","Mo","Di","Mi","Do","Fr","Sa","So"]
+    fw=st.radio("📅 Tag:",tage,horizontal=True,key="fw")
     st.markdown("---")
     liste=maerkte if fw=="Alle" else [m for m in maerkte if m[0]==fw]
     if fw=="Alle":
@@ -1468,6 +1469,7 @@ with T[8]:
                 c1,c2=st.columns([2,1])
                 with c1: st.markdown(f"📍 {m[2]}\n\n🕐 {m[3]}\n\n📞 **{m[4]}**\n\n🏷️ {m[5]}\n\n💡 *{m[7]}*")
                 with c2: st.markdown(m[6]); st.link_button("🗺️",m[8],use_container_width=True)
+
     st.markdown("---")
     fq=st.text_input("🤖 Frage:",key="fq")
     if st.button("Fragen",type="primary",use_container_width=True,key="f_btn"):
