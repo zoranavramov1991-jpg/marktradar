@@ -1286,10 +1286,9 @@ with T[8]:
     maerkte=[
 
         # ══════ MONTAG ══════
-        ("Mo","Trödelmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Mo-Fr (unregelmäßig)",
-         "Burdack Märkte: info@burdack-maerkte.de","🏺 Antiquitäten, Porzellan","⭐⭐⭐",
-         "Unter der Woche wenig Besucher = gute Deals für Händler",
-         "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
+        # ══════ MONTAG ══════
+        # Hinweis: Montags gibt es in Berlin kaum reguläre Flohmärkte.
+        # Die meisten Außenmärkte öffnen erst Di oder Fr!
 
         # ══════ DIENSTAG ══════
         ("Di","Kunst- & Trödelmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Di & Fr 8-15h",
@@ -1308,11 +1307,6 @@ with T[8]:
          "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
          "Do meist ruhig — gut für schnelle Verkäufe unter der Woche",
          "https://maps.google.com/?q=Weißenfelser+Straße+6+Berlin+Marzahn"),
-
-        ("Do","Wochenmarkt Winterfeldtplatz","Winterfeldtpl., 10781 Berlin-Schöneberg","Do 8-14h",
-         "Marktamt Schöneberg","🌿 Bio, Vintage, Mode, Design","⭐⭐⭐",
-         "Kein reiner Flohmarkt aber viele Vintage-Händler! Do ruhiger als Sa",
-         "https://maps.google.com/?q=Winterfeldtplatz+Berlin"),
 
         # ══════ FREITAG ══════
         ("Fr","Kunst- & Trödelmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Di & Fr 8-15h",
@@ -1335,11 +1329,6 @@ with T[8]:
          "Berliner Trödel GmbH: 030-2655000","🏺 Hochwertige Antiquitäten, Kunst, Schmuck","⭐⭐⭐⭐⭐",
          "Größter Antik-Flohmarkt Berlins! Professionelle Händler-Stände",
          "https://maps.google.com/?q=Flohmarkt+Straße+des+17+Juni+Berlin"),
-
-        ("Sa","Winterfeldtmarkt","Winterfeldtpl., 10781 Berlin-Schöneberg","Sa 8-14h",
-         "Standanmeldung: markt@winterfeldtmarkt.de","🌿 Bio, Vintage, Kunst, Mode","⭐⭐⭐⭐⭐",
-         "Top-Publikum mit Kaufkraft! Gut für hochwertige Vintage-Sachen",
-         "https://maps.google.com/?q=Winterfeldtmarkt+Berlin"),
 
         ("Sa","RAW Flohmarkt","Revaler Str. 99, 10245 Berlin-Friedrichshain","Sa & So 10-18h",
          "info@raw-flohmarkt.de","🕶️ Vintage Mode, Vinyl, Streetwear","⭐⭐⭐⭐⭐",
