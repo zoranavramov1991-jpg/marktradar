@@ -677,63 +677,62 @@ with T[0]:
                     st.session_state["ana_ergebnis"] = ergebnis
             else:
                 # ULTIMATE-MODUS: 4 Experten gleichzeitig
-                with st.status("🔬 Stufe 2: 4 Experten-KIs analysieren gleichzeitig...",expanded=True):
-                    st.write("🚀 Starte 4 Experten gleichzeitig...")
-                    modelle_e=[
-                        ("google/gemini-3-flash-preview","🥇 Gemini 3 Flash"),
-                        ("google/gemini-2.5-flash","🥈 Gemini 2.5 Flash"),
-                        ("anthropic/claude-sonnet-4-6","🥉 Claude Sonnet"),
-                        ("openai/gpt-4o","4️⃣ GPT-4o"),
-                    ]
-                    def experte_analysiert(info):
-                        mid,name=info
-                        try:
-                            c2=_oai.OpenAI(api_key=OR_KEY,base_url="https://openrouter.ai/api/v1")
-                            if hat_fotos:
-                                bk=[komprimiere(b) for b in st.session_state.fotos[:3]]
-                                inhalt=[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
-                                inhalt.append({"type":"text","text":prompt})
-                                msgs=[{"role":"user","content":inhalt}]
-                            else:
-                                msgs=[{"role":"user","content":prompt}]
-                            r=c2.chat.completions.create(model=mid,messages=msgs,max_tokens=1500,extra_headers=_hdrs())
-                            a=r.choices[0].message.content
-                            if a and len(a)>100: return (name,a)
-                        except: pass
-                        return (name,None)
+                with st.status("🔬 Stufe 2: KI analysiert...",expanded=True):
+                    vorab_k = ("\n\nVORAB:\n" + st.session_state.vorabinfo) if st.session_state.get("vorabinfo","") else ""
+                    kat_k = ("\nErkannte Kategorie: " + st.session_state.get("auto_kat","")) if st.session_state.get("auto_kat") else ""
+                    lern = ""
+                    if st.session_state.mein_wissen:
+                        lern += "\n\nMein Wissen:\n" + "\n".join([f"- {w}" for w in st.session_state.mein_wissen[-10:]])
+                    if st.session_state.preis_korrekturen:
+                        lern += "\n\nEchte Preise:\n" + "\n".join([f"- {k}: \u20ac{v}" for k,v in list(st.session_state.preis_korrekturen.items())[-10:]])
+                    extra = ""
+                    if beschr.strip(): extra += " Händler: " + beschr + "."
+                    if url_text and not url_text.startswith("[URL"): extra += "\n\nWebseite:\n" + url_text[:1500]
 
-                    ea={}
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-                        fs={ex.submit(experte_analysiert,m):m for m in modelle_e}
-                        for f in concurrent.futures.as_completed(fs):
-                            n,a=f.result()
-                            if a: ea[n]=a; st.write(f"✅ {n} fertig!")
+                    analyse_prompt = (
+                        "Ich bin Händler (Kleinanzeigen,Vinted,Facebook,eBay,Flohmärkte)." + kat_k + "\n"
+                        "Gebrauchsspuren: " + g_beschr + "\n"
+                        "Defekt: " + d_beschr + extra + vorab_k + lern + "\n\n"
+                        "Analysiere JEDEN Artikel im Bild. Auf Deutsch. Sei Profi-Experte!\n\n"
+                        "**Artikel: [Name]**\n"
+                        "- Was genau? [Marke, Material, Modell]\n"
+                        "- Alter: [Jahr/Epoche/Land/Antik?]\n"
+                        "- ZUSTAND-ANALYSE (JEDES DETAIL!):\n"
+                        "  Gesamtzustand: [Wie neu/Sehr gut/Gut/Gebraucht/Stark gebraucht]\n"
+                        "  Gebrauchsspuren-Grad: X%\n"
+                        "  Kratzer: [Wo? Größe? Anzahl?]\n"
+                        "  Dellen/Chips: [Wo? Größe?]\n"
+                        "  Sonstiges: [Alles was auffällt]\n"
+                        "- Verkäuflichkeit: \U0001f7e2schnell / \U0001f7e1mittel / \U0001f534langsam\n\n"
+                        "PREISE (NUR eine Zahl! ALLE 5 PFLICHT):\n"
+                        "Jetzt (" + g_beschr + "):\n"
+                        "- eBay: \u20acX\n"
+                        "- Kleinanzeigen: \u20acX\n"
+                        "- Vinted: \u20acX\n"
+                        "- Facebook: \u20acX\n"
+                        "- Flohmarkt: \u20acX\n"
+                        "- Max. Ankauf: \u20acX\n\n"
+                        "Nach Aufbereitung: eBay \u20acX | KA \u20acX | FM \u20acX | Mehrwert +\u20acX (+X%)\n\n"
+                        "\U0001f3c6 BESTE PLATTFORM: [Welche + warum + \u20acX]\n"
+                        "\U0001f3af KONFIDENZ: X%\n"
+                        "\u26a0\ufe0f FÄLSCHUNG: [Niedrig/Mittel/Hoch]\n"
+                        "\u2728 AUFBEREITUNG: [Methode + +\u20acX]\n"
+                        "\U0001f465 ZIELGRUPPE: [Wer + wo]\n"
+                        "\U0001f4c5 TIMING: [Beste Monate + Jetzt: Ja/Nein]\n"
+                        "\U0001f4dd ANZEIGE: Titel:[60Z] | Text:[3S] | Preis:\u20acX\n"
+                        "\U0001f5fa\ufe0f BERLIN: \U0001f947[Markt+Tag+\u20acX] \U0001f948[Markt+\u20acX]\n"
+                        "\U0001f31f RARITÄT: [Seltenheit + Höchstpreis]\n"
+                        "\U0001f4b0 GEWINN: EK\u20acX \u2192 VK\u20acX \u2192 Gewinn\u20acX \u2192 ROI X%\n"
+                        "---\nGESAMT: \u20acX | Wertvollster: [Name]"
+                    )
 
-                    # KONFIDENZ-ANZEIGE
-                    if len(ea) >= 2:
-                        konfidenz = int((len(ea) / len(modelle_e)) * 100)
-                        einig_text = f"{len(ea)}/{len(modelle_e)} KIs"
-                        if len(ea) == 4:
-                            st.success(f"🎯 Konfidenz: **100%** — {einig_text} einig! Sehr zuverlässig!")
-                        elif len(ea) == 3:
-                            st.success(f"🎯 Konfidenz: **75%** — {einig_text} einig!")
-                        else:
-                            st.warning(f"🎯 Konfidenz: **50%** — {einig_text} — Ergebnis prüfen!")
-
-                    if not ea:
-                        st.warning("⚠️ Ensemble fehlgeschlagen — Fallback...")
-                        ergebnis = ki(
-                            "Chef-Experte Secondhand Deutschland.\n"
-                            + str(len(ea)) + " Experten haben analysiert.\n"
-                            "Erstelle EINE perfekte vollständige finale Antwort auf Deutsch.\n"
-                            "Bestes aus jeder Analyse. Bei Preisen: Durchschnitt.\n"
-                            "Experten:\n" + et + "\n\nFINALE EXPERTEN-ANTWORT:"
-                        )
+                    with st.spinner("🤖 KI arbeitet — bitte warten..."):
+                        ergebnis = ki(analyse_prompt, bilder=st.session_state.fotos if hat_fotos else None)
 
                     st.markdown(ergebnis)
-                    st.session_state["ana_ergebnis"]=ergebnis
-                    st.session_state["vorabinfo"]=""
-                    st.session_state["auto_kat"]=""
+                    st.session_state["ana_ergebnis"] = ergebnis
+                    st.session_state["vorabinfo"] = ""
+                    st.session_state["auto_kat"] = ""
 
             # Suchbegriff extrahieren
             suchbegriff="Vintage Artikel"
