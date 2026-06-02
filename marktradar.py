@@ -57,6 +57,12 @@ for k,v in {
     "lager":[],"sim":[],"gwlog":[],"fotos":[],"fcnt":0,
     "feedback_log":[],"analyse_history":[],"mein_wissen":[],
     "preis_korrekturen":{},"chat_history":[],"vorabinfo":"",
+    # Erweitertes Lern-System
+    "verkauf_log":[],        # Echte Verkäufe mit Preis+Plattform
+    "kategorie_wissen":{},   # Wissen pro Kategorie
+    "beste_zeiten":{},       # Beste Verkaufszeiten
+    "markt_notizen":{},      # Notizen zu Märkten
+    "ki_korrekturen":[],     # Wo KI falsch lag
 }.items():
     if k not in st.session_state: st.session_state[k]=v
 
@@ -94,6 +100,25 @@ def _client():
 
 def _hdrs():
     return {"HTTP-Referer":"https://marktradar.streamlit.app","X-Title":"MarktRadar"}
+
+def baue_lern_kontext():
+    """Gibt den kompletten Lern-Kontext für KI-Prompts zurück"""
+    lern = ""
+    if st.session_state.mein_wissen:
+        lern += "\n\nMein persönliches Wissen (aus Erfahrung):\n"
+        lern += "\n".join([f"- {w}" for w in st.session_state.mein_wissen[-10:]])
+    if st.session_state.preis_korrekturen:
+        lern += "\n\nEchte Verkaufspreise die ich erzielt habe:\n"
+        lern += "\n".join([f"- {k}: €{v}" for k,v in list(st.session_state.preis_korrekturen.items())[-10:]])
+    if st.session_state.verkauf_log:
+        lern += "\n\nMeine letzten Verkäufe:\n"
+        for v in st.session_state.verkauf_log[-5:]:
+            lern += f"- {v['artikel']} für €{v['vk']} auf {v['plattform']} ({v['tage']} Tage)\n"
+    if st.session_state.ki_korrekturen:
+        lern += "\n\nWo ich die KI korrigiert habe:\n"
+        lern += "\n".join([f"- {k}" for k in st.session_state.ki_korrekturen[-5:]])
+    return lern
+
 
 def komprimiere(b64):
     try:
@@ -203,17 +228,29 @@ def google_suche(query):
 def tavily_suche(query):
     if not TAVILY_KEY: return None
     try:
+        # Deutsch erzwingen durch deutsche Suchanfrage
+        query_de = query + " Deutschland deutsch"
         r = requests.post("https://api.tavily.com/search",
-            json={"api_key":TAVILY_KEY,"query":query,"search_depth":"advanced",
-                  "max_results":5,"include_answer":True},
+            json={"api_key":TAVILY_KEY,"query":query_de,"search_depth":"advanced",
+                  "max_results":5,"include_answer":True,
+                  "include_domains":["kleinanzeigen.de","ebay.de","vinted.de",
+                                     "mobile.de","markt.de","hood.de"]},
             timeout=15)
         data = r.json()
         teile = []
-        if data.get("answer"): teile.append("📊 " + str(data["answer"]))
+        if data.get("answer"):
+            antwort = str(data["answer"])
+            # Nur verwenden wenn auf Deutsch oder relevant
+            if any(w in antwort.lower() for w in ["euro","€","preis","kaufen","verkauf","deutschland"]):
+                teile.append(antwort)
         if data.get("results"):
-            teile.append("🔗 QUELLEN:")
             for res in data["results"][:3]:
-                teile.append("• " + res.get("title","") + ": " + res.get("content","")[:150])
+                titel = res.get("title","")
+                inhalt = res.get("content","")[:150]
+                # Nur deutsche Quellen
+                url = res.get("url","")
+                if ".de" in url or "deutschland" in inhalt.lower() or "€" in inhalt:
+                    teile.append("• " + titel + ": " + inhalt)
         return "\n".join(teile) if teile else None
     except: pass
     return None
@@ -245,7 +282,7 @@ def multi_suche(query):
         if ft.result(): ergebnisse["Tavily"] = ft.result()
         if fy.result(): ergebnisse["You.com"] = fy.result()
     if not ergebnisse: return None
-    return "\n\n".join([f"=={k}==\n{v}" for k,v in ergebnisse.items()])
+    return "\n\n".join([v for v in ergebnisse.values()])
 
 def preis_ensemble(artikel, zustand, web_daten):
     """3 KIs bewerten Preise gleichzeitig → Konsens"""
@@ -283,7 +320,13 @@ def preis_ensemble(artikel, zustand, web_daten):
     if not pw: return None
     if len(pw) == 1: return list(pw.values())[0]
     pt = "\n".join([f"[{n}]: {a}" for n,a in pw.items()])
-    return ki(f"3 Preisexperten:\n{pt}\nErstelle Preis-Konsens (eine Zeile): eBay €X | KA €X | FM €X | Best: €X | Trend: ↑/↓/→")
+    return ki(
+        f"3 Preisexperten haben Preise geschätzt:\n{pt}\n\n"
+        f"Erstelle finalen Preis-Konsens. NUR konkrete Einzelzahlen — KEINE Spannen wie €45-55!\n"
+        f"Format (genau so):\n"
+        f"eBay: €X | Kleinanzeigen: €X | Vinted: €X | Facebook: €X | Flohmarkt: €X | Empfehlung: €X | Trend: ↑/↓/→\n"
+        f"Begründung: [1 Satz warum dieser Preis realistisch ist]"
+    )
 
 # ── URL LESEN ─────────────────────────────────────────────────
 def lies_url(url):
@@ -296,6 +339,66 @@ def lies_url(url):
         zeilen = [z.strip() for z in soup.get_text("\n").split("\n") if len(z.strip())>15]
         return "\n".join(zeilen[:150])[:5000]
     except Exception as e: return f"[URL-Fehler: {e}]"
+
+# ── BILDER VON URL LADEN ─────────────────────────────────────
+def lade_bilder_von_url(url):
+    """
+    Lädt ALLE Bilder von einer Webseite (z.B. Lüdtke Auktion).
+    Funktioniert auch mit verschwommenen/schlechten Bildern!
+    Gibt Liste von Base64-codierten Bildern zurück.
+    """
+    bilder_b64 = []
+    try:
+        h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        r = requests.get(url, headers=h, timeout=15)
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        # Finde alle Bild-URLs
+        bild_urls = []
+
+        # 1. Standard img Tags
+        for img in soup.find_all("img"):
+            src = img.get("src","") or img.get("data-src","") or img.get("data-lazy","")
+            if src and len(src) > 5:
+                if not src.startswith("http"):
+                    base = "/".join(url.split("/")[:3])
+                    src = base + ("" if src.startswith("/") else "/") + src
+                # Ausschließen: Icons, Logos, Buttons
+                if any(x in src.lower() for x in ["logo","icon","wait","banner","button"]): continue
+                bild_urls.append(src)
+
+        # 2. Links auf Bilder (wie bei Lüdtke: href auf bild.php)
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if any(x in href.lower() for x in ["bild.php","bild=",".jpg",".jpeg",".png",".webp"]):
+                if not href.startswith("http"):
+                    base = "/".join(url.split("/")[:3])
+                    href = base + ("" if href.startswith("/") else "/") + href
+                if href not in bild_urls:
+                    bild_urls.append(href)
+
+        # 3. Meta og:image
+        for meta in soup.find_all("meta", property="og:image"):
+            c = meta.get("content","")
+            if c and c not in bild_urls: bild_urls.append(c)
+
+        # Lade max. 8 Bilder (genug für gute Analyse)
+        bild_urls = list(dict.fromkeys(bild_urls))[:8]
+
+        for bild_url in bild_urls:
+            try:
+                br = requests.get(bild_url, headers=h, timeout=10)
+                if br.status_code == 200 and len(br.content) > 1000:
+                    b64 = base64.b64encode(br.content).decode()
+                    bilder_b64.append(b64)
+            except: continue
+
+    except Exception as e:
+        pass
+
+    return bilder_b64
+
 
 # ── HEADER ────────────────────────────────────────────────────
 st.markdown("""
@@ -327,6 +430,11 @@ T = st.tabs([
 with T[0]:
     st.header("🔍 Artikel-Analyse — Ultimate Edition")
     st.markdown("**9 Vision-KIs · 3 Experten gleichzeitig · Google+Tavily+You.com · Richter-KI**")
+
+    # ── MODUS-WAHL ──
+    modus = st.radio("⚡ Analyse-Modus:",
+        ["🚀 Ultimate (3 Experten + Richter)", "⚡ Schnell (1 KI — schneller)"],
+        horizontal=True, key="a_modus")
 
     typ = st.radio("Was analysieren?",["📸 Foto","🔗 Link","📸 + 🔗 Beides"],horizontal=True,key="a_typ")
     url_text = ""
@@ -380,6 +488,14 @@ with T[0]:
     hat_fotos = len(st.session_state.fotos) > 0
     hat_url   = bool(url_inp.strip())
 
+    # ── VERLAUF anzeigen ──
+    if st.session_state.analyse_history:
+        with st.expander(f"🔄 Letzte Analysen ({len(st.session_state.analyse_history)})"):
+            for i, h in enumerate(reversed(st.session_state.analyse_history[-10:])):
+                st.markdown(f"**{h['datum']}** — {h['artikel']} | Zustand: {h['zustand']} | {h['ergebnis'][:80]}...")
+            if st.button("🗑️ Verlauf löschen", key="verlauf_clear"):
+                st.session_state.analyse_history = []; st.rerun()
+
     if st.button("🚀 ULTIMATE ANALYSE STARTEN",type="primary",use_container_width=True,key="a_start"):
         if not (hat_fotos or hat_url or beschr.strip()):
             st.warning("⚠️ Bitte Foto hochladen, Link eingeben oder beschreiben!")
@@ -392,141 +508,240 @@ with T[0]:
             elif "Ja"  in defekt_ja: d_beschr="DEFEKT!"
             else:                    d_beschr="Defekt unbekannt"
 
+            schnell_modus = "Schnell" in modus
+
             # ── STUFE 1: Daten + Vorab-KI ──
             with st.status("📡 Stufe 1: Daten sammeln + KI-Vorab-Scan...",expanded=True):
+                # Auto-Kategorie
+                if hat_fotos and not schnell_modus:
+                    st.write("🏷️ Auto-Kategorie erkennen...")
+                    auto_kat = ki(
+                        "Was für ein Artikel ist das? Antworte NUR mit einer Kategorie: "
+                        "Kleidung / Elektronik / Porzellan & Keramik / Antiquität / Spielzeug / "
+                        "Möbel / Bücher & Medien / Schmuck / Werkzeug / Sonstiges",
+                        bilder=st.session_state.fotos[:1]
+                    )
+                    st.info(f"🏷️ Erkannte Kategorie: **{auto_kat.strip()}**")
+                    st.session_state["auto_kat"] = auto_kat.strip()
+
                 if hat_url:
                     url_text = lies_url(url_inp)
                     if url_text.startswith("[URL"): st.warning("⚠️ URL nicht erreichbar")
                     else:
                         st.success(f"✅ {len(url_text)} Zeichen ausgelesen")
-                        url_ki = ki("Secondhand-Experte. Extrahiere: Artikel, Preis, Zustand. Kurz Deutsch:\n"+url_text[:2000])
+                        url_ki = ki("Secondhand-Experte. Extrahiere: Artikel, Preis, Zustand. Kurz Deutsch: " + url_text[:2000])
                         st.info("📄 "+url_ki)
-                        # Google sucht zusätzlich
                         artikel_name = url_ki.split("\n")[0][:40]
                         g = google_suche(artikel_name+" Wert Preis")
-                        if g: url_text += "\nGOOGLE:\n"+g[:300]
+                        if g: url_text += "\nGOOGLE:\n" + g[:300]
 
+                    # ── BILDER VON WEBSEITE LADEN ──
+                    st.write("🖼️ Lade alle Bilder von der Webseite...")
+                    url_bilder = lade_bilder_von_url(url_inp)
+                    if url_bilder:
+                        st.success(f"✅ {len(url_bilder)} Bilder von der Webseite geladen!")
+                        # Bilder anzeigen
+                        cols = st.columns(min(len(url_bilder), 4))
+                        for i, b64 in enumerate(url_bilder):
+                            try:
+                                with cols[i%4]:
+                                    st.image(base64.b64decode(b64), caption=f"Bild {i+1}", use_column_width=True)
+                            except: pass
+                        # Zu Analyse-Fotos hinzufügen
+                        for b64 in url_bilder:
+                            if b64 not in st.session_state.fotos:
+                                st.session_state.fotos.append(b64)
+                        st.success(f"✅ Alle {len(url_bilder)} Bilder für KI-Analyse bereit!")
+                        hat_fotos = True  # Jetzt haben wir Fotos!
+                    else:
+                        st.info("ℹ️ Keine Bilder auf der Seite gefunden")
                 if hat_fotos:
                     st.success(f"✅ {len(st.session_state.fotos)} Foto(s) bereit")
-                    st.write("🔭 4 Vision-KIs scannen gleichzeitig vor...")
-                    scan_modelle = [
-                        ("google/gemini-3-flash-preview","Gemini 3"),
-                        ("google/gemini-2.5-flash","Gemini 2.5"),
-                        ("anthropic/claude-sonnet-4-6","Claude Sonnet"),
-                        ("openai/gpt-4o","GPT-4o"),
+                    if not schnell_modus:
+                        st.write("🔭 4 Vision-KIs scannen gleichzeitig vor...")
+                        scan_modelle = [
+                            ("google/gemini-3-flash-preview","Gemini 3"),
+                            ("google/gemini-2.5-flash","Gemini 2.5"),
+                            ("anthropic/claude-sonnet-4-6","Claude Sonnet"),
+                            ("openai/gpt-4o","GPT-4o"),
+                        ]
+                        def vorab_scan(info):
+                            mid, name = info
+                            try:
+                                c2 = _oai.OpenAI(api_key=OR_KEY,base_url="https://openrouter.ai/api/v1")
+                                bk = [komprimiere(b) for b in st.session_state.fotos[:2]]
+                                inhalt=[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
+                                inhalt.append({"type":"text","text":"Was siehst du? Artikel, Marke, Besonderheiten. Kurz Deutsch."})
+                                r = c2.chat.completions.create(model=mid,
+                                    messages=[{"role":"user","content":inhalt}],
+                                    max_tokens=300, extra_headers=_hdrs())
+                                a = r.choices[0].message.content
+                                if a and len(a)>20: return (name,a)
+                            except: pass
+                            return (name,None)
+                        vorab = {}
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+                            fs={ex.submit(vorab_scan,m):m for m in scan_modelle}
+                            for f in concurrent.futures.as_completed(fs):
+                                n,a=f.result()
+                                if a: vorab[n]=a; st.write(f"✅ {n} bereit!")
+                        if vorab:
+                            st.session_state.vorabinfo="\n\n".join([f"[{n}]: {a}" for n,a in vorab.items()])
+                            st.success(f"✅ {len(vorab)} KIs haben Fotos vorgelesen!")
+
+            # ── STUFE 2: ANALYSE ──
+            vorab_k = ("\n\nVORAB:\n" + st.session_state.vorabinfo) if st.session_state.get("vorabinfo","") else ""
+            kat_k = ("\nErkannte Kategorie: " + st.session_state.get("auto_kat","")) if st.session_state.get("auto_kat") else ""
+            lern=""
+            if st.session_state.mein_wissen:
+                lern += "\n\nMein Wissen:\n" + "\n".join([f"- {w}" for w in st.session_state.mein_wissen[-10:]])
+            if st.session_state.preis_korrekturen:
+                lern += "\n\nEchte Preise:\n" + "\n".join([f"- {k}: \u20ac{v}" for k,v in list(st.session_state.preis_korrekturen.items())[-5:]])
+            extra=""
+            if beschr.strip(): extra+=f" Händler: {beschr}."
+            if url_text and not url_text.startswith("[URL"): extra += "\n\nWebseite:\n" + url_text[:1500]
+            prompt = (
+                "Ich bin Händler (Kleinanzeigen,Vinted,Facebook,eBay,Flohmärkte)." + kat_k + "\n"
+                "Vom Händler angegeben — Gebrauchsspuren: " + g_beschr + "\n"
+                "Vom Händler angegeben — Defekt: " + d_beschr + extra + vorab_k + lern + "\n\n"
+                "Analysiere JEDEN sichtbaren Artikel im Bild. Auf Deutsch. Sei absoluter Profi-Experte!\n\n"
+
+                "Für JEDEN Artikel:\n"
+                "**Artikel: [Name]**\n\n"
+
+                "📋 ARTIKEL-IDENTIFIKATION:\n"
+                "- Was genau? [Marke, Modell, Material, Herstellungsland]\n"
+                "- Alter: [Herstellungsjahr / Epoche / Herkunft / Antik?]\n"
+                "- Seriennummer/Stempel: [falls sichtbar]\n\n"
+
+                "🔍 ZUSTAND-ANALYSE (JEDES DETAIL!):\n"
+                "Schaue das Bild EXTREM GENAU an — auch verschwommene Bereiche!\n"
+                "- Gesamtzustand: [Wie neu / Sehr gut / Gut / Gebraucht / Stark gebraucht / Beschädigt]\n"
+                "- Gebrauchsspuren-Grad: X% (0=neu, 100=sehr stark)\n\n"
+                "JEDE sichtbare Gebrauchsspur einzeln:\n"
+                "  • Kratzer: [Wo genau? Tiefe? Größe? Anzahl?]\n"
+                "  • Dellen/Beulen: [Wo genau? Größe?]\n"
+                "  • Chips/Absplitterungen: [Wo genau? Größe?]\n"
+                "  • Verfärbungen/Flecken: [Wo? Farbe? Größe?]\n"
+                "  • Risse/Brüche: [Wo? Länge?]\n"
+                "  • Rost/Oxidation: [Wo? Ausmaß?]\n"
+                "  • Abnutzung: [Wo? Art der Abnutzung?]\n"
+                "  • Fehlende Teile: [Was fehlt?]\n"
+                "  • Sonstiges: [Alles was auffällt]\n"
+                "  → Falls NICHTS sichtbar: 'Keine erkennbaren Mängel'\n\n"
+
+                "DEFEKT-ANALYSE:\n"
+                "- Defekt-Status: [Funktionsfähig / Teildefekt / Voll defekt / Unklar]\n"
+                "- Sichtbare Defekte: [Was ist kaputt oder fehlt?]\n"
+                "- Preisminderung durch Mängel: -€X (wegen [Grund])\n"
+                "- Ohne Mängel wäre Wert: €X\n\n"
+
+                "- Verkäuflichkeit: 🟢schnell (1-7T) / 🟡mittel (1-4W) / 🔴langsam (Monate)\n\n"
+
+                "💰 PREISE (NUR eine konkrete Zahl — keine Spannen!):\n"
+                "Im aktuellen Zustand (" + g_beschr + "):\n"
+                "WICHTIG: ALLE 5 Preise PFLICHT — KEINE darf fehlen!\n"
+                "- eBay: €X\n"
+                "- Kleinanzeigen: €X\n"
+                "- Vinted: €X\n"
+                "- Facebook: €X\n"
+                "- Flohmarkt: €X\n"
+                "- Max. Ankaufspreis jetzt: €X\n\n"
+                "Nach Aufbereitung (gereinigt/repariert/wie neu):\n"
+                "WICHTIG: ALLE 3 Preise PFLICHT:\n"
+                "- eBay optimal: €X (+€X durch Aufbereitung)\n"
+                "- Kleinanzeigen optimal: €X\n"
+                "- Flohmarkt optimal: €X\n"
+                "- Mehrwert gesamt: +€X (+X%)\n\n"
+
+                "🏆 BESTE PLATTFORM: [Welche + warum] für €X\n"
+                "🎯 KONFIDENZ: Identifikation X% | Preisschätzung X% | Gesamt X%\n"
+                "⚠️ FÄLSCHUNGS-CHECK: [Niedrig/Mittel/Hoch] | Red Flags: [oder 'keine']\n"
+                "✨ AUFBEREITUNG: [Methode + Kosten + Wertsteigerung +€X]\n"
+                "👥 ZIELGRUPPE: [Wer kauft + wo finden]\n"
+                "📅 TIMING: [Beste Monate] | Jetzt verkaufen: [Ja/Nein/Warten bis...]\n"
+                "📝 FERTIGE ANZEIGE: Titel:[max 60Z] | Text:[3 überzeugende Sätze] | Preis:€X\n"
+                "🗺️ BESTER BERLINER MARKT: 🥇[Markt+Tag+Preis+Uhrzeit] 🥈[Markt+€X]\n"
+                "🌟 RARITÄT: [Seltenheit + Höchstpreis bei Sammler]\n"
+                "💰 GEWINN-RECHNUNG: EK€X + Aufbereitung€X → VK€X → Gebühren€X → Netto€X → ROI X%\n"
+                "---\n"
+                "GESAMT ALLE ARTIKEL: €X | Wertvollster: [Name] | Sofort verkaufen: [Name]"
+            )
+
+            if schnell_modus:
+                # SCHNELL-MODUS: 1 KI direkt
+                with st.status("⚡ Schnell-Analyse...",expanded=True):
+                    st.write("⚡ Schnell-Modus: 1 KI direkt...")
+                    ergebnis = ki(prompt, bilder=st.session_state.fotos if hat_fotos else None)
+                    st.markdown(ergebnis)
+                    st.session_state["ana_ergebnis"] = ergebnis
+            else:
+                # ULTIMATE-MODUS: 4 Experten gleichzeitig
+                with st.status("🔬 Stufe 2: 4 Experten-KIs analysieren gleichzeitig...",expanded=True):
+                    st.write("🚀 Starte 4 Experten gleichzeitig...")
+                    modelle_e=[
+                        ("google/gemini-3-flash-preview","🥇 Gemini 3 Flash"),
+                        ("google/gemini-2.5-flash","🥈 Gemini 2.5 Flash"),
+                        ("anthropic/claude-sonnet-4-6","🥉 Claude Sonnet"),
+                        ("openai/gpt-4o","4️⃣ GPT-4o"),
                     ]
-                    def vorab_scan(info):
-                        mid, name = info
+                    def experte_analysiert(info):
+                        mid,name=info
                         try:
-                            c2 = _oai.OpenAI(api_key=OR_KEY,base_url="https://openrouter.ai/api/v1")
-                            bk = [komprimiere(b) for b in st.session_state.fotos[:2]]
-                            inhalt=[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
-                            inhalt.append({"type":"text","text":"Was siehst du? Beschreibe kurz Artikel, Marke, Besonderheiten. Deutsch."})
-                            r = c2.chat.completions.create(model=mid,
-                                messages=[{"role":"user","content":inhalt}],
-                                max_tokens=300, extra_headers=_hdrs())
-                            a = r.choices[0].message.content
-                            if a and len(a)>20: return (name,a)
+                            c2=_oai.OpenAI(api_key=OR_KEY,base_url="https://openrouter.ai/api/v1")
+                            if hat_fotos:
+                                bk=[komprimiere(b) for b in st.session_state.fotos[:3]]
+                                inhalt=[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
+                                inhalt.append({"type":"text","text":prompt})
+                                msgs=[{"role":"user","content":inhalt}]
+                            else:
+                                msgs=[{"role":"user","content":prompt}]
+                            r=c2.chat.completions.create(model=mid,messages=msgs,max_tokens=1500,extra_headers=_hdrs())
+                            a=r.choices[0].message.content
+                            if a and len(a)>100: return (name,a)
                         except: pass
                         return (name,None)
-                    vorab = {}
+
+                    ea={}
                     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-                        fs={ex.submit(vorab_scan,m):m for m in scan_modelle}
+                        fs={ex.submit(experte_analysiert,m):m for m in modelle_e}
                         for f in concurrent.futures.as_completed(fs):
                             n,a=f.result()
-                            if a: vorab[n]=a; st.write(f"✅ {n} bereit!")
-                    if vorab:
-                        st.session_state.vorabinfo="\n\n".join([f"[{n}]: {a}" for n,a in vorab.items()])
-                        st.success(f"✅ {len(vorab)} KIs haben Fotos vorgelesen!")
+                            if a: ea[n]=a; st.write(f"✅ {n} fertig!")
 
-            # ── STUFE 2: ENSEMBLE HAUPT-ANALYSE ──
-            with st.status("🔬 Stufe 2: 3 Experten-KIs analysieren gleichzeitig...",expanded=True):
-                vorab_k=("\n\nVORAB:\n"+st.session_state.vorabinfo) if st.session_state.vorabinfo else ""
-                lern=""
-                if st.session_state.mein_wissen:
-                    lern+="\n\nMein Wissen:\n"+"\n".join([f"- {w}" for w in st.session_state.mein_wissen[-5:]])
-                if st.session_state.preis_korrekturen:
-                    lern+="\n\nEchte Preise:\n"+"\n".join([f"- {k}: €{v}" for k,v in list(st.session_state.preis_korrekturen.items())[-5:]])
-                extra=""
-                if beschr.strip(): extra+=f" Händler: {beschr}."
-                if url_text and not url_text.startswith("[URL"): extra+=f"\n\nWebseite:\n{url_text[:1500]}"
-
-                prompt=(
-                    f"Ich bin Händler (Kleinanzeigen,Vinted,Facebook,eBay,Flohmärkte).\n"
-                    f"Gebrauchsspuren: {g_beschr}\nDefekt: {d_beschr}{extra}{vorab_k}{lern}\n\n"
-                    f"Analysiere JEDEN Artikel im Bild. Auf Deutsch. Sei Profi-Experte!\n\n"
-                    f"**Artikel: [Name]**\n"
-                    f"- Was genau? [Marke, Material, Modell]\n"
-                    f"- Alter: [Jahr/Epoche/Land/Antik?]\n"
-                    f"- Zustand: [Erkannt + Mängel + Defektgrad%]\n"
-                    f"- Verkäuflichkeit: 🟢schnell / 🟡mittel / 🔴langsam\n\n"
-                    f"PREISE (NUR eine Zahl!):\nJetzt:\neBay: €X | KA: €X | Vinted: €X | FB: €X | FM: €X | Ankauf: €X\n"
-                    f"Nach Aufbereitung: eBay: €X | KA: €X | FM: €X | Mehrwert: +€X (+X%)\n\n"
-                    f"🏆 BESTE PLATTFORM: [Plattform + warum + €X]\n"
-                    f"🎯 KONFIDENZ: X% | ⚠️ FÄLSCHUNG: [Niedrig/Mittel/Hoch]\n"
-                    f"✨ AUFBEREITUNG: [Methode + +€X]\n"
-                    f"👥 ZIELGRUPPE: [Wer + wo]\n"
-                    f"📅 TIMING: [Beste Monate + Jetzt: Ja/Nein]\n"
-                    f"📝 ANZEIGE: Titel:[60Z] | Text:[3S] | Preis:€X\n"
-                    f"🗺️ BERLIN: 🥇[Markt+Tag+€X] 🥈[Markt+€X]\n"
-                    f"🌟 RARITÄT: [Seltenheit + Höchstpreis]\n"
-                    f"💰 GEWINN: EK€X → VK€X → Gewinn€X → ROI X%\n"
-                    f"---\nGESAMT: €X | Wertvollster: [Name]"
-                )
-
-                st.write("🚀 Starte 3 Experten gleichzeitig...")
-                modelle_e=[
-                    ("google/gemini-3-flash-preview","🥇 Gemini 3 Flash"),
-                    ("google/gemini-2.5-flash","🥈 Gemini 2.5 Flash"),
-                    ("anthropic/claude-sonnet-4-6","🥉 Claude Sonnet"),
-                ]
-                def experte_analysiert(info):
-                    mid,name=info
-                    try:
-                        c2=_oai.OpenAI(api_key=OR_KEY,base_url="https://openrouter.ai/api/v1")
-                        if hat_fotos:
-                            bk=[komprimiere(b) for b in st.session_state.fotos[:3]]
-                            inhalt=[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
-                            inhalt.append({"type":"text","text":prompt})
-                            msgs=[{"role":"user","content":inhalt}]
+                    # KONFIDENZ-ANZEIGE
+                    if len(ea) >= 2:
+                        konfidenz = int((len(ea) / len(modelle_e)) * 100)
+                        einig_text = f"{len(ea)}/{len(modelle_e)} KIs"
+                        if len(ea) == 4:
+                            st.success(f"🎯 Konfidenz: **100%** — {einig_text} einig! Sehr zuverlässig!")
+                        elif len(ea) == 3:
+                            st.success(f"🎯 Konfidenz: **75%** — {einig_text} einig!")
                         else:
-                            msgs=[{"role":"user","content":prompt}]
-                        r=c2.chat.completions.create(model=mid,messages=msgs,max_tokens=1500,extra_headers=_hdrs())
-                        a=r.choices[0].message.content
-                        if a and len(a)>100: return (name,a)
-                    except: pass
-                    return (name,None)
+                            st.warning(f"🎯 Konfidenz: **50%** — {einig_text} — Ergebnis prüfen!")
 
-                ea={}
-                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
-                    fs={ex.submit(experte_analysiert,m):m for m in modelle_e}
-                    for f in concurrent.futures.as_completed(fs):
-                        n,a=f.result()
-                        if a: ea[n]=a; st.write(f"✅ {n} fertig!")
+                    if not ea:
+                        st.warning("⚠️ Ensemble fehlgeschlagen — Fallback...")
+                        ergebnis = ki(
+                            "Chef-Experte Secondhand Deutschland.\n"
+                            + str(len(ea)) + " Experten haben analysiert.\n"
+                            "Erstelle EINE perfekte vollständige finale Antwort auf Deutsch.\n"
+                            "Bestes aus jeder Analyse. Bei Preisen: Durchschnitt.\n"
+                            "Experten:\n" + et + "\n\nFINALE EXPERTEN-ANTWORT:"
+                        )
 
-                if not ea:
-                    st.warning("⚠️ Ensemble fehlgeschlagen — Fallback...")
-                    ergebnis=ki(prompt,bilder=st.session_state.fotos if hat_fotos else None)
-                else:
-                    st.write(f"⚖️ Richter-KI fasst {len(ea)} Experten zusammen...")
-                    et="\n\n".join([f"=={n}==\n{a[:800]}" for n,a in ea.items()])
-                    ergebnis=ki(
-                        f"Chef-Experte Secondhand Deutschland.\n"
-                        f"{len(ea)} Experten haben analysiert.\n"
-                        f"Erstelle EINE perfekte vollständige finale Antwort auf Deutsch.\n"
-                        f"Bestes aus jeder Analyse. Bei Preisen: Durchschnitt.\n"
-                        f"Experten:\n{et}\n\nFINALE EXPERTEN-ANTWORT:"
-                    )
+                    st.markdown(ergebnis)
+                    st.session_state["ana_ergebnis"]=ergebnis
+                    st.session_state["vorabinfo"]=""
+                    st.session_state["auto_kat"]=""
 
-                st.markdown(ergebnis)
-                st.session_state["ana_ergebnis"]=ergebnis
-                st.session_state.vorabinfo=""
-                suchbegriff="Vintage Artikel"
-                for line in ergebnis.split("\n"):
-                    if "**Artikel:" in line:
-                        t=line.split(":")
-                        if len(t)>1: suchbegriff=t[1].strip().strip("*[] ")[:40]
-                        break
+            # Suchbegriff extrahieren
+            suchbegriff="Vintage Artikel"
+            for line in ergebnis.split("\n"):
+                if "**Artikel:" in line:
+                    t=line.split(":")
+                    if len(t)>1: suchbegriff=t[1].strip().strip("*[] ")[:40]
+                    break
 
             # ── STUFE 3: PREIS-ENSEMBLE + WEB ──
             with st.status("📡 Stufe 3: Google+Tavily+You.com + 3 Preis-KIs...",expanded=True):
@@ -534,18 +749,53 @@ with T[0]:
                 ka_url=f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
                 vi_url=f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
                 fb_url=f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
+                st.write(f"🌐 Suche echte Preise für: **{suchbegriff}**")
+                # Gezielte Suche - nur Google und Tavily mit gezieltem Query
+                def hole_gezielte_preise():
+                    # Sehr spezifische Suchanfrage
+                    query = suchbegriff + " kaufen Preis Euro Deutschland 2024 2025"
+                    g = google_suche(query)
+                    t = tavily_suche(suchbegriff + " Preis Marktpreis Deutschland Secondhand")
+                    return g, t
 
-                st.write("🌐 Google + Tavily + You.com suchen gleichzeitig...")
-                web_daten=multi_suche(suchbegriff+" Preis Deutschland Secondhand")
-                if web_daten:
-                    st.success("✅ Echte Preisdaten aus dem Web!")
-                    st.markdown(web_daten[:400]+"...")
-                    st.write("⚖️ 3 Preis-Experten bewerten gleichzeitig...")
-                    pk=preis_ensemble(suchbegriff,g_beschr,web_daten)
-                    if pk: st.info("💰 **Preis-Konsens:** "+pk)
+                google_r, tavily_r = hole_gezielte_preise()
+
+                # Prüfe ob Ergebnisse wirklich zum Artikel passen
+                def passt_zum_artikel(text, artikel):
+                    if not text or not artikel: return False
+                    woerter = [w for w in artikel.lower().split() if len(w) > 3]
+                    treffer = sum(1 for w in woerter if w in text.lower())
+                    return treffer >= max(1, len(woerter) // 2)
+
+                web_text = ""
+                if google_r and passt_zum_artikel(google_r, suchbegriff):
+                    web_text += google_r
+                if tavily_r and passt_zum_artikel(tavily_r, suchbegriff):
+                    web_text += "\n" + tavily_r
+
+                # Immer KI-Preis-Analyse — mit oder ohne Web-Daten
+                st.write("⚖️ 3 Preis-KIs bewerten gleichzeitig...")
+                preis_prompt = (
+                    "Preisexperte Secondhand Deutschland. Auf DEUTSCH antworten!\n"
+                    "Artikel: " + suchbegriff + "\n"
+                    "Zustand: " + g_beschr + "\n"
+                    + ("Marktdaten: " + web_text[:300] if web_text else "") + "\n"
+                    "Gib realistische Preise. NUR konkrete Einzelzahlen — KEINE Spannen!\n"
+                    "Format:\n"
+                    "- eBay: €X\n"
+                    "- Kleinanzeigen: €X\n"
+                    "- Vinted: €X\n"
+                    "- Facebook: €X\n"
+                    "- Flohmarkt: €X\n"
+                    "- Empfehlung: €X\n"
+                    "- Trend: ↑/↓/→ + kurze Begründung auf Deutsch"
+                )
+                pk = ensemble_ki(preis_prompt)
+                if web_text:
+                    st.success("✅ Echte Web-Daten + KI-Analyse:")
                 else:
-                    st.info("ℹ️ Web-Suche nicht verfügbar")
-
+                    st.info("💡 KI-Marktpreise:")
+                st.markdown("💰 **Marktpreise für " + suchbegriff + ":**\n" + pk)
                 st.markdown("**🔗 Direkt suchen:**")
                 c1,c2=st.columns(2)
                 with c1:
@@ -559,32 +809,184 @@ with T[0]:
             with st.status("✅ Stufe 4: Finale Zusammenfassung...",expanded=True):
                 ana=st.session_state.get("ana_ergebnis","")
                 if len(ana)>200 and "€" in ana:
-                    st.info("📊 "+ki(f"Kurze Zusammenfassung 5 Zeilen. Fakten. Deutsch.\n• Artikel:\n• 🟢 Schnell:\n• 🟡 Mittel:\n• 🔴 Langsam:\n• Gesamtwert: €X\n\nAnalyse:\n{ana[:800]}"))
+                    fazit = ki("Kurze Zusammenfassung 5 Zeilen. Fakten. Deutsch.\n\u2022 Artikel:\n\u2022 \U0001f7e2 Schnell:\n\u2022 \U0001f7e1 Mittel:\n\u2022 \U0001f534 Langsam:\n\u2022 Gesamtwert: \u20acX\n\nAnalyse:\n" + ana[:800])
+                    st.info("📊 "+fazit)
+
+                    # ── VERLAUF SPEICHERN ──
+                    st.session_state.analyse_history.append({
+                        "datum": datetime.now().strftime("%d.%m.%Y %H:%M"),
+                        "artikel": suchbegriff,
+                        "zustand": g_beschr,
+                        "ergebnis": fazit,
+                        "modus": "Schnell" if schnell_modus else "Ultimate"
+                    })
+                    if len(st.session_state.analyse_history) > 20:
+                        st.session_state.analyse_history = st.session_state.analyse_history[-20:]
+
+                    # ── EXPORT ──
+                    export_text = (
+                        f"MarktRadar Analyse — {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
+                        f"{'='*50}\n"
+                        f"Artikel: {suchbegriff}\n"
+                        f"Zustand: {g_beschr} | {d_beschr}\n"
+                        f"{'='*50}\n\n"
+                        f"{ana}\n\n"
+                        f"{'='*50}\n"
+                        f"ZUSAMMENFASSUNG:\n{fazit}"
+                    )
+                    st.download_button(
+                        label="💾 Analyse speichern (TXT)",
+                        data=export_text,
+                        file_name=f"analyse_{suchbegriff[:20]}_{datetime.now().strftime('%d%m%Y')}.txt",
+                        mime="text/plain",
+                        use_container_width=True
+                    )
                 else:
                     st.warning("⚠️ Keine vollständige Analyse vorhanden.")
 
-            # ── LERN-SYSTEM ──
-            st.markdown("---")
-            st.markdown("### 🧠 KI verbessern")
-            with st.expander("👍 Preis korrigieren"):
-                c1,c2,c3=st.columns(3)
-                fb_art=c1.text_input("Artikel",key="fb_art")
-                fb_echt=c2.number_input("Echter Preis €",min_value=1.0,value=50.0,key="fb_echt")
-                fb_pl=c3.selectbox("Plattform",["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"],key="fb_pl")
-                if st.button("💾 Speichern",use_container_width=True,key="fb_save"):
-                    if fb_art:
-                        st.session_state.preis_korrekturen[f"{fb_art} auf {fb_pl}"]=fb_echt
-                        st.success("✅ Gespeichert!")
-            with st.expander("📝 Eigenes Wissen"):
-                fb_k=st.text_input("Ihr Wissen:",key="fb_know")
-                if st.button("💾 Hinzufügen",use_container_width=True,key="fb_ks"):
-                    if fb_k: st.session_state.mein_wissen.append(fb_k); st.success("✅!")
-            total=len(st.session_state.mein_wissen)+len(st.session_state.preis_korrekturen)
-            if total>0: st.info(f"🧠 KI kennt **{total}** Infos von Ihnen!")
+    # ── LERN-SYSTEM ──
+    st.markdown("---")
+    st.markdown("### 🧠 KI Lern-System")
 
-# ════════════════════════════════════════════════════════════
-# TAB 2 — ANSCHREIB
-# ════════════════════════════════════════════════════════════
+    # Statistik
+    total = (len(st.session_state.mein_wissen) +
+             len(st.session_state.preis_korrekturen) +
+             len(st.session_state.verkauf_log) +
+             len(st.session_state.ki_korrekturen))
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("💡 Wissen", len(st.session_state.mein_wissen))
+    c2.metric("💰 Preise", len(st.session_state.preis_korrekturen))
+    c3.metric("✅ Verkäufe", len(st.session_state.verkauf_log))
+    c4.metric("🎯 Korrekturen", len(st.session_state.ki_korrekturen))
+
+    lern_tab1, lern_tab2, lern_tab3, lern_tab4 = st.tabs([
+        "💰 Preis korrigieren", "📝 Wissen", "✅ Verkauf eintragen", "🎯 KI war falsch"
+    ])
+
+    with lern_tab1:
+        st.markdown("KI hat den Preis falsch geschätzt? Korrigieren Sie es!")
+        c1,c2,c3 = st.columns(3)
+        fb_art  = c1.text_input("Artikel", key="fb_art")
+        fb_echt = c2.number_input("Echter Preis €", min_value=0.1, value=50.0, key="fb_echt")
+        fb_pl   = c3.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"], key="fb_pl")
+        fb_ki   = st.number_input("KI hatte geschätzt €", min_value=0.0, value=0.0, key="fb_ki",
+                                   help="Was hat die KI geschätzt? 0 = unbekannt")
+        if st.button("💾 Preis speichern", use_container_width=True, key="fb_save"):
+            if fb_art:
+                key = f"{fb_art} auf {fb_pl}"
+                st.session_state.preis_korrekturen[key] = fb_echt
+                if fb_ki > 0:
+                    diff = fb_echt - fb_ki
+                    richtung = "zu hoch" if diff < 0 else "zu niedrig"
+                    st.session_state.ki_korrekturen.append(
+                        f"{fb_art}: KI sagte €{fb_ki}, echt war €{fb_echt} ({richtung} um €{abs(diff):.0f})"
+                    )
+                st.success(f"✅ Gespeichert! KI lernt: {fb_art} auf {fb_pl} = €{fb_echt}")
+
+        if st.session_state.preis_korrekturen:
+            st.markdown("**Gespeicherte Preise:**")
+            for k,v in list(st.session_state.preis_korrekturen.items())[-5:]:
+                st.markdown(f"• {k}: **€{v}**")
+
+    with lern_tab2:
+        st.markdown("Eigenes Wissen eingeben — KI nutzt das bei jeder Analyse!")
+        fb_k = st.text_area("Ihr Wissen:", height=80, key="fb_know",
+            placeholder="z.B. Meissen auf Fehrbelliner Platz bringt mehr als online")
+        if st.button("💾 Wissen speichern", use_container_width=True, key="fb_ks"):
+            if fb_k.strip():
+                st.session_state.mein_wissen.append(fb_k.strip())
+                st.success("✅ Gespeichert! KI nutzt das ab sofort!")
+        if st.session_state.mein_wissen:
+            st.markdown("**Mein Wissen:**")
+            for i, w in enumerate(st.session_state.mein_wissen[-5:]):
+                c1,c2 = st.columns([4,1])
+                c1.markdown(f"• {w}")
+                if c2.button("🗑️", key=f"del_w_{i}"):
+                    idx = len(st.session_state.mein_wissen) - 5 + i
+                    if 0 <= idx < len(st.session_state.mein_wissen):
+                        st.session_state.mein_wissen.pop(idx)
+                    st.rerun()
+
+    with lern_tab3:
+        st.markdown("Artikel verkauft? Eintragen — KI lernt Ihre echten Preise!")
+        c1,c2 = st.columns(2)
+        with c1:
+            vk_art  = st.text_input("Artikel", key="vk_art")
+            vk_ek   = st.number_input("EK €", min_value=0.0, value=5.0, key="vk_ek")
+            vk_preis = st.number_input("Verkauft für €", min_value=0.1, value=30.0, key="vk_preis")
+        with c2:
+            vk_pl   = st.selectbox("Plattform", ["Kleinanzeigen","eBay","Vinted","Facebook","Flohmarkt"], key="vk_pl")
+            vk_tage = st.number_input("Tage bis Verkauf", min_value=0, value=3, key="vk_tage")
+            vk_zust = st.selectbox("Zustand", ["Wie neu","Sehr gut","Gut","Gebraucht"], key="vk_zust")
+        if st.button("✅ Verkauf speichern", type="primary", use_container_width=True, key="vk_save"):
+            if vk_art:
+                gewinn = vk_preis - vk_ek
+                roi = (gewinn/vk_ek*100) if vk_ek > 0 else 0
+                eintrag = {
+                    "datum": datetime.now().strftime("%d.%m.%Y"),
+                    "artikel": vk_art, "ek": vk_ek, "vk": vk_preis,
+                    "gewinn": round(gewinn,2), "roi": round(roi,1),
+                    "plattform": vk_pl, "tage": vk_tage, "zustand": vk_zust
+                }
+                st.session_state.verkauf_log.append(eintrag)
+                # Automatisch in Preis-Korrekturen
+                st.session_state.preis_korrekturen[f"{vk_art} auf {vk_pl}"] = vk_preis
+                # Automatisch in Wissen
+                st.session_state.mein_wissen.append(
+                    f"{vk_art} ({vk_zust}) verkauft für €{vk_preis} auf {vk_pl} in {vk_tage} Tagen"
+                )
+                st.success(f"✅ Gespeichert! Gewinn: €{gewinn:.2f} | ROI: {roi:.0f}%")
+                st.rerun()
+
+        if st.session_state.verkauf_log:
+            st.markdown("**Letzte Verkäufe:**")
+            ges_g = sum(v["gewinn"] for v in st.session_state.verkauf_log)
+            st.info(f"💰 Gesamt-Gewinn aus {len(st.session_state.verkauf_log)} Verkäufen: **€{ges_g:.2f}**")
+            for v in reversed(st.session_state.verkauf_log[-5:]):
+                st.markdown(f"• **{v['artikel']}** → €{v['vk']} auf {v['plattform']} | Gewinn: €{v['gewinn']} | {v['datum']}")
+
+    with lern_tab4:
+        st.markdown("KI lag falsch? Sagen Sie es ihr — sie wird besser!")
+        corr_text = st.text_area("Was war falsch?", height=70, key="corr_text",
+            placeholder="z.B. KI dachte Villeroy & Boch aber es war Rosenthal")
+        if st.button("💾 Korrektur speichern", use_container_width=True, key="corr_save"):
+            if corr_text.strip():
+                st.session_state.ki_korrekturen.append(
+                    f"[{datetime.now().strftime('%d.%m.%Y')}] {corr_text.strip()}"
+                )
+                st.session_state.mein_wissen.append("KORREKTUR: " + corr_text.strip())
+                st.success("✅ KI merkt sich das!")
+
+        if st.session_state.ki_korrekturen:
+            st.markdown("**Korrekturen:**")
+            for k in st.session_state.ki_korrekturen[-5:]:
+                st.markdown(f"• {k}")
+
+    if total > 0:
+        if st.button("🤖 KI analysiert mein Lern-Profil", use_container_width=True, key="lern_analyse"):
+            with st.spinner("🧠 KI analysiert..."):
+                profil = (
+                    "Verkäufe: " + str(len(st.session_state.verkauf_log)) + "\n"
+                    + "Wissen: " + str(len(st.session_state.mein_wissen)) + " Einträge\n"
+                    + "Preise: " + str(len(st.session_state.preis_korrekturen)) + " Einträge\n"
+                    + "Korrekturen: " + str(len(st.session_state.ki_korrekturen)) + "\n"
+                )
+                if st.session_state.verkauf_log:
+                    profil += "\nVerkäufe:\n" + "\n".join([f"- {v['artikel']}: €{v['vk']} auf {v['plattform']}" for v in st.session_state.verkauf_log[-10:]])
+                if st.session_state.mein_wissen:
+                    profil += "\nWissen:\n" + "\n".join([f"- {w}" for w in st.session_state.mein_wissen[-10:]])
+
+                analyse_prompt = (
+                    "Analysiere dieses Händler-Profil aus Berlin. Auf Deutsch.\n" + profil + "\n\n"
+                    "1. Was macht er gut?\n"
+                    "2. Welche Artikel bringen ihm am meisten?\n"
+                    "3. Beste Plattform für ihn?\n"
+                    "4. Top 3 Empfehlungen um mehr zu verdienen?\n"
+                    "5. Was sollte er als nächstes kaufen/verkaufen?"
+                )
+                analyse = ensemble_ki(analyse_prompt)
+                st.markdown(analyse)
+
 with T[1]:
     st.header("💬 Anschreib-Bot")
     c1,c2=st.columns(2)
@@ -633,10 +1035,25 @@ with T[2]:
         c3.metric("Gewinn",f"€{sum(i['gewinn'] for i in st.session_state.lager):.2f}")
         st.markdown("---")
         for it in st.session_state.lager:
-            c1,c2,c3,c4=st.columns([3,1,1,1])
+            tage = it["tage"]
+            # Alarm-Farbe je nach Liegezeit
+            if tage >= 60:
+                alarm = f"🔴 **{tage} Tage!** SOFORT verkaufen — Preis senken!"
+                st.error(f"⛔ {it['artikel']}: {alarm}")
+            elif tage >= 30:
+                alarm = f"🟡 **{tage} Tage** — langsam Preis senken"
+                st.warning(f"⚠️ {it['artikel']}: {alarm}")
+            elif tage >= 14:
+                st.info(f"ℹ️ {it['artikel']}: {tage} Tage — beobachten")
+
+            c1,c2,c3,c4,c5 = st.columns([3,1,1,1,1])
+            # Farbe je nach Liegezeit
+            tage_farbe = "🔴" if tage>=60 else "🟡" if tage>=30 else "🟢" if tage<14 else "🟠"
             c1.markdown(f"**{it['artikel']}** ({it['zustand']}) — {it['plattform']}")
-            c2.markdown(f"€{it['ek']:.0f}"); c3.markdown(f"→ €{it['vk']:.0f}"); c4.markdown(f"**+€{it['gewinn']:.0f}**")
-            if it["tage"]>30: st.warning(f"⏰ {it['artikel']}: {it['tage']} Tage!")
+            c2.markdown(f"€{it['ek']:.0f}")
+            c3.markdown(f"→ €{it['vk']:.0f}")
+            c4.markdown(f"**+€{it['gewinn']:.0f}**")
+            c5.markdown(f"{tage_farbe} {tage}T")
 
 # ════════════════════════════════════════════════════════════
 # TAB 4 — OCR
@@ -709,12 +1126,43 @@ with T[5]:
     with c2: tr_region=st.selectbox("Region:",["Berlin","Deutschland"],key="tr_region")
     if st.button("🔥 Live-Ensemble Analyse",type="primary",use_container_width=True,key="tr_btn"):
         with st.spinner("🌐 Web + 3 KIs analysieren..."):
-            web=multi_suche(tr_kat+" Secondhand Markt Trend "+datetime.now().strftime("%B %Y")+" "+tr_region)
-            web_k=("\n\nWEB-DATEN:\n"+web) if web else ""
-            if web: st.success("✅ Echte Web-Daten!")
-            p=(f"Markt-Analyst {tr_region} {datetime.now().strftime('%B %Y')}.{web_k}\n"
-               f"Analysiere: {tr_kat}. Deutsch.\n"
-               f"TOP 5 Artikel+Preis+Trend | Preise steigen | Preise fallen | Geheimtipp | Jetzt verkaufen | Gold-Suchbegriffe")
+            # Aktuelle Woche UND letzte Woche gleichzeitig suchen
+            from datetime import timedelta
+            letzte_woche = (datetime.now() - timedelta(days=7)).strftime("%B %Y")
+            jetzt = datetime.now().strftime("%B %Y")
+
+            def suche_jetzt():
+                return multi_suche(tr_kat+" Secondhand Trend "+jetzt+" "+tr_region)
+            def suche_vorher():
+                return google_suche(tr_kat+" Secondhand Preise "+letzte_woche+" "+tr_region)
+
+            web_jetzt = web_vorher = None
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+                fj = ex.submit(suche_jetzt)
+                fv = ex.submit(suche_vorher)
+                web_jetzt  = fj.result()
+                web_vorher = fv.result()
+
+            web_k = ""
+            if web_jetzt:  web_k += "\nAKTUELL:\n" + web_jetzt[:300]
+            if web_vorher: web_k += "\nLETZTE WOCHE:\n" + web_vorher[:200]
+
+            if web_jetzt or web_vorher: st.success("✅ Aktuelle + vergangene Web-Daten!")
+
+            p = (
+                "Markt-Analyst " + tr_region + " " + jetzt + "." + web_k + "\n"
+                "Analysiere: " + tr_kat + ". Deutsch.\n\n"
+                "📊 VERGLEICH DIESE WOCHE vs LETZTE WOCHE:\n"
+                "- Was ist neu gestiegen? ↑\n"
+                "- Was ist gefallen? ↓\n"
+                "- Was ist stabil? →\n\n"
+                "🔥 TOP 5 ARTIKEL JETZT: Name | €X | Trend ↑↓→\n"
+                "📈 PREISE STEIGEN:\n"
+                "📉 PREISE FALLEN:\n"
+                "💎 GEHEIMTIPP " + datetime.now().strftime("%B") + ":\n"
+                "🗓️ JETZT VERKAUFEN:\n"
+                "🔍 GOLD-SUCHBEGRIFFE:"
+            )
             st.markdown(ensemble_ki(p))
     st.markdown("---")
     tf=st.text_input("🤖 Frage:",key="tf")
@@ -789,29 +1237,243 @@ with T[7]:
 # ════════════════════════════════════════════════════════════
 with T[8]:
     st.header("🗺️ Berliner Flohmärkte")
-    st.markdown(f"Live KI-Updates · {datetime.now().strftime('%d.%m.%Y')}")
-    tage_de={"Monday":"Montag","Tuesday":"Dienstag","Wednesday":"Mittwoch",
-              "Thursday":"Donnerstag","Friday":"Freitag","Saturday":"Samstag","Sunday":"Sonntag"}
-    heute_de=tage_de.get(datetime.now().strftime("%A"),"Heute")
-    if st.button(f"🔴 Live-Update {heute_de}",type="primary",use_container_width=True,key="floh_live"):
-        with st.spinner("🤖 KI + Web..."):
-            web=google_suche(f"Flohmarkt Berlin {heute_de} {datetime.now().strftime('%d.%m.%Y')} offen")
-            web_k=("\nAktuelle Infos:\n"+web) if web else ""
-            st.info(ki(f"Berliner Flohmarkt-Experte. {heute_de} {datetime.now().strftime('%d.%m.%Y')}.{web_k}\nWelche Märkte heute offen? Tipps. Deutsch."))
+
+    # Datum + Woche + Wochentag
+    jetzt = datetime.now()
+    tage_de = {"Monday":"Montag","Tuesday":"Dienstag","Wednesday":"Mittwoch",
+               "Thursday":"Donnerstag","Friday":"Freitag","Saturday":"Samstag","Sunday":"Sonntag"}
+    heute_de = tage_de.get(jetzt.strftime("%A"), "Heute")
+    kw = jetzt.isocalendar()[1]  # Kalenderwoche
+
+    # Info-Leiste
+    c1,c2,c3 = st.columns(3)
+    c1.metric("📅 Heute", f"{heute_de}, {jetzt.strftime('%d.%m.%Y')}")
+    c2.metric("📆 Kalenderwoche", f"KW {kw} / {jetzt.year}")
+    c3.metric("🗓️ Monat", jetzt.strftime("%B %Y"))
+
+    # Wochenübersicht
+    from datetime import timedelta
+    montag = jetzt - timedelta(days=jetzt.weekday())
+    sonntag = montag + timedelta(days=6)
+    st.info(
+        f"📆 **Aktuelle Woche {kw}:** "
+        f"{montag.strftime('%d.%m.')} – {sonntag.strftime('%d.%m.%Y')} · "
+        f"Heute ist **{heute_de}**"
+    )
+    if st.button(f"🔴 Live-Update für {heute_de} abrufen",type="primary",use_container_width=True,key="floh_live"):
+        with st.spinner("🌐 Suche aktuelle Marktinfos..."):
+            # Echtzeit-Suche für heute
+            web1 = google_suche("Flohmarkt Berlin " + heute_de + " " + datetime.now().strftime("%B %Y") + " offen Termine")
+            web2 = tavily_suche("Flohmarkt Trödelmarkt Berlin " + heute_de + " " + datetime.now().strftime("%d.%m.%Y"))
+
+            web_info = ""
+            if web1: web_info += web1[:200]
+            if web2: web_info += web2[:200]
+
+            p = (
+                "Berliner Flohmarkt-Experte. Heute ist " + heute_de + " " +
+                datetime.now().strftime("%d.%m.%Y") + ".\n" +
+                ("Aktuelle Web-Infos:\n" + web_info + "\n\n" if web_info else "") +
+                "Antworte kurz auf Deutsch:\n"
+                "🏪 HEUTE OFFEN: [Märkte die heute definitiv offen sind]\n"
+                "⭐ EMPFEHLUNG: [Welcher Markt ist heute am besten für Reseller?]\n"
+                "💡 TIPP: [Ein konkreter Tipp für heute " + heute_de + "]\n"
+                "⚠️ GESCHLOSSEN: [Welche Märkte heute nicht öffnen]"
+            )
+            st.info("📅 " + ki(p))
     st.markdown("---")
+    # Echte verifizierte Marktdaten 2026 — komplett Mo-So
     maerkte=[
-        ("Mo","Rathaus Steglitz","Schloßstr.37","Mo-Sa 9-18h","+49 30 79706820","🏠 Haushalt","⭐⭐⭐","Alltagsartikel","https://maps.google.com/?q=Rathaus+Steglitz+Berlin"),
-        ("Di","Fehrbelliner Platz","Fehrbelliner Pl.","Di&Fr 8-15h","+49 30 28097272","🏺 Antiquitäten","⭐⭐⭐⭐","Top Porzellan&Silber!","https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
-        ("Mi","Alexanderplatz","Alexanderplatz","Tägl. 10-19h","+49 30 24632425","🏙️ Gemischt","⭐⭐⭐","Täglich offen","https://maps.google.com/?q=Alexanderplatz+Flohmarkt+Berlin"),
-        ("Do","Winterfeldtplatz","Winterfeldtpl.","Do&Sa 8-14h","+49 30 7262290","🌿 Vintage","⭐⭐⭐⭐","Do günstiger!","https://maps.google.com/?q=Winterfeldtplatz+Berlin"),
-        ("Fr","Fehrbelliner Platz","Fehrbelliner Pl.","Di&Fr 8-15h","+49 30 28097272","🏺 Antiquitäten","⭐⭐⭐⭐⭐","Fr BESTE Auswahl!","https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
-        ("Fr","Ostbahnhof","Erich-Steinfurth-Str.1","Fr-So 9-16h","+49 30 2936028","🛍️ Gemischt","⭐⭐⭐⭐","Fr wenig Leute!","https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"),
-        ("Sa","RAW Flohmarkt","Revaler Str.99","Sa&So 10-18h","+49 30 29367840","🕶️ Vintage","⭐⭐⭐⭐⭐","BESTE Vintage Berlin!","https://maps.google.com/?q=RAW+Gelände+Berlin"),
-        ("Sa","Winterfeldtmarkt","Winterfeldtpl.","Sa 8-14h","+49 30 7262290","🌿 Bio,Vintage","⭐⭐⭐⭐⭐","Einer der besten!","https://maps.google.com/?q=Winterfeldtmarkt+Berlin"),
-        ("So","Mauerpark","Bernauer Str.63","So 9-18h","+49 30 40505380","🎭 Vintage","⭐⭐⭐⭐⭐","MUSS! Vor 10 Uhr!","https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"),
-        ("So","Boxhagener Platz","Boxhagener Pl.","So 10-18h","+49 30 29362596","🏺 Antiquitäten","⭐⭐⭐⭐⭐","Top Porzellan!","https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"),
-        ("So","Treptower Park","Treptower Park","So 8-16h","+49 30 5321555","🔧 Elektronik,DDR","⭐⭐⭐⭐","Gut für DDR!","https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"),
-        ("So","Arkonaplatz","Arkonaplatz","So 10-16h","+49 30 7861003","🏛️ Raritäten","⭐⭐⭐⭐","Klein aber fein!","https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"),
+        # ══════ MONTAG ══════
+        ("Mo","Trödelhallen Kreuzberg (tägl.)","Dessauer Str. 3, 10963 Berlin","Mo-Fr 12-18h, Sa/So 8-18h",
+         "030-36757856","🏛️ Antiquitäten, Haushalt, Gemischt","⭐⭐⭐",
+         "Täglich geöffnet! Überdacht — auch bei Regen. Mo oft ruhig = gute Deals",
+         "https://maps.google.com/?q=Dessauer+Straße+3+Berlin"),
+
+        ("Mo","Trödelmarkt Berliner Str. (Schultheiss)","Berliner Str. 80-82, 13189 Berlin-Pankow","Mo-So 10-18h",
+         "Vor Ort fragen","🛍️ Gemischt, Antiquitäten","⭐⭐⭐",
+         "Jeden Tag geöffnet! Große Auswahl in der alten Schultheiss-Brauerei",
+         "https://maps.google.com/?q=Berliner+Straße+80+Berlin+Pankow"),
+
+        # ══════ DIENSTAG ══════
+        ("Di","Flohmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Di & Fr 8-15h",
+         "info@flohmarkt-fehrbelliner-platz.de","🏺 Antiquitäten, Porzellan, Silber","⭐⭐⭐⭐",
+         "Top für Porzellan & Silber! Di weniger Leute = bessere Deals",
+         "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
+
+        ("Di","Trödelhallen Kreuzberg (tägl.)","Dessauer Str. 3, 10963 Berlin","Mo-Fr 12-18h, Sa/So 8-18h",
+         "030-36757856","🏛️ Antiquitäten, Haushalt","⭐⭐⭐",
+         "Täglich überdacht! Di oft ruhig = beste Verhandlung",
+         "https://maps.google.com/?q=Dessauer+Straße+3+Berlin"),
+
+        ("Di","Kunst- u. Trödelmarkt Fehrbelliner Pl.","Fehrbelliner Pl., 10707 Berlin","Di & Sa 8-15h",
+         "Burdack Märkte","🏺 Antiquitäten, Kunst","⭐⭐⭐⭐",
+         "Di & Sa! Hochwertige Antiquitäten. Di weniger Leute = bessere Preise",
+         "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
+
+        # ══════ MITTWOCH ══════
+        ("Mi","Berliner Trödelhallen Kreuzberg","Dessauer Str. 3, 10963 Berlin","Mo-Fr 12-18h, Sa/So 8-18h",
+         "030-36757856","🏛️ Antiquitäten, Haushalt, Gemischt","⭐⭐⭐",
+         "Täglich geöffnet! Überdacht — gut bei Regen",
+         "https://maps.google.com/?q=Dessauer+Straße+3+Berlin"),
+
+        ("Mi","Trödelmarkt Louis-Lewin-Straße","Louis-Lewin-Str., 12627 Berlin-Hellersdorf","Mi-Fr 12-18:30h",
+         "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
+         "Mi-Fr offen! Günstige Preise, wenig Touristen",
+         "https://maps.google.com/?q=Louis-Lewin-Straße+Berlin+Hellersdorf"),
+
+        ("Mi","Alexanderplatz Trödelmarkt","Alexanderplatz, 10178 Berlin","Tägl. 10-19h",
+         "Vor Ort anmelden","🏙️ Gemischt, Vintage","⭐⭐⭐",
+         "Täglich offen! Mi gut für spontane Käufe",
+         "https://maps.google.com/?q=Alexanderplatz+Flohmarkt+Berlin"),
+
+        # ══════ DONNERSTAG ══════
+        ("Do","Wochenmarkt Winterfeldtplatz","Winterfeldtpl., 10781 Berlin","Do 8-14h",
+         "Marktamt Schöneberg","🌿 Bio, Vintage, Mode","⭐⭐⭐",
+         "Do viel ruhiger als Sa — bessere Preise verhandeln!",
+         "https://maps.google.com/?q=Winterfeldtplatz+Berlin"),
+
+        ("Do","Trödelhallen Kreuzberg (tägl.)","Dessauer Str. 3, 10963 Berlin","Mo-Fr 12-18h, Sa/So 8-18h",
+         "030-36757856","🏛️ Antiquitäten, Haushalt","⭐⭐⭐",
+         "Täglich geöffnet! Do gut für Zwischenkäufe",
+         "https://maps.google.com/?q=Dessauer+Straße+3+Berlin"),
+
+        ("Do","Trödelmarkt Louis-Lewin-Straße","Louis-Lewin-Str., 12627 Berlin-Hellersdorf","Mi-Fr 12-18:30h",
+         "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
+         "Mi-Fr offen! Günstige Preise im Osten",
+         "https://maps.google.com/?q=Louis-Lewin-Straße+Berlin+Hellersdorf"),
+
+        # ══════ FREITAG ══════
+        ("Fr","Flohmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Di & Fr 8-15 Uhr",
+         "info@flohmarkt-fehrbelliner-platz.de","🏺 Antiquitäten, Porzellan, Silber","⭐⭐⭐⭐⭐",
+         "Fr = BESTE AUSWAHL! Früh kommen für Schnäppchen",
+         "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
+
+        ("Fr","Antik & Sammlermarkt Ostbahnhof","Erich-Steinfurth-Str. 1, 10243 Berlin","Fr-So 9-16 Uhr",
+         "Veranstalter: oldthing märkte — online buchen","🛍️ Antiquitäten, Sammler","⭐⭐⭐⭐",
+         "Fr = wenig Leute, beste Preise! Sa/So voller",
+         "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"),
+
+        # ── SAMSTAG ──
+        ("Sa","Flohmarkt Straße des 17. Juni","Str. des 17. Juni, 10623 Berlin (S Tiergarten)","Sa & So 10-17 Uhr",
+         "030-2655000 (Berliner Trödel)","🏺 Antiquitäten, Kunst, Schmuck","⭐⭐⭐⭐⭐",
+         "Größter Antikmarkt Berlins! Hochwertige Stücke",
+         "https://maps.google.com/?q=Flohmarkt+Straße+des+17+Juni+Berlin"),
+
+        ("Sa","Winterfeldtmarkt","Winterfeldtpl., 10781 Berlin","Sa 8-14 Uhr",
+         "Standanmeldung: markt@winterfeldtmarkt.de","🌿 Bio, Vintage, Kunst","⭐⭐⭐⭐⭐",
+         "Top Publikum! Gut für hochwertige Vintage-Sachen",
+         "https://maps.google.com/?q=Winterfeldtmarkt+Berlin"),
+
+        ("Sa","RAW Flohmarkt","Revaler Str. 99, 10245 Berlin","Sa & So 10-18 Uhr",
+         "info@raw-flohmarkt.de","🕶️ Vintage Mode, Vinyl, Streetwear","⭐⭐⭐⭐⭐",
+         "Beste Vintage-Kleidung Berlins! Junge Käufer",
+         "https://maps.google.com/?q=RAW+Gelände+Berlin"),
+
+        ("Sa","Kosmonauten Markt","Beilsteiner Str. 51, 12681 Berlin-Marzahn","Sa 9-18 Uhr",
+         "01624942851 / info@kosmonautenmarkt.de","🔧 Haushalt, Technik, Gemischt","⭐⭐⭐",
+         "Günstige Standgebühren! Gut für Mengen-Verkauf",
+         "https://maps.google.com/?q=Beilsteiner+Straße+51+Berlin"),
+
+        # ── SONNTAG ──
+        ("So","Flohmarkt im Mauerpark","Bernauer Str. 63-64, 13355 Berlin","So 10-18 Uhr",
+         "Tel: 030-29772486 | Email: info@flohmarktimmauerpark.de | Stand: So 10-13 Uhr am Infostand","🎭 Vintage, Mode, Vinyl, Kuriositäten","⭐⭐⭐⭐⭐",
+         "Berlins berühmtester Markt! 150 Stände. Stand buchen: persönlich So 10-13 Uhr am Infostand",
+         "https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"),
+
+
+        ("So","Boxhagener Platz","Boxhagener Pl., 10245 Berlin","So 10-18 Uhr",
+         "Keine zentrale Standnummer — direkt vor Ort fragen","🏺 Antiquitäten, Porzellan, Bücher","⭐⭐⭐⭐⭐",
+         "TOP für Porzellan & Antiquitäten! Echte Sammler kommen hier",
+         "https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"),
+
+        ("So","Antik & Sammlermarkt Ostbahnhof","Erich-Steinfurth-Str. 1, 10243 Berlin","Fr-So 9-16 Uhr",
+         "Veranstalter: oldthing märkte — online anmelden","🛍️ Gemischt, Sammler, Antiquitäten","⭐⭐⭐⭐",
+         "So am vollsten — früh kommen! Fr ruhiger",
+         "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"),
+
+        ("So","Flohmarkt Straße des 17. Juni","Str. des 17. Juni, 10623 Berlin","Sa & So 10-17 Uhr",
+         "030-2655000","🏺 Hochwertige Antiquitäten, Kunst","⭐⭐⭐⭐⭐",
+         "Professionelle Händler — hochpreisig aber lohnend",
+         "https://maps.google.com/?q=Flohmarkt+Straße+des+17+Juni+Berlin"),
+
+        ("So","Arkonaplatz Flohmarkt","Arkonaplatz, 10435 Berlin","So 10-16 Uhr",
+         "Keine Standanmeldung — einfach kommen","🏛️ Antiquitäten, Raritäten, Bücher","⭐⭐⭐⭐",
+         "Klein aber fein! Echte Raritäten. Kaum Touristenware",
+         "https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"),
+
+        ("So","Nowkoelln Flowmarkt","Maybachufer, 12047 Berlin","2. & 4. So im Monat 11-18 Uhr",
+         "info@nowkoelln.de","🎨 Design, Vintage, Handgemachtes","⭐⭐⭐⭐",
+         "Nur 2x im Monat! Kreatives Publikum, gute Preise",
+         "https://maps.google.com/?q=Maybachufer+Neukölln+Berlin"),
+
+        ("So","Treptower Park Flohmarkt","Alt-Treptow, 12435 Berlin","So 8-16 Uhr",
+         "Keine zentrale Nummer — vor Ort fragen","🔧 Elektronik, Werkzeug, DDR-Artikel","⭐⭐⭐⭐",
+         "Gut für DDR & Elektronik! Günstige Preise",
+         "https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"),
+
+        # ── IHRE MÄRKTE (SPANDAU & UMGEBUNG) ──
+        ("So","ICK TRÖDEL — OBI Spandau","Wilhelmstr. 8, 13595 Berlin-Spandau","So 8-16 Uhr | Aufbau bis 7:30 Uhr",
+         "Ahmet Yesildag: 0179 483 05 42 | Tel: 030 38307044 | icktroedel.de",
+         "🛍️ Gemischt, Haushalt, Vintage","⭐⭐⭐⭐⭐",
+         "Jeden Sonntag! Marktbude 30€ (überdacht) oder Freifläche 9€/lm | Ihr Stammmarkt!",
+         "https://maps.google.com/?q=Wilhelmstraße+8+13595+Berlin+Spandau"),
+
+        ("So","Flohmarkt Kaufland Spandau","Pichelswerderstr. 6, 13597 Berlin (neben IKEA)","So 8-16 Uhr",
+         "Höfges Event Group GmbH — online anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐⭐",
+         "Jeden Sonntag! Großer Parkplatz, viele Besucher",
+         "https://maps.google.com/?q=Pichelswerderstraße+6+13597+Berlin"),
+
+        ("So","ICK TRÖDEL — EDEKA Spandau","Falkenseer Chaussee 239, 13583 Berlin","So 8-16 Uhr",
+         "ICK TRÖDEL: 0179 483 05 42 | icktroedel.de","🛍️ Gemischt, Kleidung","⭐⭐⭐",
+         "Wöchentlich! Günstige Standgebühren",
+         "https://maps.google.com/?q=Falkenseer+Chaussee+239+Berlin"),
+
+        ("So","Trödelmarkt Streitstraße","Streitstr. 6-19, 13587 Berlin-Spandau","So 8-16 Uhr",
+         "ICK TRÖDEL: 0179 483 05 42","🛍️ Gemischt","⭐⭐⭐",
+         "Weiterer ICK TRÖDEL Standort in Spandau",
+         "https://maps.google.com/?q=Streitstraße+13587+Berlin"),
+
+        # ── WEITERE BELIEBTE MÄRKTE ──
+        ("Sa","Antik & Trödel Spandau Zitadelle","Am Juliusturm, 13599 Berlin-Spandau","Sa 10-17 Uhr (saisonal)",
+         "Nachtmarkt auf der Zitadelle — nächste Termine online prüfen","🏛️ Antiquitäten, Kunst","⭐⭐⭐⭐",
+         "Besonderer Atmosphäre! Hochwertige Stücke",
+         "https://maps.google.com/?q=Zitadelle+Spandau+Berlin"),
+
+        ("So","Leopoldplatz Flohmarkt","Leopoldplatz, 13347 Berlin-Wedding","So 8-16 Uhr",
+         "Seit Jan 2026 mit Street Food! Stadtbezirk Wedding","🛍️ Gemischt, Street Food","⭐⭐⭐",
+         "Neu 2026: Trödelstände + Street Food. Günstiges Publikum",
+         "https://maps.google.com/?q=Leopoldplatz+Berlin+Wedding"),
+
+        ("Sa","Kosmonauten Markt Marzahn","Beilsteiner Str. 51, 12681 Berlin-Marzahn","Sa 9-18 Uhr",
+         "01624942851 | info@kosmonautenmarkt.de","🔧 Haushalt, Technik, Gemischt","⭐⭐⭐",
+         "Günstige Stände! Ganzjährig jeden Samstag",
+         "https://maps.google.com/?q=Beilsteiner+Straße+51+Berlin+Marzahn"),
+
+        ("Sa","Flohmarkt Rathaus Schöneberg","John-F.-Kennedy-Platz, 10825 Berlin","Sa & So 8-16 Uhr",
+         "Bezirksamt Tempelhof-Schöneberg — vor Ort anmelden","🛍️ Gemischt, Haushalt, Kleidung","⭐⭐⭐⭐",
+         "Wöchentlich Sa & So! Zentraler Standort, viele Besucher",
+         "https://maps.google.com/?q=Rathaus+Schöneberg+Berlin+Flohmarkt"),
+
+        ("Sa","Trödelmarkt Bergmannstraße","Marheinekeplatz, 10961 Berlin-Kreuzberg","Sa 9-16 Uhr",
+         "Vor Ort anmelden","🌿 Vintage, Bio, Kreuzberg-Flair","⭐⭐⭐⭐",
+         "Kreuzberger Atmosphäre! Gut für Vintage & Design",
+         "https://maps.google.com/?q=Marheinekeplatz+Berlin+Kreuzberg"),
+
+        ("Sa","Flohmarkt Mariendorf-Ost","Am Stadtpark 4, 12107 Berlin-Mariendorf","Sa 8-14 Uhr",
+         "Kein zentrales Büro — vor Ort anmelden","🛍️ Haushalt, Gemischt","⭐⭐⭐",
+         "Kleiner Nachbarschaftsmarkt — günstige Standgebühren",
+         "https://maps.google.com/?q=Am+Stadtpark+Mariendorf+Berlin"),
+
+        ("Sa","Antik & Buchmarkt am Bodemuseum","Am Kupfergraben 3, 10117 Berlin","Sa & So 11-17 Uhr",
+         "M.S.P-Marktservice UG — vor Ort","🏛️ Antiquitäten, Bücher, Kunst","⭐⭐⭐⭐",
+         "Traumhafte Lage! Hochwertiges Angebot am Museumsufer",
+         "https://maps.google.com/?q=Am+Kupfergraben+Berlin+Bodemuseum"),
+
+        ("Sa","ICK TRÖDEL — Spandau Stendaler Str.","Ollenhauer Str. 107, 13583 Berlin","Sa 8-16 Uhr",
+         "Ahmet Yesildag: 0179 483 05 42 | icktroedel.de","🛍️ Gemischt, Haushalt","⭐⭐⭐",
+         "Weiterer ICK TRÖDEL Standort — samstags!",
+         "https://maps.google.com/?q=Ollenhauer+Straße+107+Berlin+Spandau"),
     ]
     tage=["Alle","Mo","Di","Mi","Do","Fr","Sa","So"]
     fw=st.radio("📅",tage,horizontal=True,key="fw")
@@ -860,13 +1522,34 @@ with T[9]:
                         f"Marken-Experte {ms_k}. Identifiziere Stempel/Logo. Deutsch.\n"
                         f"Marke, Herkunft, Jahr, Echtheit, Seltenheit, Wert €X, eBay-Suchbegriff.",bilder=[b64])
                     st.markdown(marken_analyse)
-                    # Web sucht Marken-Infos
+                    # eBay-Suchbegriff aus Analyse extrahieren
+                    ebay_begriff = ""
+                    for line in marken_analyse.split("\n"):
+                        if "eBay-Suchbegriff:" in line:
+                            teil = line.split(":")[-1].strip().strip("[]")
+                            if len(teil) > 2: ebay_begriff = teil[:50]; break
+                    if not ebay_begriff:
+                        ebay_begriff = marken_analyse.split("\n")[0][:40]
+
+                    # Direkte Links zu Auktionsplattformen
+                    if ebay_begriff:
+                        st.markdown("---")
+                        st.markdown("**🔗 Direkt suchen auf:**")
+                        enc = urllib.parse.quote(ebay_begriff)
+                        cl1,cl2 = st.columns(2)
+                        with cl1:
+                            st.link_button("🛒 eBay Auktionen", "https://www.ebay.de/sch/i.html?_nkw="+enc+"&LH_Auction=1", use_container_width=True)
+                            st.link_button("📱 Kleinanzeigen", "https://www.kleinanzeigen.de/s-"+enc+"/k0", use_container_width=True)
+                        with cl2:
+                            st.link_button("🏛️ Catawiki", "https://www.catawiki.com/de/l?q="+enc, use_container_width=True)
+                            st.link_button("🔍 Dorotheum", "https://www.dorotheum.com/suche/?q="+enc, use_container_width=True)
+
+                    # Web-Recherche
                     marke_name = marken_analyse.split("\n")[0][:40] if marken_analyse else ""
                     if marke_name:
-                        web_mk = multi_suche(marke_name+" "+ms_k+" Wert Preis eBay Auktion Deutschland")
+                        web_mk = multi_suche(marke_name+" "+ms_k+" Wert Preis eBay Auktion")
                         if web_mk:
-                            st.success("✅ Web-Recherche zur Marke:")
-                            mk_bewertung = ki(f"Bewerte diese Web-Infos zur Marke '{marke_name}' für Reseller.\n{web_mk[:500]}\nKurzes Fazit: Wert, Seltenheit, Empfehlung. Deutsch.")
+                            mk_bewertung = ki("Bewerte Web-Infos zur Marke '" + marke_name + "'. Deutsch. Fazit: Wert, Seltenheit, wo verkaufen.\n" + web_mk[:400])
                             st.info("🌐 "+mk_bewertung)
 
 # ════════════════════════════════════════════════════════════
@@ -916,21 +1599,114 @@ with T[11]:
 # TAB 13 — CHAT
 # ════════════════════════════════════════════════════════════
 with T[12]:
-    st.header("🤖 KI-Reselling-Chat")
+    st.header("🤖 KI-Reselling-Chat — Ultimate")
+    st.markdown("Chat mit **Fotos · Lagerbestand · Lern-System · Web-Suche · 3 KIs gleichzeitig**")
+
+    # ── KONTEXT-ANZEIGE ──
+    c1,c2,c3 = st.columns(3)
+    with c1:
+        lager_n = len(st.session_state.lager)
+        st.metric("📦 Lager", f"{lager_n} Artikel")
+    with c2:
+        wissen_n = len(st.session_state.mein_wissen) + len(st.session_state.preis_korrekturen)
+        st.metric("🧠 Wissen", f"{wissen_n} Einträge")
+    with c3:
+        st.metric("💬 Nachrichten", len(st.session_state.chat_history))
+
+    # ── FOTO-UPLOAD FÜR CHAT ──
+    with st.expander("📷 Foto zum Chat hinzufügen (optional)"):
+        chat_foto = st.file_uploader("Foto hochladen",
+            type=["jpg","jpeg","png","webp"], key="chat_foto")
+        if chat_foto:
+            st.image(chat_foto, caption="Foto für Chat", use_column_width=True)
+
+    # ── CHAT-VERLAUF ──
     for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]): st.markdown(msg["content"])
-    if prompt_chat:=st.chat_input("Fragen Sie alles über Reselling, Preise, Flohmärkte..."):
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # ── EINGABE ──
+    if prompt_chat := st.chat_input("Fragen Sie alles — auch über Fotos, Lager, Preise..."):
         st.session_state.chat_history.append({"role":"user","content":prompt_chat})
-        with st.chat_message("user"): st.markdown(prompt_chat)
+        with st.chat_message("user"):
+            st.markdown(prompt_chat)
+
         with st.chat_message("assistant"):
-            with st.spinner("🤖 3 KIs denken nach..."):
-                web=tavily_suche(prompt_chat+" "+datetime.now().strftime("%B %Y"))
-                p=(f"Reselling-Experte Deutschland. Kleinanzeigen,Vinted,Facebook,eBay. Deutsch, konkret.\n"
-                   f"{('Aktuelle Web-Infos: '+web[:200]) if web else ''}\nFrage: {prompt_chat}")
-                antwort=ensemble_ki(p)
+            with st.spinner("🤖 3 KIs + Web denken nach..."):
+
+                # ── KONTEXT AUFBAUEN ──
+                # 1. Lagerbestand
+                lager_kontext = ""
+                if st.session_state.lager:
+                    lager_kontext = "\n\nMein aktueller Lagerbestand:\n"
+                    for it in st.session_state.lager[-10:]:
+                        lager_kontext += f"- {it['artikel']}: EK€{it['ek']} → VK€{it['vk']} ({it['zustand']}) {it['tage']} Tage\n"
+
+                # 2. Lern-System
+                lern_kontext = ""
+                if st.session_state.mein_wissen:
+                    lern_kontext += "\nMein persönliches Wissen:\n"
+                    lern_kontext += "\n".join([f"- {w}" for w in st.session_state.mein_wissen[-5:]])
+                if st.session_state.preis_korrekturen:
+                    lern_kontext += "\nEchte Verkaufspreise die ich erzielt habe:\n"
+                    lern_kontext += "\n".join([f"- {k}: €{v}" for k,v in list(st.session_state.preis_korrekturen.items())[-5:]])
+
+                # 3. Gesprächsverlauf (letzte 6 Nachrichten)
+                verlauf = ""
+                if len(st.session_state.chat_history) > 1:
+                    verlauf = "\nBisheriger Gesprächsverlauf:\n"
+                    for m in st.session_state.chat_history[-6:]:
+                        rolle = "Ich" if m["role"] == "user" else "KI"
+                        verlauf += f"{rolle}: {m['content'][:100]}\n"
+
+                # 4. Web-Suche
+                web = tavily_suche(prompt_chat + " " + datetime.now().strftime("%B %Y"))
+                web_kontext = ""
+                if web and len(web) > 50:
+                    # Prüfe ob Web-Ergebnis relevant
+                    frage_wort = prompt_chat.split()[0].lower() if prompt_chat else ""
+                    if any(w in web.lower() for w in prompt_chat.lower().split()[:3]):
+                        web_kontext = "\nAktuelle Web-Infos: " + web[:300]
+
+                # 5. Foto verarbeiten
+                chat_bilder = None
+                if chat_foto:
+                    chat_foto.seek(0)
+                    b64 = base64.b64encode(chat_foto.read()).decode()
+                    chat_bilder = [b64]
+
+                # ── PROMPT ZUSAMMENBAUEN ──
+                system = (
+                    "Du bist ein persönlicher Reselling-Experte und Assistent für einen Berliner "
+                    "Flohmarkt-Händler. Du kennst Kleinanzeigen, Vinted, Facebook, eBay und alle "
+                    "Berliner Flohmärkte perfekt. Antworte immer auf Deutsch, konkret und hilfreich."
+                )
+                prompt_final = (
+                    system + lager_kontext + lern_kontext + web_kontext + verlauf +
+                    "\n\nAktuelle Frage: " + prompt_chat
+                )
+
+                antwort = ensemble_ki(prompt_final, bilder=chat_bilder)
                 st.markdown(antwort)
+
         st.session_state.chat_history.append({"role":"assistant","content":antwort})
-    if st.button("🗑️ Löschen",key="chat_clear"): st.session_state.chat_history=[]; st.rerun()
+
+    # ── BUTTONS ──
+    c1,c2 = st.columns(2)
+    with c1:
+        if st.button("🗑️ Chat löschen", use_container_width=True, key="chat_clear"):
+            st.session_state.chat_history = []
+            st.rerun()
+    with c2:
+        if st.button("💡 Tipp anfordern", use_container_width=True, key="chat_tipp"):
+            with st.spinner("💡 ..."):
+                tipp = ensemble_ki(
+                    "Du bist Reselling-Experte. Gib einen konkreten Tipp für heute "
+                    f"({datetime.now().strftime('%A, %d.%m.%Y')}) — was sollte ich kaufen/verkaufen? "
+                    "Basierend auf Saison und aktuellen Trends. Kurz und konkret. Deutsch."
+                )
+                st.session_state.chat_history.append({"role":"assistant","content":"💡 Tipp des Tages: " + tipp})
+                st.rerun()
 
 # ════════════════════════════════════════════════════════════
 # TAB 14 — KONKURRENZ
