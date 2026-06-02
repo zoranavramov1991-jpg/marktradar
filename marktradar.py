@@ -1282,201 +1282,185 @@ with T[8]:
             )
             st.info("📅 " + ki(p))
     st.markdown("---")
-    # Echte verifizierte Marktdaten 2026 — komplett Mo-So
+    # NUR echte Flohmärkte mit Ständen — keine Läden, keine Einkaufszentren!
     maerkte=[
+
         # ══════ MONTAG ══════
-        ("Mo","Trödelhallen Kreuzberg (tägl.)","Dessauer Str. 3, 10963 Berlin","Mo-Fr 12-18h, Sa/So 8-18h",
-         "030-36757856","🏛️ Antiquitäten, Haushalt, Gemischt","⭐⭐⭐",
-         "Täglich geöffnet! Überdacht — auch bei Regen. Mo oft ruhig = gute Deals",
-         "https://maps.google.com/?q=Dessauer+Straße+3+Berlin"),
-
-        ("Mo","Trödelmarkt Berliner Str. (Schultheiss)","Berliner Str. 80-82, 13189 Berlin-Pankow","Mo-So 10-18h",
-         "Vor Ort fragen","🛍️ Gemischt, Antiquitäten","⭐⭐⭐",
-         "Jeden Tag geöffnet! Große Auswahl in der alten Schultheiss-Brauerei",
-         "https://maps.google.com/?q=Berliner+Straße+80+Berlin+Pankow"),
-
-        # ══════ DIENSTAG ══════
-        ("Di","Flohmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Di & Fr 8-15h",
-         "info@flohmarkt-fehrbelliner-platz.de","🏺 Antiquitäten, Porzellan, Silber","⭐⭐⭐⭐",
-         "Top für Porzellan & Silber! Di weniger Leute = bessere Deals",
+        ("Mo","Trödelmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Mo-Fr (unregelmäßig)",
+         "Burdack Märkte: info@burdack-maerkte.de","🏺 Antiquitäten, Porzellan","⭐⭐⭐",
+         "Unter der Woche wenig Besucher = gute Deals für Händler",
          "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
 
-        ("Di","Trödelhallen Kreuzberg (tägl.)","Dessauer Str. 3, 10963 Berlin","Mo-Fr 12-18h, Sa/So 8-18h",
-         "030-36757856","🏛️ Antiquitäten, Haushalt","⭐⭐⭐",
-         "Täglich überdacht! Di oft ruhig = beste Verhandlung",
-         "https://maps.google.com/?q=Dessauer+Straße+3+Berlin"),
-
-        ("Di","Kunst- u. Trödelmarkt Fehrbelliner Pl.","Fehrbelliner Pl., 10707 Berlin","Di & Sa 8-15h",
-         "Burdack Märkte","🏺 Antiquitäten, Kunst","⭐⭐⭐⭐",
-         "Di & Sa! Hochwertige Antiquitäten. Di weniger Leute = bessere Preise",
+        # ══════ DIENSTAG ══════
+        ("Di","Kunst- & Trödelmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Di & Fr 8-15h",
+         "Burdack Märkte: info@burdack-maerkte.de","🏺 Antiquitäten, Kunst, Porzellan, Silber","⭐⭐⭐⭐⭐",
+         "Echter Außen-Flohmarkt mit Händler-Ständen! Di weniger Leute = beste Verhandlung",
          "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
 
         # ══════ MITTWOCH ══════
-        ("Mi","Berliner Trödelhallen Kreuzberg","Dessauer Str. 3, 10963 Berlin","Mo-Fr 12-18h, Sa/So 8-18h",
-         "030-36757856","🏛️ Antiquitäten, Haushalt, Gemischt","⭐⭐⭐",
-         "Täglich geöffnet! Überdacht — gut bei Regen",
-         "https://maps.google.com/?q=Dessauer+Straße+3+Berlin"),
-
-        ("Mi","Trödelmarkt Louis-Lewin-Straße","Louis-Lewin-Str., 12627 Berlin-Hellersdorf","Mi-Fr 12-18:30h",
-         "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
-         "Mi-Fr offen! Günstige Preise, wenig Touristen",
-         "https://maps.google.com/?q=Louis-Lewin-Straße+Berlin+Hellersdorf"),
-
-        ("Mi","Alexanderplatz Trödelmarkt","Alexanderplatz, 10178 Berlin","Tägl. 10-19h",
-         "Vor Ort anmelden","🏙️ Gemischt, Vintage","⭐⭐⭐",
-         "Täglich offen! Mi gut für spontane Käufe",
-         "https://maps.google.com/?q=Alexanderplatz+Flohmarkt+Berlin"),
+        ("Mi","Trödelmarkt Weißenfelser Str.","Weißenfelser Str. 6, 12627 Berlin-Marzahn","Mi-So 8-18:30h",
+         "Vor Ort anmelden","🛍️ Gemischt, Haushalt, Kleidung","⭐⭐⭐",
+         "Echter Außen-Trödelmarkt Mi-So! Günstige Standgebühren",
+         "https://maps.google.com/?q=Weißenfelser+Straße+6+Berlin+Marzahn"),
 
         # ══════ DONNERSTAG ══════
-        ("Do","Wochenmarkt Winterfeldtplatz","Winterfeldtpl., 10781 Berlin","Do 8-14h",
-         "Marktamt Schöneberg","🌿 Bio, Vintage, Mode","⭐⭐⭐",
-         "Do viel ruhiger als Sa — bessere Preise verhandeln!",
+        ("Do","Trödelmarkt Weißenfelser Str.","Weißenfelser Str. 6, 12627 Berlin-Marzahn","Mi-So 8-18:30h",
+         "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
+         "Do meist ruhig — gut für schnelle Verkäufe unter der Woche",
+         "https://maps.google.com/?q=Weißenfelser+Straße+6+Berlin+Marzahn"),
+
+        ("Do","Wochenmarkt Winterfeldtplatz","Winterfeldtpl., 10781 Berlin-Schöneberg","Do 8-14h",
+         "Marktamt Schöneberg","🌿 Bio, Vintage, Mode, Design","⭐⭐⭐",
+         "Kein reiner Flohmarkt aber viele Vintage-Händler! Do ruhiger als Sa",
          "https://maps.google.com/?q=Winterfeldtplatz+Berlin"),
 
-        ("Do","Trödelhallen Kreuzberg (tägl.)","Dessauer Str. 3, 10963 Berlin","Mo-Fr 12-18h, Sa/So 8-18h",
-         "030-36757856","🏛️ Antiquitäten, Haushalt","⭐⭐⭐",
-         "Täglich geöffnet! Do gut für Zwischenkäufe",
-         "https://maps.google.com/?q=Dessauer+Straße+3+Berlin"),
-
-        ("Do","Trödelmarkt Louis-Lewin-Straße","Louis-Lewin-Str., 12627 Berlin-Hellersdorf","Mi-Fr 12-18:30h",
-         "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
-         "Mi-Fr offen! Günstige Preise im Osten",
-         "https://maps.google.com/?q=Louis-Lewin-Straße+Berlin+Hellersdorf"),
-
         # ══════ FREITAG ══════
-        ("Fr","Flohmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Di & Fr 8-15 Uhr",
-         "info@flohmarkt-fehrbelliner-platz.de","🏺 Antiquitäten, Porzellan, Silber","⭐⭐⭐⭐⭐",
-         "Fr = BESTE AUSWAHL! Früh kommen für Schnäppchen",
+        ("Fr","Kunst- & Trödelmarkt Fehrbelliner Platz","Fehrbelliner Pl., 10707 Berlin","Di & Fr 8-15h",
+         "Burdack Märkte: info@burdack-maerkte.de","🏺 Antiquitäten, Kunst, Porzellan, Silber","⭐⭐⭐⭐⭐",
+         "Fr = BESTE AUSWAHL der Woche! Früh kommen für Schnäppchen",
          "https://maps.google.com/?q=Fehrbelliner+Platz+Berlin"),
 
-        ("Fr","Antik & Sammlermarkt Ostbahnhof","Erich-Steinfurth-Str. 1, 10243 Berlin","Fr-So 9-16 Uhr",
-         "Veranstalter: oldthing märkte — online buchen","🛍️ Antiquitäten, Sammler","⭐⭐⭐⭐",
-         "Fr = wenig Leute, beste Preise! Sa/So voller",
+        ("Fr","Antik & Sammlermarkt Ostbahnhof","Erich-Steinfurth-Str. 1, 10243 Berlin-Friedrichshain","Fr-So 9-16h",
+         "oldthing märkte — online: www.oldthing.de","🛍️ Antiquitäten, Sammler, Bücher","⭐⭐⭐⭐",
+         "Fr = wenig Besucher, beste Preise! Sa/So deutlich voller",
          "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"),
 
-        # ── SAMSTAG ──
-        ("Sa","Flohmarkt Straße des 17. Juni","Str. des 17. Juni, 10623 Berlin (S Tiergarten)","Sa & So 10-17 Uhr",
-         "030-2655000 (Berliner Trödel)","🏺 Antiquitäten, Kunst, Schmuck","⭐⭐⭐⭐⭐",
-         "Größter Antikmarkt Berlins! Hochwertige Stücke",
+        ("Fr","Trödelmarkt Weißenfelser Str.","Weißenfelser Str. 6, 12627 Berlin-Marzahn","Mi-So 8-18:30h",
+         "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
+         "Fr = letzter Werktag, Händler räumen Restbestände günstig!",
+         "https://maps.google.com/?q=Weißenfelser+Straße+6+Berlin+Marzahn"),
+
+        # ══════ SAMSTAG ══════
+        ("Sa","Flohmarkt Straße des 17. Juni","Str. des 17. Juni 17, 10623 Berlin (S Tiergarten)","Sa & So 10-17h",
+         "Berliner Trödel GmbH: 030-2655000","🏺 Hochwertige Antiquitäten, Kunst, Schmuck","⭐⭐⭐⭐⭐",
+         "Größter Antik-Flohmarkt Berlins! Professionelle Händler-Stände",
          "https://maps.google.com/?q=Flohmarkt+Straße+des+17+Juni+Berlin"),
 
-        ("Sa","Winterfeldtmarkt","Winterfeldtpl., 10781 Berlin","Sa 8-14 Uhr",
-         "Standanmeldung: markt@winterfeldtmarkt.de","🌿 Bio, Vintage, Kunst","⭐⭐⭐⭐⭐",
-         "Top Publikum! Gut für hochwertige Vintage-Sachen",
+        ("Sa","Winterfeldtmarkt","Winterfeldtpl., 10781 Berlin-Schöneberg","Sa 8-14h",
+         "Standanmeldung: markt@winterfeldtmarkt.de","🌿 Bio, Vintage, Kunst, Mode","⭐⭐⭐⭐⭐",
+         "Top-Publikum mit Kaufkraft! Gut für hochwertige Vintage-Sachen",
          "https://maps.google.com/?q=Winterfeldtmarkt+Berlin"),
 
-        ("Sa","RAW Flohmarkt","Revaler Str. 99, 10245 Berlin","Sa & So 10-18 Uhr",
+        ("Sa","RAW Flohmarkt","Revaler Str. 99, 10245 Berlin-Friedrichshain","Sa & So 10-18h",
          "info@raw-flohmarkt.de","🕶️ Vintage Mode, Vinyl, Streetwear","⭐⭐⭐⭐⭐",
-         "Beste Vintage-Kleidung Berlins! Junge Käufer",
+         "Beste Vintage-Kleidung Berlins! Junges kaufkräftiges Publikum",
          "https://maps.google.com/?q=RAW+Gelände+Berlin"),
 
-        ("Sa","Kosmonauten Markt","Beilsteiner Str. 51, 12681 Berlin-Marzahn","Sa 9-18 Uhr",
-         "01624942851 / info@kosmonautenmarkt.de","🔧 Haushalt, Technik, Gemischt","⭐⭐⭐",
-         "Günstige Standgebühren! Gut für Mengen-Verkauf",
-         "https://maps.google.com/?q=Beilsteiner+Straße+51+Berlin"),
-
-        # ── SONNTAG ──
-        ("So","Flohmarkt im Mauerpark","Bernauer Str. 63-64, 13355 Berlin","So 10-18 Uhr",
-         "Tel: 030-29772486 | Email: info@flohmarktimmauerpark.de | Stand: So 10-13 Uhr am Infostand","🎭 Vintage, Mode, Vinyl, Kuriositäten","⭐⭐⭐⭐⭐",
-         "Berlins berühmtester Markt! 150 Stände. Stand buchen: persönlich So 10-13 Uhr am Infostand",
-         "https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"),
-
-
-        ("So","Boxhagener Platz","Boxhagener Pl., 10245 Berlin","So 10-18 Uhr",
-         "Keine zentrale Standnummer — direkt vor Ort fragen","🏺 Antiquitäten, Porzellan, Bücher","⭐⭐⭐⭐⭐",
-         "TOP für Porzellan & Antiquitäten! Echte Sammler kommen hier",
-         "https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"),
-
-        ("So","Antik & Sammlermarkt Ostbahnhof","Erich-Steinfurth-Str. 1, 10243 Berlin","Fr-So 9-16 Uhr",
-         "Veranstalter: oldthing märkte — online anmelden","🛍️ Gemischt, Sammler, Antiquitäten","⭐⭐⭐⭐",
-         "So am vollsten — früh kommen! Fr ruhiger",
+        ("Sa","Antik & Sammlermarkt Ostbahnhof","Erich-Steinfurth-Str. 1, 10243 Berlin","Fr-So 9-16h",
+         "oldthing märkte — online: www.oldthing.de","🛍️ Antiquitäten, Sammler","⭐⭐⭐⭐",
+         "Sa voller als Fr — trotzdem gute Auswahl",
          "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"),
 
-        ("So","Flohmarkt Straße des 17. Juni","Str. des 17. Juni, 10623 Berlin","Sa & So 10-17 Uhr",
-         "030-2655000","🏺 Hochwertige Antiquitäten, Kunst","⭐⭐⭐⭐⭐",
-         "Professionelle Händler — hochpreisig aber lohnend",
-         "https://maps.google.com/?q=Flohmarkt+Straße+des+17+Juni+Berlin"),
-
-        ("So","Arkonaplatz Flohmarkt","Arkonaplatz, 10435 Berlin","So 10-16 Uhr",
-         "Keine Standanmeldung — einfach kommen","🏛️ Antiquitäten, Raritäten, Bücher","⭐⭐⭐⭐",
-         "Klein aber fein! Echte Raritäten. Kaum Touristenware",
-         "https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"),
-
-        ("So","Nowkoelln Flowmarkt","Maybachufer, 12047 Berlin","2. & 4. So im Monat 11-18 Uhr",
-         "info@nowkoelln.de","🎨 Design, Vintage, Handgemachtes","⭐⭐⭐⭐",
-         "Nur 2x im Monat! Kreatives Publikum, gute Preise",
-         "https://maps.google.com/?q=Maybachufer+Neukölln+Berlin"),
-
-        ("So","Treptower Park Flohmarkt","Alt-Treptow, 12435 Berlin","So 8-16 Uhr",
-         "Keine zentrale Nummer — vor Ort fragen","🔧 Elektronik, Werkzeug, DDR-Artikel","⭐⭐⭐⭐",
-         "Gut für DDR & Elektronik! Günstige Preise",
-         "https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"),
-
-        # ── IHRE MÄRKTE (SPANDAU & UMGEBUNG) ──
-        ("So","ICK TRÖDEL — OBI Spandau","Wilhelmstr. 8, 13595 Berlin-Spandau","So 8-16 Uhr | Aufbau bis 7:30 Uhr",
-         "Ahmet Yesildag: 0179 483 05 42 | Tel: 030 38307044 | icktroedel.de",
-         "🛍️ Gemischt, Haushalt, Vintage","⭐⭐⭐⭐⭐",
-         "Jeden Sonntag! Marktbude 30€ (überdacht) oder Freifläche 9€/lm | Ihr Stammmarkt!",
-         "https://maps.google.com/?q=Wilhelmstraße+8+13595+Berlin+Spandau"),
-
-        ("So","Flohmarkt Kaufland Spandau","Pichelswerderstr. 6, 13597 Berlin (neben IKEA)","So 8-16 Uhr",
-         "Höfges Event Group GmbH — online anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐⭐",
-         "Jeden Sonntag! Großer Parkplatz, viele Besucher",
-         "https://maps.google.com/?q=Pichelswerderstraße+6+13597+Berlin"),
-
-        ("So","ICK TRÖDEL — EDEKA Spandau","Falkenseer Chaussee 239, 13583 Berlin","So 8-16 Uhr",
-         "ICK TRÖDEL: 0179 483 05 42 | icktroedel.de","🛍️ Gemischt, Kleidung","⭐⭐⭐",
-         "Wöchentlich! Günstige Standgebühren",
-         "https://maps.google.com/?q=Falkenseer+Chaussee+239+Berlin"),
-
-        ("So","Trödelmarkt Streitstraße","Streitstr. 6-19, 13587 Berlin-Spandau","So 8-16 Uhr",
-         "ICK TRÖDEL: 0179 483 05 42","🛍️ Gemischt","⭐⭐⭐",
-         "Weiterer ICK TRÖDEL Standort in Spandau",
-         "https://maps.google.com/?q=Streitstraße+13587+Berlin"),
-
-        # ── WEITERE BELIEBTE MÄRKTE ──
-        ("Sa","Antik & Trödel Spandau Zitadelle","Am Juliusturm, 13599 Berlin-Spandau","Sa 10-17 Uhr (saisonal)",
-         "Nachtmarkt auf der Zitadelle — nächste Termine online prüfen","🏛️ Antiquitäten, Kunst","⭐⭐⭐⭐",
-         "Besonderer Atmosphäre! Hochwertige Stücke",
-         "https://maps.google.com/?q=Zitadelle+Spandau+Berlin"),
-
-        ("So","Leopoldplatz Flohmarkt","Leopoldplatz, 13347 Berlin-Wedding","So 8-16 Uhr",
-         "Seit Jan 2026 mit Street Food! Stadtbezirk Wedding","🛍️ Gemischt, Street Food","⭐⭐⭐",
-         "Neu 2026: Trödelstände + Street Food. Günstiges Publikum",
-         "https://maps.google.com/?q=Leopoldplatz+Berlin+Wedding"),
-
-        ("Sa","Kosmonauten Markt Marzahn","Beilsteiner Str. 51, 12681 Berlin-Marzahn","Sa 9-18 Uhr",
-         "01624942851 | info@kosmonautenmarkt.de","🔧 Haushalt, Technik, Gemischt","⭐⭐⭐",
-         "Günstige Stände! Ganzjährig jeden Samstag",
-         "https://maps.google.com/?q=Beilsteiner+Straße+51+Berlin+Marzahn"),
-
-        ("Sa","Flohmarkt Rathaus Schöneberg","John-F.-Kennedy-Platz, 10825 Berlin","Sa & So 8-16 Uhr",
-         "Bezirksamt Tempelhof-Schöneberg — vor Ort anmelden","🛍️ Gemischt, Haushalt, Kleidung","⭐⭐⭐⭐",
-         "Wöchentlich Sa & So! Zentraler Standort, viele Besucher",
-         "https://maps.google.com/?q=Rathaus+Schöneberg+Berlin+Flohmarkt"),
-
-        ("Sa","Trödelmarkt Bergmannstraße","Marheinekeplatz, 10961 Berlin-Kreuzberg","Sa 9-16 Uhr",
-         "Vor Ort anmelden","🌿 Vintage, Bio, Kreuzberg-Flair","⭐⭐⭐⭐",
-         "Kreuzberger Atmosphäre! Gut für Vintage & Design",
-         "https://maps.google.com/?q=Marheinekeplatz+Berlin+Kreuzberg"),
-
-        ("Sa","Flohmarkt Mariendorf-Ost","Am Stadtpark 4, 12107 Berlin-Mariendorf","Sa 8-14 Uhr",
-         "Kein zentrales Büro — vor Ort anmelden","🛍️ Haushalt, Gemischt","⭐⭐⭐",
-         "Kleiner Nachbarschaftsmarkt — günstige Standgebühren",
-         "https://maps.google.com/?q=Am+Stadtpark+Mariendorf+Berlin"),
-
-        ("Sa","Antik & Buchmarkt am Bodemuseum","Am Kupfergraben 3, 10117 Berlin","Sa & So 11-17 Uhr",
+        ("Sa","Antik & Buchmarkt am Bodemuseum","Am Kupfergraben 3, 10117 Berlin-Mitte","Sa & So 11-17h",
          "M.S.P-Marktservice UG — vor Ort","🏛️ Antiquitäten, Bücher, Kunst","⭐⭐⭐⭐",
-         "Traumhafte Lage! Hochwertiges Angebot am Museumsufer",
+         "Traumhafte Lage am Museumsufer! Hochwertiges Angebot",
          "https://maps.google.com/?q=Am+Kupfergraben+Berlin+Bodemuseum"),
 
-        ("Sa","ICK TRÖDEL — Spandau Stendaler Str.","Ollenhauer Str. 107, 13583 Berlin","Sa 8-16 Uhr",
+        ("Sa","Flohmarkt Rathaus Schöneberg","John-F.-Kennedy-Pl., 10825 Berlin-Schöneberg","Sa & So 8-16h",
+         "Bezirksamt Tempelhof-Schöneberg","🛍️ Gemischt, Haushalt, Kleidung","⭐⭐⭐⭐",
+         "Wöchentlich Sa & So! Großer Außenmarkt, viele private Verkäufer",
+         "https://maps.google.com/?q=Rathaus+Schöneberg+Berlin+Flohmarkt"),
+
+        ("Sa","Trödelmarkt Bergmannstraße","Marheinekeplatz, 10961 Berlin-Kreuzberg","Sa 8-16h",
+         "Vor Ort anmelden","🌿 Vintage, Kreuzberg-Flair, Design","⭐⭐⭐⭐",
+         "Echter Außen-Flohmarkt! Kreuzberger Atmosphäre, junges Publikum",
+         "https://maps.google.com/?q=Marheinekeplatz+Berlin+Kreuzberg"),
+
+        ("Sa","Kosmonauten Markt Marzahn","Beilsteiner Str. 51, 12681 Berlin-Marzahn","Sa 9-18h",
+         "01624942851 | info@kosmonautenmarkt.de","🔧 Haushalt, Technik, Gemischt","⭐⭐⭐",
+         "Ganzjährig jeden Sa! Günstige Standgebühren für Händler",
+         "https://maps.google.com/?q=Beilsteiner+Straße+51+Berlin+Marzahn"),
+
+        ("Sa","ICK TRÖDEL — Spandau Ollenhauer Str.","Ollenhauer Str. 107, 13583 Berlin-Spandau","Sa 8-16h",
          "Ahmet Yesildag: 0179 483 05 42 | icktroedel.de","🛍️ Gemischt, Haushalt","⭐⭐⭐",
-         "Weiterer ICK TRÖDEL Standort — samstags!",
+         "ICK TRÖDEL samstags! Günstiger Außenmarkt in Spandau",
          "https://maps.google.com/?q=Ollenhauer+Straße+107+Berlin+Spandau"),
+
+        ("Sa","Trödelmarkt Weißenfelser Str.","Weißenfelser Str. 6, 12627 Berlin-Marzahn","Mi-So 8-18:30h",
+         "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
+         "Sa mehr Besucher! Guter Umsatz möglich",
+         "https://maps.google.com/?q=Weißenfelser+Straße+6+Berlin+Marzahn"),
+
+        ("Sa","Hallentrödelmarkt Arena Berlin","Eichenstr. 4, 12435 Berlin-Treptow","Sa & So 10-17h",
+         "Arena Berlin: 030-53320340","🏛️ Gemischt, Überdacht","⭐⭐⭐⭐",
+         "Überdacht! Bei jedem Wetter. Große Halle mit vielen Ständen",
+         "https://maps.google.com/?q=Arena+Berlin+Eichenstraße+4"),
+
+        # ══════ SONNTAG ══════
+        ("So","Flohmarkt im Mauerpark","Bernauer Str. 63-64, 13355 Berlin-Mitte","So 10-18h | Aufbau ab 8h",
+         "Tel: 030-29772486 | info@flohmarktimmauerpark.de | Stand: So 10-13h am Infostand",
+         "🎭 Vintage, Mode, Vinyl, Kuriositäten","⭐⭐⭐⭐⭐",
+         "Berlins berühmtester Flohmarkt! ~150 Stände. Stand: persönlich So 10-13h buchen",
+         "https://maps.google.com/?q=Mauerpark+Flohmarkt+Berlin"),
+
+        ("So","Flohmarkt am Boxhagener Platz","Boxhagener Pl. 1, 10245 Berlin-Friedrichshain","So 10-18h",
+         "Vor Ort anmelden (direkt beim Marktleiter)","🏺 Antiquitäten, Porzellan, Bücher, Vinyl","⭐⭐⭐⭐⭐",
+         "TOP für Porzellan & Antiquitäten! Echte Sammler kaufen hier",
+         "https://maps.google.com/?q=Boxhagener+Platz+Flohmarkt+Berlin"),
+
+        ("So","ICK TRÖDEL — OBI Spandau","Wilhelmstr. 8, 13595 Berlin-Spandau","So 8-16h | Aufbau bis 7:30h",
+         "Ahmet Yesildag: 0179 483 05 42 | Tel: 030-38307044 | icktroedel.de",
+         "🛍️ Gemischt, Haushalt, Kleidung, Vintage","⭐⭐⭐⭐⭐",
+         "IHR STAMMMARKT! Jeden So. Marktbude 30€ (überdacht) oder Freifläche 9€/lm",
+         "https://maps.google.com/?q=Wilhelmstraße+8+13595+Berlin+Spandau"),
+
+        ("So","Flohmarkt Kaufland Spandau","Pichelswerderstr. 6, 13597 Berlin (neben IKEA)","So 8-16h",
+         "Höfges Event Group GmbH","🛍️ Gemischt, Haushalt, Kleidung","⭐⭐⭐⭐",
+         "Jeden So! Großer Außenparkplatz, viele Besucher aus Spandau",
+         "https://maps.google.com/?q=Pichelswerderstraße+6+13597+Berlin"),
+
+        ("So","Flohmarkt Straße des 17. Juni","Str. des 17. Juni 17, 10623 Berlin","Sa & So 10-17h",
+         "Berliner Trödel GmbH: 030-2655000","🏺 Hochwertige Antiquitäten, Kunst","⭐⭐⭐⭐⭐",
+         "So professionelle Händler — hochpreisig aber lohnend",
+         "https://maps.google.com/?q=Flohmarkt+Straße+des+17+Juni+Berlin"),
+
+        ("So","Antik & Sammlermarkt Ostbahnhof","Erich-Steinfurth-Str. 1, 10243 Berlin","Fr-So 9-16h",
+         "oldthing märkte — www.oldthing.de","🛍️ Antiquitäten, Sammler","⭐⭐⭐⭐",
+         "So am vollsten — früh kommen! Fr deutlich ruhiger",
+         "https://maps.google.com/?q=Flohmarkt+Ostbahnhof+Berlin"),
+
+        ("So","Arkonaplatz Flohmarkt","Arkonaplatz, 10435 Berlin-Prenzlauer Berg","So 10-16h",
+         "Keine Standanmeldung nötig — einfach kommen","🏛️ Antiquitäten, Raritäten, Bücher","⭐⭐⭐⭐",
+         "Klein aber fein! Echte Raritäten, kaum Touristenware",
+         "https://maps.google.com/?q=Arkonaplatz+Flohmarkt+Berlin"),
+
+        ("So","Flohmarkt Rathaus Schöneberg","John-F.-Kennedy-Pl., 10825 Berlin-Schöneberg","Sa & So 8-16h",
+         "Bezirksamt Tempelhof-Schöneberg","🛍️ Gemischt, Haushalt, Kleidung","⭐⭐⭐⭐",
+         "So viele private Verkäufer! Groß und zentraler Standort",
+         "https://maps.google.com/?q=Rathaus+Schöneberg+Berlin+Flohmarkt"),
+
+        ("So","Nowkoelln Flowmarkt","Maybachufer, 12047 Berlin-Neukölln","2. & 4. So im Monat 11-18h",
+         "info@nowkoelln.de | www.nowkoelln.de","🎨 Design, Vintage, Handgemachtes","⭐⭐⭐⭐",
+         "Nur 2x im Monat! Kreatives Publikum, gute Preise für Besonderes",
+         "https://maps.google.com/?q=Maybachufer+Neukölln+Berlin"),
+
+        ("So","Treptower Park Flohmarkt","Alt-Treptow, 12435 Berlin-Treptow","So 8-16h",
+         "Vor Ort anmelden","🔧 Elektronik, Werkzeug, DDR-Artikel","⭐⭐⭐⭐",
+         "Gut für DDR-Artikel & Elektronik! Günstige Preise",
+         "https://maps.google.com/?q=Treptower+Park+Flohmarkt+Berlin"),
+
+        ("So","Hallentrödelmarkt Arena Berlin","Eichenstr. 4, 12435 Berlin-Treptow","Sa & So 10-17h",
+         "Arena Berlin: 030-53320340","🏛️ Gemischt, überdacht","⭐⭐⭐⭐",
+         "Überdacht! Bei jedem Wetter. So mehr Besucher als Sa",
+         "https://maps.google.com/?q=Arena+Berlin+Eichenstraße+4"),
+
+        ("So","Antik & Buchmarkt am Bodemuseum","Am Kupfergraben 3, 10117 Berlin-Mitte","Sa & So 11-17h",
+         "M.S.P-Marktservice UG","🏛️ Antiquitäten, Bücher, Kunst","⭐⭐⭐⭐",
+         "Traumhafte Lage! So mehr Publikum als Sa",
+         "https://maps.google.com/?q=Am+Kupfergraben+Berlin+Bodemuseum"),
+
+        ("So","ICK TRÖDEL — EDEKA Spandau","Falkenseer Chaussee 239, 13583 Berlin-Spandau","So 8-16h",
+         "ICK TRÖDEL: 0179 483 05 42 | icktroedel.de","🛍️ Gemischt, Kleidung","⭐⭐⭐",
+         "Wöchentlich! Günstiger Spandauer Außenmarkt",
+         "https://maps.google.com/?q=Falkenseer+Chaussee+239+Berlin"),
+
+        ("So","Trödelmarkt Weißenfelser Str.","Weißenfelser Str. 6, 12627 Berlin-Marzahn","Mi-So 8-18:30h",
+         "Vor Ort anmelden","🛍️ Gemischt, Haushalt","⭐⭐⭐",
+         "So am meisten Besucher! Guter Umsatz",
+         "https://maps.google.com/?q=Weißenfelser+Straße+6+Berlin+Marzahn"),
+
     ]
     tage=["Alle","Mo","Di","Mi","Do","Fr","Sa","So"]
-    fw=st.radio("📅",tage,horizontal=True,key="fw")
     st.markdown("---")
     liste=maerkte if fw=="Alle" else [m for m in maerkte if m[0]==fw]
     if fw=="Alle":
