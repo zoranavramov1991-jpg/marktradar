@@ -722,8 +722,18 @@ with T[0]:
                         "\U0001f4dd ANZEIGE: Titel:[60Z] | Text:[3S] | Preis:\u20acX\n"
                         "\U0001f5fa\ufe0f BERLIN: \U0001f947[Markt+Tag+\u20acX] \U0001f948[Markt+\u20acX]\n"
                         "\U0001f31f RARITÄT: [Seltenheit + Höchstpreis]\n"
-                        "\U0001f4b0 GEWINN: EK\u20acX \u2192 VK\u20acX \u2192 Gewinn\u20acX \u2192 ROI X%\n"
-                        "---\nGESAMT: \u20acX | Wertvollster: [Name]"
+                        "\U0001f4b0 GEWINN: EK\u20acX \u2192 VK\u20acX \u2192 Gewinn\u20acX \u2192 ROI X%\n\n"
+                        "\u26a0\ufe0f RISIKO-ANALYSE (WICHTIG für sicheren Gewinn!):\n"
+                        "- Risiko-Stufe: \U0001f7e2 NIEDRIG / \U0001f7e1 MITTEL / \U0001f534 HOCH\n"
+                        "- Max. Einkaufspreis (NIE mehr zahlen!): \u20acX\n"
+                        "- Break-Even (ab hier Gewinn): \u20acX\n"
+                        "- Verkaufswahrscheinlichkeit: X% in [Zeitraum]\n"
+                        "- Wie schnell verkauft? [Tage/Wochen/Monate]\n"
+                        "- Schwer verkäuflich weil: [Grund oder gut verkäuflich]\n"
+                        "- Wertverlust-Risiko: [Hält Wert / Fällt / Steigt]\n"
+                        "- KAUFEMPFEHLUNG: [\u2705 KAUFEN bis \u20acX / \u26a0\ufe0f NUR bei Top-Preis / \u274c FINGER WEG]\n"
+                        "- Begründung: [1-2 Sätze warum sicher oder riskant]\n\n"
+                        "---\nGESAMT: \u20acX | Wertvollster: [Name] | Sicherster Gewinn: [Name]"
                     )
 
                     # 3 Experten-KIs analysieren GLEICHZEITIG
