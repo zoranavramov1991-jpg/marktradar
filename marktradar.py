@@ -691,68 +691,46 @@ with T[0]:
                     if url_text and not url_text.startswith("[URL"): extra += "\n\nWebseite:\n" + url_text[:1500]
 
                     analyse_prompt = (
-                        "Ich bin Händler (Kleinanzeigen,Vinted,Facebook,eBay,Flohmärkte)." + kat_k + "\n"
+                        "Du bist Profi-Experte für Secondhand/Flohmarkt in Deutschland.\n"
+                        "Ich bin Händler (Kleinanzeigen, Vinted, Facebook, eBay, Flohmärkte)." + kat_k + "\n"
                         "Gebrauchsspuren: " + g_beschr + "\n"
                         "Defekt: " + d_beschr + extra + vorab_k + lern + "\n\n"
-                        "WICHTIG — Erst prüfen: Ist das EIN einzelner Artikel oder ein KONVOLUT (viele Sachen, Kartons, Sammlung)?\n\n"
-                        "FALLS KONVOLUT (mehrere Kartons/viele Artikel):\n"
-                        "\U0001f4e6 KONVOLUT-ANALYSE:\n"
-                        "- Was ist drin? [Überblick: Geschirr, Kleidung, Elektronik, Gläser etc.]\n"
-                        "- Geschätzte Stückzahl: ca. X Teile\n"
-                        "- Allgemeiner Zustand: [gemischt/gut/abgenutzt]\n\n"
-                        "\U0001f4b0 PAKETPREIS (ganzes Konvolut auf einmal):\n"
-                        "- eBay (als Paket): \u20acX\n"
-                        "- Kleinanzeigen (als Paket): \u20acX\n"
-                        "- \U0001f3aa FLOHMARKT (ganzes Konvolut): \u20acX\n"
-                        "- Max. Ankauf für ganzes Paket: \u20acX\n\n"
-                        "\U0001f48e WERTVOLLSTE EINZELTEILE (Top 3-5 die man rausnehmen + einzeln verkaufen sollte):\n"
-                        "1. [Artikel]: einzeln \u20acX (besser als im Paket!)\n"
-                        "2. [Artikel]: einzeln \u20acX\n"
-                        "3. [Artikel]: einzeln \u20acX\n"
-                        "\U0001f4a1 STRATEGIE: [Komplett verkaufen ODER Rosinen rauspicken? Was bringt mehr?]\n"
-                        "\U0001f3c6 GESAMT-POTENZIAL: Paket \u20acX oder einzeln gesplittet \u20acX\n\n"
-                        "===================\n\n"
-                        "FALLS EINZELNER ARTIKEL: Analysiere ihn detailliert. Auf Deutsch. Sei Profi-Experte!\n\n"
+                        "Analysiere das Bild. Auf DEUTSCH. KEINE chinesischen Zeichen!\n\n"
+
+                        "GANZ WICHTIG — Beginne IMMER mit diesen 2 Kernwerten (eine konkrete Zahl, KEINE Spanne!):\n"
+                        "ONLINE-WERT: \u20acX  (realistischer Gesamt-Verkaufswert online, eBay/Kleinanzeigen)\n"
+                        "FLOHMARKT-WERT: \u20acX  (realistischer Gesamt-Erl\u00f6s am Flohmarkt-Stand)\n\n"
+
+                        "Dann je nachdem:\n\n"
+
+                        "FALLS KONVOLUT (mehrere Sachen/Kartons):\n"
+                        "\U0001f4e6 Was ist drin? [kurzer \u00dcberblick]\n"
+                        "\U0001f4e6 Gesch\u00e4tzte St\u00fcckzahl: ca. X Teile\n"
+                        "\U0001f48e Top 3 wertvollste Einzelteile (einzeln verkaufen!):\n"
+                        "  1. [Artikel]: \u20acX\n"
+                        "  2. [Artikel]: \u20acX\n"
+                        "  3. [Artikel]: \u20acX\n"
+                        "\U0001f4a1 Strategie: [Komplett verkaufen oder Rosinen rauspicken?]\n\n"
+
+                        "FALLS EINZELARTIKEL:\n"
                         "**Artikel: [Name]**\n"
                         "- Was genau? [Marke, Material, Modell]\n"
-                        "- Alter: [Jahr/Epoche/Land/Antik?]\n"
-                        "- ZUSTAND-ANALYSE (JEDES DETAIL!):\n"
-                        "  Gesamtzustand: [Wie neu/Sehr gut/Gut/Gebraucht/Stark gebraucht]\n"
-                        "  Gebrauchsspuren-Grad: X%\n"
-                        "  Kratzer: [Wo? Größe? Anzahl?]\n"
-                        "  Dellen/Chips: [Wo? Größe?]\n"
-                        "  Sonstiges: [Alles was auffällt]\n"
-                        "- Verkäuflichkeit: \U0001f7e2schnell / \U0001f7e1mittel / \U0001f534langsam\n\n"
-                        "\U0001f4b0 PREISE — ALLE 5 PFLICHT, NUR konkrete Zahlen (KEINE Spannen!):\n"
-                        "Aktueller Zustand (" + g_beschr + "):\n"
+                        "- Alter: [Jahr/Epoche]\n"
+                        "- ZUSTAND: [Gesamtzustand + Gebrauchsspuren-Grad X% + jeder Kratzer/Delle einzeln]\n"
+                        "- Verk\u00e4uflichkeit: \U0001f7e2schnell / \U0001f7e1mittel / \U0001f534langsam\n\n"
+
+                        "DANN IMMER (beide F\u00e4lle) — alle Plattform-Preise einzeln:\n"
                         "- \U0001f6d2 eBay: \u20acX\n"
                         "- \U0001f4f1 Kleinanzeigen: \u20acX\n"
                         "- \U0001f457 Vinted: \u20acX\n"
                         "- \U0001f465 Facebook: \u20acX\n"
-                        "- \U0001f3aa FLOHMARKT: \u20acX  \u2190 WICHTIGSTE ZAHL! Was bekomme ich am Stand?\n"
-                        "- \U0001f4b5 Max. Ankauf (so viel darf ich zahlen): \u20acX\n\n"
-                        "Nach Aufbereitung: eBay \u20acX | KA \u20acX | FM \u20acX | Mehrwert +\u20acX (+X%)\n\n"
-                        "\U0001f3c6 BESTE PLATTFORM: [Welche + warum + \u20acX]\n"
-                        "\U0001f3af KONFIDENZ: X%\n"
-                        "\u26a0\ufe0f FÄLSCHUNG: [Niedrig/Mittel/Hoch]\n"
-                        "\u2728 AUFBEREITUNG: [Methode + +\u20acX]\n"
-                        "\U0001f465 ZIELGRUPPE: [Wer + wo]\n"
-                        "\U0001f4c5 TIMING: [Beste Monate + Jetzt: Ja/Nein]\n"
-                        "\U0001f4dd ANZEIGE: Titel:[60Z] | Text:[3S] | Preis:\u20acX\n"
-                        "\U0001f5fa\ufe0f BERLIN: \U0001f947[Markt+Tag+\u20acX] \U0001f948[Markt+\u20acX]\n"
-                        "\U0001f31f RARITÄT: [Seltenheit + Höchstpreis]\n"
-                        "\U0001f4b0 GEWINN: EK\u20acX \u2192 VK\u20acX \u2192 Gewinn\u20acX \u2192 ROI X%\n\n"
-                        "\u26a0\ufe0f RISIKO-ANALYSE (WICHTIG für sicheren Gewinn!):\n"
-                        "- Risiko-Stufe: \U0001f7e2 NIEDRIG / \U0001f7e1 MITTEL / \U0001f534 HOCH\n"
-                        "- Max. Einkaufspreis (NIE mehr zahlen!): \u20acX\n"
-                        "- Break-Even (ab hier Gewinn): \u20acX\n"
-                        "- Verkaufswahrscheinlichkeit: X% in [Zeitraum]\n"
-                        "- Wie schnell verkauft? [Tage/Wochen/Monate]\n"
-                        "- Schwer verkäuflich weil: [Grund oder gut verkäuflich]\n"
-                        "- Wertverlust-Risiko: [Hält Wert / Fällt / Steigt]\n"
-                        "- KAUFEMPFEHLUNG: [\u2705 KAUFEN bis \u20acX / \u26a0\ufe0f NUR bei Top-Preis / \u274c FINGER WEG]\n"
-                        "- Begründung: [1-2 Sätze warum sicher oder riskant]\n\n"
-                        "---\nGESAMT: \u20acX | Wertvollster: [Name] | Sicherster Gewinn: [Name]"
+                        "- \U0001f3aa Flohmarkt: \u20acX\n"
+                        "- \U0001f4b5 Max. Ankauf: \u20acX\n\n"
+
+                        "\u26a0\ufe0f RISIKO: Stufe [\U0001f7e2/\U0001f7e1/\U0001f534] | Max. Einkauf \u20acX | Verkauf in [Zeit] | Empfehlung [\u2705/\u26a0\ufe0f/\u274c]\n"
+                        "\U0001f5fa\ufe0f BERLIN-M\u00c4RKTE: \U0001f947[Markt] \U0001f948[Markt]\n"
+                        "\U0001f4b0 GEWINN: EK\u20acX \u2192 VK\u20acX \u2192 Gewinn\u20acX (ROI X%)\n\n"
+                        "FAZIT: [2 S\u00e4tze auf Deutsch]"
                     )
 
                     # 3 Experten-KIs analysieren GLEICHZEITIG
@@ -848,14 +826,20 @@ with T[0]:
                             except: return None
                         return None
 
-                    # Online-Wert (eBay als bester Online-Preis)
-                    online_wert = finde_preis(r"eBay[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
-                    if not online_wert:
-                        online_wert = finde_preis(r"Online[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
-                    # Flohmarkt-Wert
-                    floh_wert = finde_preis(r"FLOHMARKT[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
-                    if not floh_wert:
-                        floh_wert = finde_preis(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                    # Online-Wert — ZUERST der klare Kernwert vom Anfang
+                    online_wert = (
+                        finde_preis(r"ONLINE[- ]?WERT[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                        or finde_preis(r"eBay[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                        or finde_preis(r"Online[- ]?Wert[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                        or finde_preis(r"Gesamtwert[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                    )
+                    # Flohmarkt-Wert — ZUERST der klare Kernwert
+                    floh_wert = (
+                        finde_preis(r"FLOHMARKT[- ]?WERT[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                        or finde_preis(r"\U0001f3aa Flohmarkt[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                        or finde_preis(r"Flohmarkt[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                        or finde_preis(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                    )
 
                     if online_wert and floh_wert:
                         quote = int((floh_wert / online_wert) * 100) if online_wert > 0 else 0
