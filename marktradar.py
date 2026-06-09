@@ -839,80 +839,86 @@ with T[0]:
 
                     st.markdown(ergebnis)
 
-                    # FLOHMARKT-PREISE groß hervorheben (alle gefundenen!)
+                    # PROFI-DARSTELLUNG: Werte aus Analyse extrahieren
                     import re as _re
-                    # Prüfe ob Konvolut (Paketpreis) oder Einzelartikel
-                    ist_konvolut = "KONVOLUT" in ergebnis.upper() or "PAKETPREIS" in ergebnis.upper()
-                    # Finde Flohmarkt-Preise (auch "FLOHMARKT (ganzes Konvolut)")
-                    floh_preise = _re.findall(r"FLOHMARKT[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
-                    if not floh_preise:
-                        floh_preise = _re.findall(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
-                    # Finde Artikel-Namen
-                    artikel_namen = _re.findall(r"Artikel[:\s]+([^\n(]+)", ergebnis)
+                    def finde_preis(muster, text):
+                        m = _re.search(muster, text, _re.IGNORECASE)
+                        if m:
+                            try: return float(m.group(1).replace(",","."))
+                            except: return None
+                        return None
 
-                    if floh_preise:
-                        anzahl_artikel = len(floh_preise)
-                        if ist_konvolut:
-                            # KONVOLUT — Paketpreis ist der erste/wichtigste
-                            paket_preis = floh_preise[0]
+                    # Online-Wert (eBay als bester Online-Preis)
+                    online_wert = finde_preis(r"eBay[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                    if not online_wert:
+                        online_wert = finde_preis(r"Online[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                    # Flohmarkt-Wert
+                    floh_wert = finde_preis(r"FLOHMARKT[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                    if not floh_wert:
+                        floh_wert = finde_preis(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+
+                    if online_wert and floh_wert:
+                        quote = int((floh_wert / online_wert) * 100) if online_wert > 0 else 0
+                        # Liquiditäts-Stufen berechnen
+                        schnell = round(floh_wert * 0.57, 2)   # schneller Verkauf = weniger
+                        mittel  = round(online_wert * 0.47, 2)  # mittlere Zeit
+                        maximal = online_wert                    # max bei Einzelverkauf
+
+                        st.markdown("### 💰 Duale Preisschätzung")
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
                             st.markdown(
-                                "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
-                                "padding:20px;border-radius:16px;text-align:center;margin:15px 0;"
-                                "box-shadow:0 8px 24px rgba(245,166,35,0.4)'>"
-                                "<div style='color:#fff;font-size:14px;font-weight:600'>\U0001f4e6 FLOHMARKT-PREIS (GANZES KONVOLUT)</div>"
-                                "<div style='color:#fff;font-size:42px;font-weight:900'>\u20ac" + paket_preis + "</div>"
-                                "<div style='color:#fff;font-size:12px'>Für das komplette Paket am Stand</div>"
-                                "</div>",
-                                unsafe_allow_html=True
-                            )
-                        elif anzahl_artikel == 1:
-                            # EIN Artikel
+                                "<div style='background:rgba(108,71,255,0.08);padding:16px;border-radius:14px;text-align:center'>"
+                                "<div style='color:#888;font-size:13px;font-weight:600'>📈 Online-Wert</div>"
+                                "<div style='color:#6c47ff;font-size:32px;font-weight:900'>\u20ac" + f"{online_wert:.2f}" + "</div>"
+                                "</div>", unsafe_allow_html=True)
+                        with c2:
                             st.markdown(
-                                "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
-                                "padding:20px;border-radius:16px;text-align:center;margin:15px 0;"
-                                "box-shadow:0 8px 24px rgba(245,166,35,0.4)'>"
-                                "<div style='color:#fff;font-size:14px;font-weight:600'>\U0001f3aa DEIN FLOHMARKT-PREIS</div>"
-                                "<div style='color:#fff;font-size:42px;font-weight:900'>\u20ac" + floh_preise[0] + "</div>"
-                                "<div style='color:#fff;font-size:12px'>Das bekommst du realistisch am Stand</div>"
-                                "</div>",
-                                unsafe_allow_html=True
-                            )
-                        else:
-                            # MEHRERE Artikel — zeige jeden + Summe
-                            try:
-                                summe = sum(float(p.replace(",",".")) for p in floh_preise)
-                            except:
-                                summe = 0
-                            # Box-Header
-                            box_html = (
-                                "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
-                                "padding:20px;border-radius:16px;margin:15px 0;"
-                                "box-shadow:0 8px 24px rgba(245,166,35,0.4)'>"
-                                "<div style='color:#fff;font-size:14px;font-weight:600;text-align:center;margin-bottom:12px'>"
-                                "\U0001f3aa DEINE FLOHMARKT-PREISE (" + str(anzahl_artikel) + " Artikel)</div>"
-                            )
-                            # Jeder Artikel einzeln
-                            for i, preis in enumerate(floh_preise):
-                                name = artikel_namen[i].strip()[:30] if i < len(artikel_namen) else f"Artikel {i+1}"
-                                box_html += (
-                                    "<div style='display:flex;justify-content:space-between;"
-                                    "background:rgba(255,255,255,0.2);border-radius:8px;padding:8px 14px;margin:5px 0'>"
-                                    "<span style='color:#fff;font-size:15px'>" + name + "</span>"
-                                    "<span style='color:#fff;font-size:18px;font-weight:800'>\u20ac" + preis + "</span>"
-                                    "</div>"
-                                )
-                            # Summe
-                            box_html += (
-                                "<div style='border-top:2px solid rgba(255,255,255,0.4);margin-top:10px;padding-top:12px;text-align:center'>"
-                                "<div style='color:#fff;font-size:13px'>GESAMT am Flohmarkt-Stand</div>"
-                                "<div style='color:#fff;font-size:36px;font-weight:900'>\u20ac" + str(int(summe)) + "</div>"
-                                "</div></div>"
-                            )
-                            st.markdown(box_html, unsafe_allow_html=True)
+                                "<div style='background:rgba(245,166,35,0.12);padding:16px;border-radius:14px;text-align:center'>"
+                                "<div style='color:#888;font-size:13px;font-weight:600'>🎪 Flohmarkt-Wert</div>"
+                                "<div style='color:#e8850a;font-size:32px;font-weight:900'>\u20ac" + f"{floh_wert:.2f}" + "</div>"
+                                "</div>", unsafe_allow_html=True)
+                        with c3:
+                            st.markdown(
+                                "<div style='background:rgba(255,80,80,0.08);padding:16px;border-radius:14px;text-align:center'>"
+                                "<div style='color:#888;font-size:13px;font-weight:600'>📉 Online vs Flohmarkt</div>"
+                                "<div style='color:#e74c3c;font-size:32px;font-weight:900'>" + str(quote) + "%</div>"
+                                "</div>", unsafe_allow_html=True)
+
+                        # Fortschrittsbalken
+                        st.markdown(f"**Flohmarkt-Erlös-Quote: {quote}% des Online-Wertes**")
+                        st.progress(min(quote, 100) / 100)
+
+                        # Liquiditäts-Geschwindigkeit
+                        st.markdown("### ⏱️ Liquiditäts- & Verkaufsgeschwindigkeit")
+                        l1, l2, l3 = st.columns(3)
+                        with l1:
+                            st.markdown(
+                                "<div style='background:rgba(46,204,113,0.12);padding:16px;border-radius:14px'>"
+                                "<div style='color:#27ae60;font-size:15px;font-weight:700'>🟢 Schnell (1-3 Tage)</div>"
+                                "<div style='color:#27ae60;font-size:26px;font-weight:900;margin:6px 0'>\u20ac" + f"{schnell:.2f}" + "</div>"
+                                "<div style='color:#666;font-size:12px'>Komplett als Paket verkaufen — schnelle Räumung, Abholung durch Käufer</div>"
+                                "</div>", unsafe_allow_html=True)
+                        with l2:
+                            st.markdown(
+                                "<div style='background:rgba(241,196,15,0.12);padding:16px;border-radius:14px'>"
+                                "<div style='color:#d4a017;font-size:15px;font-weight:700'>🟡 Mittel (1-2 Wochen)</div>"
+                                "<div style='color:#d4a017;font-size:26px;font-weight:900;margin:6px 0'>\u20ac" + f"{mittel:.2f}" + "</div>"
+                                "<div style='color:#666;font-size:12px'>In 2-3 Pakete aufteilen — Sets bilden und gesondert anbieten</div>"
+                                "</div>", unsafe_allow_html=True)
+                        with l3:
+                            st.markdown(
+                                "<div style='background:rgba(231,76,60,0.10);padding:16px;border-radius:14px'>"
+                                "<div style='color:#e74c3c;font-size:15px;font-weight:700'>🔴 Maximal (1-3 Monate)</div>"
+                                "<div style='color:#e74c3c;font-size:26px;font-weight:900;margin:6px 0'>\u20ac" + f"{maximal:.2f}" + "</div>"
+                                "<div style='color:#666;font-size:12px'>Jedes Teil einzeln — wertvolle Stücke mit Fotos online, Rest als Paket</div>"
+                                "</div>", unsafe_allow_html=True)
+                        st.markdown("")
 
                     st.session_state["ana_ergebnis"] = ergebnis
                     st.session_state["vorabinfo"] = ""
                     st.session_state["auto_kat"] = ""
+
 
             # Suchbegriff extrahieren
             suchbegriff="Vintage Artikel"
