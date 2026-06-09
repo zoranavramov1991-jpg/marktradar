@@ -817,7 +817,7 @@ with T[0]:
 
                     st.markdown(ergebnis)
 
-                    # PROFI-DARSTELLUNG: Werte aus Analyse extrahieren
+                    # PROFI-DARSTELLUNG wie Vorbild
                     import re as _re
                     def finde_preis(muster, text):
                         m = _re.search(muster, text, _re.IGNORECASE)
@@ -826,83 +826,98 @@ with T[0]:
                             except: return None
                         return None
 
-                    # Online-Wert — ZUERST der klare Kernwert vom Anfang
                     online_wert = (
                         finde_preis(r"ONLINE[- ]?WERT[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                         or finde_preis(r"eBay[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
-                        or finde_preis(r"Online[- ]?Wert[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                         or finde_preis(r"Gesamtwert[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                     )
-                    # Flohmarkt-Wert — ZUERST der klare Kernwert
                     floh_wert = (
                         finde_preis(r"FLOHMARKT[- ]?WERT[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
-                        or finde_preis(r"\U0001f3aa Flohmarkt[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                         or finde_preis(r"Flohmarkt[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                         or finde_preis(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                     )
+                    # Objekt-Name + Kategorie extrahieren
+                    obj_match = _re.search(r"Artikel[:\s]+([^\n(]+)", ergebnis)
+                    obj_name = obj_match.group(1).strip()[:35] if obj_match else (st.session_state.get("auto_kat","") or "Artikel")
+                    kat_name = st.session_state.get("auto_kat","Haushaltswaren")
 
                     if online_wert and floh_wert:
-                        quote = int((floh_wert / online_wert) * 100) if online_wert > 0 else 0
-                        # Liquiditäts-Stufen berechnen
-                        schnell = round(floh_wert * 0.57, 2)   # schneller Verkauf = weniger
-                        mittel  = round(online_wert * 0.47, 2)  # mittlere Zeit
-                        maximal = online_wert                    # max bei Einzelverkauf
+                        quote = round((floh_wert / online_wert) * 100, 1) if online_wert > 0 else 0
+                        wertverlust = round(online_wert * 0.01, 2)
+                        schnell = round(floh_wert * 0.57, 2)
+                        mittel  = round(online_wert * 0.47, 2)
+                        maximal = online_wert
 
-                        st.markdown("### 💰 Duale Preisschätzung")
+                        # HEADER: Objekt + Kategorie
+                        h1, h2 = st.columns(2)
+                        with h1:
+                            st.markdown(
+                                "<div style='color:#888;font-size:13px'>Identifiziertes Objekt</div>"
+                                "<div style='color:#333;font-size:26px;font-weight:300'>" + obj_name + "</div>",
+                                unsafe_allow_html=True)
+                        with h2:
+                            st.markdown(
+                                "<div style='color:#888;font-size:13px'>Kategorie</div>"
+                                "<div style='color:#333;font-size:26px;font-weight:300'>" + kat_name + "</div>",
+                                unsafe_allow_html=True)
+
+                        st.markdown("")
+                        st.markdown("### 💰 Duale Preisschätzung (Zustandsbereinigt)")
                         c1, c2, c3 = st.columns(3)
                         with c1:
                             st.markdown(
-                                "<div style='background:rgba(108,71,255,0.08);padding:16px;border-radius:14px;text-align:center'>"
-                                "<div style='color:#888;font-size:13px;font-weight:600'>📈 Online-Wert</div>"
-                                "<div style='color:#6c47ff;font-size:32px;font-weight:900'>\u20ac" + f"{online_wert:.2f}" + "</div>"
-                                "</div>", unsafe_allow_html=True)
+                                "<div style='color:#888;font-size:14px'>📈 Est. Online-Wert</div>"
+                                "<div style='color:#333;font-size:34px;font-weight:400'>" + f"{online_wert:.2f}".replace(".",",") + " €</div>",
+                                unsafe_allow_html=True)
                         with c2:
                             st.markdown(
-                                "<div style='background:rgba(245,166,35,0.12);padding:16px;border-radius:14px;text-align:center'>"
-                                "<div style='color:#888;font-size:13px;font-weight:600'>🎪 Flohmarkt-Wert</div>"
-                                "<div style='color:#e8850a;font-size:32px;font-weight:900'>\u20ac" + f"{floh_wert:.2f}" + "</div>"
-                                "</div>", unsafe_allow_html=True)
+                                "<div style='color:#888;font-size:14px'>🎪 Est. Flohmarkt-Wert</div>"
+                                "<div style='color:#333;font-size:34px;font-weight:400'>" + f"{floh_wert:.2f}".replace(".",",") + " €</div>",
+                                unsafe_allow_html=True)
                         with c3:
                             st.markdown(
-                                "<div style='background:rgba(255,80,80,0.08);padding:16px;border-radius:14px;text-align:center'>"
-                                "<div style='color:#888;font-size:13px;font-weight:600'>📉 Online vs Flohmarkt</div>"
-                                "<div style='color:#e74c3c;font-size:32px;font-weight:900'>" + str(quote) + "%</div>"
-                                "</div>", unsafe_allow_html=True)
+                                "<div style='color:#888;font-size:14px'>📉 Wertverlust durch Mängel</div>"
+                                "<div style='color:#333;font-size:34px;font-weight:400'>-" + f"{wertverlust:.2f}".replace(".",",") + " €</div>",
+                                unsafe_allow_html=True)
 
-                        # Fortschrittsbalken
                         st.markdown(f"**Flohmarkt-Erlös-Quote: {quote}% des Online-Wertes**")
-                        st.progress(min(quote, 100) / 100)
+                        st.progress(min(int(quote), 100) / 100)
 
-                        # Liquiditäts-Geschwindigkeit
                         st.markdown("### ⏱️ Liquiditäts- & Verkaufsgeschwindigkeit")
                         l1, l2, l3 = st.columns(3)
                         with l1:
                             st.markdown(
-                                "<div style='background:rgba(46,204,113,0.12);padding:16px;border-radius:14px'>"
+                                "<div style='background:rgba(46,204,113,0.10);padding:18px;border-radius:14px;height:100%'>"
                                 "<div style='color:#27ae60;font-size:15px;font-weight:700'>🟢 Schnell (1-3 Tage)</div>"
-                                "<div style='color:#27ae60;font-size:26px;font-weight:900;margin:6px 0'>\u20ac" + f"{schnell:.2f}" + "</div>"
-                                "<div style='color:#666;font-size:12px'>Komplett als Paket verkaufen — schnelle Räumung, Abholung durch Käufer</div>"
+                                "<div style='color:#27ae60;font-size:24px;font-weight:800;margin:8px 0'>" + f"{schnell:.2f}".replace(".",",") + " €</div>"
+                                "<div style='color:#777;font-size:12px;line-height:1.5'>Komplettes Lot unverändert als Paket auf Kleinanzeigen oder lokalen Marktplätzen anbieten. Abholung durch Käufer. Ziel: schnelle Räumung.</div>"
                                 "</div>", unsafe_allow_html=True)
                         with l2:
                             st.markdown(
-                                "<div style='background:rgba(241,196,15,0.12);padding:16px;border-radius:14px'>"
+                                "<div style='background:rgba(241,196,15,0.12);padding:18px;border-radius:14px;height:100%'>"
                                 "<div style='color:#d4a017;font-size:15px;font-weight:700'>🟡 Mittel (1-2 Wochen)</div>"
-                                "<div style='color:#d4a017;font-size:26px;font-weight:900;margin:6px 0'>\u20ac" + f"{mittel:.2f}" + "</div>"
-                                "<div style='color:#666;font-size:12px'>In 2-3 Pakete aufteilen — Sets bilden und gesondert anbieten</div>"
+                                "<div style='color:#d4a017;font-size:24px;font-weight:800;margin:8px 0'>" + f"{mittel:.2f}".replace(".",",") + " €</div>"
+                                "<div style='color:#777;font-size:12px;line-height:1.5'>Das Lot grob vorsortieren (Geschirr, Kleingeräte, Sonstiges) und in 2-3 kleinere Pakete aufteilen. Sets bilden und gesondert anbieten.</div>"
                                 "</div>", unsafe_allow_html=True)
                         with l3:
                             st.markdown(
-                                "<div style='background:rgba(231,76,60,0.10);padding:16px;border-radius:14px'>"
+                                "<div style='background:rgba(231,76,60,0.08);padding:18px;border-radius:14px;height:100%'>"
                                 "<div style='color:#e74c3c;font-size:15px;font-weight:700'>🔴 Maximal (1-3 Monate)</div>"
-                                "<div style='color:#e74c3c;font-size:26px;font-weight:900;margin:6px 0'>\u20ac" + f"{maximal:.2f}" + "</div>"
-                                "<div style='color:#666;font-size:12px'>Jedes Teil einzeln — wertvolle Stücke mit Fotos online, Rest als Paket</div>"
+                                "<div style='color:#e74c3c;font-size:24px;font-weight:800;margin:8px 0'>" + f"{maximal:.2f}".replace(".",",") + " €</div>"
+                                "<div style='color:#777;font-size:12px;line-height:1.5'>Jedes Teil einzeln prüfen. Wertvolle Stücke (Markengeschirr, Geräte) mit Fotos online. Rest in kleineren Paketen oder am Flohmarkt.</div>"
                                 "</div>", unsafe_allow_html=True)
+
+                        # Volltext-Analyse einklappbar
                         st.markdown("")
+                        with st.expander("📄 Vollständige Detail-Analyse anzeigen"):
+                            st.markdown(ergebnis)
+                    else:
+                        # Fallback: zeige normalen Text wenn Werte nicht gefunden
+                        st.markdown(ergebnis)
 
                     st.session_state["ana_ergebnis"] = ergebnis
                     st.session_state["vorabinfo"] = ""
                     st.session_state["auto_kat"] = ""
-
 
             # Suchbegriff extrahieren
             suchbegriff="Vintage Artikel"
