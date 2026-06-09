@@ -565,11 +565,12 @@ with T[0]:
                             ("anthropic/claude-sonnet-4-6","Claude Sonnet"),
                             ("openai/gpt-4o","GPT-4o"),
                         ]
+                        bilder_vorab = [komprimiere(b) for b in st.session_state.fotos[:2]]
                         def vorab_scan(info):
                             mid, name = info
                             try:
                                 c2 = _oai.OpenAI(api_key=OR_KEY,base_url="https://openrouter.ai/api/v1")
-                                bk = [komprimiere(b) for b in st.session_state.fotos[:2]]
+                                bk = bilder_vorab
                                 inhalt=[{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
                                 inhalt.append({"type":"text","text":"Was siehst du? Artikel, Marke, Besonderheiten. Kurz Deutsch."})
                                 r = c2.chat.completions.create(model=mid,
@@ -743,10 +744,13 @@ with T[0]:
                         ("openai/gpt-4o",               "🥈 GPT-4o",     "openai/gpt-4o-mini"),
                         ("google/gemini-2.0-flash-001", "🥉 Gemini 2.0", "google/gemini-1.5-pro"),
                     ]
+                    # Bilder VOR dem Thread vorbereiten (session_state geht nicht in Threads!)
+                    bilder_fuer_experten = [komprimiere(b) for b in st.session_state.fotos[:3]] if hat_fotos else None
+
                     def experte_arbeitet(modell_info):
                         # Jeder Experte hat eigene Fallback-Modelle!
                         primaer_id, modell_name, fallback_id = modell_info
-                        bilder_komp = [komprimiere(b) for b in st.session_state.fotos[:3]] if hat_fotos else None
+                        bilder_komp = bilder_fuer_experten
                         for versuch_id in [primaer_id, fallback_id]:
                             try:
                                 klient = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
