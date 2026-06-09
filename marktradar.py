@@ -703,14 +703,16 @@ with T[0]:
 
                         "Dann je nachdem:\n\n"
 
-                        "FALLS KONVOLUT (mehrere Sachen/Kartons):\n"
-                        "\U0001f4e6 Was ist drin? [kurzer \u00dcberblick]\n"
+                        "FALLS KONVOLUT (mehrere Sachen/Kartons/Lot — typisch bei Auktionen):\n"
+                        "\U0001f4e6 Was ist drin? [Liste die erkennbaren Kategorien: Geschirr, Kleidung, Elektronik, Glas, Deko, Werkzeug etc.]\n"
                         "\U0001f4e6 Gesch\u00e4tzte St\u00fcckzahl: ca. X Teile\n"
-                        "\U0001f48e Top 3 wertvollste Einzelteile (einzeln verkaufen!):\n"
-                        "  1. [Artikel]: \u20acX\n"
-                        "  2. [Artikel]: \u20acX\n"
-                        "  3. [Artikel]: \u20acX\n"
-                        "\U0001f4a1 Strategie: [Komplett verkaufen oder Rosinen rauspicken?]\n\n"
+                        "\U0001f4e6 Auff\u00e4llige Marken/Besonderheiten: [falls Markenporzellan, Markengeschirr, gute Elektronik erkennbar]\n"
+                        "\U0001f48e Top 4 wertvollste Einzelteile (die man rausnehmen + einzeln verkaufen sollte):\n"
+                        "  1. [konkreter Artikel]: \u20acX\n"
+                        "  2. [konkreter Artikel]: \u20acX\n"
+                        "  3. [konkreter Artikel]: \u20acX\n"
+                        "  4. [konkreter Artikel]: \u20acX\n"
+                        "\U0001f4a1 Strategie: [Alles als Paket ODER Top-Teile einzeln + Rest als Paket? Was bringt mehr Gewinn?]\n\n"
 
                         "FALLS EINZELARTIKEL:\n"
                         "**Artikel: [Name]**\n"
@@ -907,8 +909,24 @@ with T[0]:
                                 "<div style='color:#777;font-size:12px;line-height:1.5'>Jedes Teil einzeln prüfen. Wertvolle Stücke (Markengeschirr, Geräte) mit Fotos online. Rest in kleineren Paketen oder am Flohmarkt.</div>"
                                 "</div>", unsafe_allow_html=True)
 
+                        # Bei KONVOLUT: Top-Einzelteile als Bonus zeigen
+                        ist_konvolut = "KONVOLUT" in ergebnis.upper() or "Stückzahl" in ergebnis or "Teile" in ergebnis
+                        if ist_konvolut:
+                            # Extrahiere Top-Einzelteile (Format: "1. [Name]: €X")
+                            einzelteile = _re.findall(r"\d+\.\s*([^:\n]+):\s*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
+                            if einzelteile:
+                                st.markdown("### 💎 Wertvollste Einzelteile (einzeln verkaufen lohnt!)")
+                                cols_e = st.columns(min(len(einzelteile[:4]), 4))
+                                for i, (name, preis) in enumerate(einzelteile[:4]):
+                                    with cols_e[i % len(cols_e)]:
+                                        st.markdown(
+                                            "<div style='background:rgba(108,71,255,0.08);padding:12px;border-radius:12px;text-align:center'>"
+                                            "<div style='color:#666;font-size:12px'>" + name.strip()[:25] + "</div>"
+                                            "<div style='color:#6c47ff;font-size:22px;font-weight:800'>\u20ac" + preis + "</div>"
+                                            "</div>", unsafe_allow_html=True)
+                                st.markdown("")
+
                         # Volltext-Analyse einklappbar
-                        st.markdown("")
                         with st.expander("📄 Vollständige Detail-Analyse anzeigen"):
                             st.markdown(ergebnis)
                     else:
