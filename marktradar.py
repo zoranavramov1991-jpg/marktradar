@@ -704,14 +704,14 @@ with T[0]:
                         "  Dellen/Chips: [Wo? Größe?]\n"
                         "  Sonstiges: [Alles was auffällt]\n"
                         "- Verkäuflichkeit: \U0001f7e2schnell / \U0001f7e1mittel / \U0001f534langsam\n\n"
-                        "PREISE (NUR eine Zahl! ALLE 5 PFLICHT):\n"
-                        "Jetzt (" + g_beschr + "):\n"
-                        "- eBay: \u20acX\n"
-                        "- Kleinanzeigen: \u20acX\n"
-                        "- Vinted: \u20acX\n"
-                        "- Facebook: \u20acX\n"
-                        "- Flohmarkt: \u20acX\n"
-                        "- Max. Ankauf: \u20acX\n\n"
+                        "\U0001f4b0 PREISE — ALLE 5 PFLICHT, NUR konkrete Zahlen (KEINE Spannen!):\n"
+                        "Aktueller Zustand (" + g_beschr + "):\n"
+                        "- \U0001f6d2 eBay: \u20acX\n"
+                        "- \U0001f4f1 Kleinanzeigen: \u20acX\n"
+                        "- \U0001f457 Vinted: \u20acX\n"
+                        "- \U0001f465 Facebook: \u20acX\n"
+                        "- \U0001f3aa FLOHMARKT: \u20acX  \u2190 WICHTIGSTE ZAHL! Was bekomme ich am Stand?\n"
+                        "- \U0001f4b5 Max. Ankauf (so viel darf ich zahlen): \u20acX\n\n"
                         "Nach Aufbereitung: eBay \u20acX | KA \u20acX | FM \u20acX | Mehrwert +\u20acX (+X%)\n\n"
                         "\U0001f3c6 BESTE PLATTFORM: [Welche + warum + \u20acX]\n"
                         "\U0001f3af KONFIDENZ: X%\n"
@@ -739,9 +739,9 @@ with T[0]:
                     # 3 Experten-KIs analysieren GLEICHZEITIG
                     st.write("🚀 3 Top-Experten analysieren gleichzeitig...")
                     experten_modelle = [
-                        ("google/gemini-3-flash-preview", "🥇 Gemini 3 Flash"),
-                        ("google/gemini-2.5-flash",       "🥈 Gemini 2.5 Flash"),
-                        ("anthropic/claude-sonnet-4-6",   "🥉 Claude Sonnet"),
+                        ("google/gemini-2.5-flash",                          "🥇 Gemini 2.5 Flash"),
+                        ("google/gemini-2.0-flash-001",                      "🥈 Gemini 2.0 Flash"),
+                        ("openai/gpt-4o",                                    "🥉 GPT-4o"),
                     ]
                     def experte_arbeitet(modell_info):
                         modell_id, modell_name = modell_info
@@ -812,6 +812,25 @@ with T[0]:
                         ergebnis = ki(richter_prompt_final)
 
                     st.markdown(ergebnis)
+
+                    # FLOHMARKT-PREIS groß hervorheben
+                    import re as _re
+                    floh_match = _re.search(r"FLOHMARKT[:\s]*\u20ac?\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
+                    if not floh_match:
+                        floh_match = _re.search(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
+                    if floh_match:
+                        floh_preis = floh_match.group(1)
+                        st.markdown(
+                            "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
+                            "padding:20px;border-radius:16px;text-align:center;margin:15px 0;"
+                            "box-shadow:0 8px 24px rgba(245,166,35,0.4)'>"
+                            "<div style='color:#fff;font-size:14px;font-weight:600'>\U0001f3aa DEIN FLOHMARKT-PREIS</div>"
+                            "<div style='color:#fff;font-size:42px;font-weight:900'>\u20ac" + floh_preis + "</div>"
+                            "<div style='color:#fff;font-size:12px'>Das bekommst du realistisch am Stand</div>"
+                            "</div>",
+                            unsafe_allow_html=True
+                        )
+
                     st.session_state["ana_ergebnis"] = ergebnis
                     st.session_state["vorabinfo"] = ""
                     st.session_state["auto_kat"] = ""
