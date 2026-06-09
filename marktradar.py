@@ -739,30 +739,32 @@ with T[0]:
                     # 3 Experten-KIs analysieren GLEICHZEITIG
                     st.write("🚀 3 Top-Experten analysieren gleichzeitig...")
                     experten_modelle = [
-                        ("google/gemini-2.5-flash",                          "🥇 Gemini 2.5 Flash"),
-                        ("google/gemini-2.0-flash-001",                      "🥈 Gemini 2.0 Flash"),
-                        ("openai/gpt-4o",                                    "🥉 GPT-4o"),
+                        ("google/gemini-2.5-flash",     "🥇 Gemini 2.5", "google/gemini-1.5-flash"),
+                        ("openai/gpt-4o",               "🥈 GPT-4o",     "openai/gpt-4o-mini"),
+                        ("google/gemini-2.0-flash-001", "🥉 Gemini 2.0", "google/gemini-1.5-pro"),
                     ]
                     def experte_arbeitet(modell_info):
-                        modell_id, modell_name = modell_info
-                        try:
-                            klient = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
-                            if hat_fotos:
-                                bilder_komp = [komprimiere(b) for b in st.session_state.fotos[:3]]
-                                inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_komp]
-                                inhalt.append({"type":"text","text":analyse_prompt})
-                                nachrichten = [{"role":"user","content":inhalt}]
-                            else:
-                                nachrichten = [{"role":"user","content":analyse_prompt}]
-                            antwort_obj = klient.chat.completions.create(
-                                model=modell_id, messages=nachrichten,
-                                max_tokens=1800, extra_headers=_hdrs()
-                            )
-                            antwort_text = antwort_obj.choices[0].message.content
-                            if antwort_text and len(antwort_text) > 100:
-                                return (modell_name, antwort_text)
-                        except Exception:
-                            pass
+                        # Jeder Experte hat eigene Fallback-Modelle!
+                        primaer_id, modell_name, fallback_id = modell_info
+                        bilder_komp = [komprimiere(b) for b in st.session_state.fotos[:3]] if hat_fotos else None
+                        for versuch_id in [primaer_id, fallback_id]:
+                            try:
+                                klient = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+                                if hat_fotos:
+                                    inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_komp]
+                                    inhalt.append({"type":"text","text":analyse_prompt})
+                                    nachrichten = [{"role":"user","content":inhalt}]
+                                else:
+                                    nachrichten = [{"role":"user","content":analyse_prompt}]
+                                antwort_obj = klient.chat.completions.create(
+                                    model=versuch_id, messages=nachrichten,
+                                    max_tokens=1800, extra_headers=_hdrs()
+                                )
+                                antwort_text = antwort_obj.choices[0].message.content
+                                if antwort_text and len(antwort_text) > 100:
+                                    return (modell_name, antwort_text)
+                            except Exception:
+                                continue
                         return (modell_name, None)
 
                     experten_ergebnisse = {}
@@ -784,10 +786,12 @@ with T[0]:
                         st.warning(f"🎯 Konfidenz: **50%** — Nur 1 Experte — Ergebnis prüfen!")
 
                     if anzahl_experten == 0:
-                        # Fallback auf einzelne KI
-                        st.warning("⚠️ Experten nicht verfügbar — Einzel-KI...")
-                        with st.spinner("🤖 KI arbeitet..."):
+                        # Fallback auf einzelne KI mit voller Fallback-Kette
+                        st.info("ℹ️ Nutze Einzel-KI mit 9-Modell-Fallback-Kette...")
+                        with st.spinner("🤖 KI arbeitet — versucht alle Modelle..."):
                             ergebnis = ki(analyse_prompt, bilder=st.session_state.fotos if hat_fotos else None)
+                        if ergebnis and "❌" not in ergebnis:
+                            st.success("✅ Analyse erfolgreich!")
                     elif anzahl_experten == 1:
                         # Nur eine Antwort — direkt nehmen
                         ergebnis = list(experten_ergebnisse.values())[0]
