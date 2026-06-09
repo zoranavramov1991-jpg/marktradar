@@ -813,23 +813,61 @@ with T[0]:
 
                     st.markdown(ergebnis)
 
-                    # FLOHMARKT-PREIS groß hervorheben
+                    # FLOHMARKT-PREISE groß hervorheben (alle gefundenen!)
                     import re as _re
-                    floh_match = _re.search(r"FLOHMARKT[:\s]*\u20ac?\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
-                    if not floh_match:
-                        floh_match = _re.search(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
-                    if floh_match:
-                        floh_preis = floh_match.group(1)
-                        st.markdown(
-                            "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
-                            "padding:20px;border-radius:16px;text-align:center;margin:15px 0;"
-                            "box-shadow:0 8px 24px rgba(245,166,35,0.4)'>"
-                            "<div style='color:#fff;font-size:14px;font-weight:600'>\U0001f3aa DEIN FLOHMARKT-PREIS</div>"
-                            "<div style='color:#fff;font-size:42px;font-weight:900'>\u20ac" + floh_preis + "</div>"
-                            "<div style='color:#fff;font-size:12px'>Das bekommst du realistisch am Stand</div>"
-                            "</div>",
-                            unsafe_allow_html=True
-                        )
+                    # Finde ALLE Flohmarkt-Preise im Text
+                    floh_preise = _re.findall(r"FLOHMARKT[:\s]*\u20ac?\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
+                    if not floh_preise:
+                        floh_preise = _re.findall(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
+                    # Finde Artikel-Namen
+                    artikel_namen = _re.findall(r"Artikel[:\s]+([^\n(]+)", ergebnis)
+
+                    if floh_preise:
+                        anzahl_artikel = len(floh_preise)
+                        if anzahl_artikel == 1:
+                            # EIN Artikel
+                            st.markdown(
+                                "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
+                                "padding:20px;border-radius:16px;text-align:center;margin:15px 0;"
+                                "box-shadow:0 8px 24px rgba(245,166,35,0.4)'>"
+                                "<div style='color:#fff;font-size:14px;font-weight:600'>\U0001f3aa DEIN FLOHMARKT-PREIS</div>"
+                                "<div style='color:#fff;font-size:42px;font-weight:900'>\u20ac" + floh_preise[0] + "</div>"
+                                "<div style='color:#fff;font-size:12px'>Das bekommst du realistisch am Stand</div>"
+                                "</div>",
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            # MEHRERE Artikel — zeige jeden + Summe
+                            try:
+                                summe = sum(float(p.replace(",",".")) for p in floh_preise)
+                            except:
+                                summe = 0
+                            # Box-Header
+                            box_html = (
+                                "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
+                                "padding:20px;border-radius:16px;margin:15px 0;"
+                                "box-shadow:0 8px 24px rgba(245,166,35,0.4)'>"
+                                "<div style='color:#fff;font-size:14px;font-weight:600;text-align:center;margin-bottom:12px'>"
+                                "\U0001f3aa DEINE FLOHMARKT-PREISE (" + str(anzahl_artikel) + " Artikel)</div>"
+                            )
+                            # Jeder Artikel einzeln
+                            for i, preis in enumerate(floh_preise):
+                                name = artikel_namen[i].strip()[:30] if i < len(artikel_namen) else f"Artikel {i+1}"
+                                box_html += (
+                                    "<div style='display:flex;justify-content:space-between;"
+                                    "background:rgba(255,255,255,0.2);border-radius:8px;padding:8px 14px;margin:5px 0'>"
+                                    "<span style='color:#fff;font-size:15px'>" + name + "</span>"
+                                    "<span style='color:#fff;font-size:18px;font-weight:800'>\u20ac" + preis + "</span>"
+                                    "</div>"
+                                )
+                            # Summe
+                            box_html += (
+                                "<div style='border-top:2px solid rgba(255,255,255,0.4);margin-top:10px;padding-top:12px;text-align:center'>"
+                                "<div style='color:#fff;font-size:13px'>GESAMT am Flohmarkt-Stand</div>"
+                                "<div style='color:#fff;font-size:36px;font-weight:900'>\u20ac" + str(int(summe)) + "</div>"
+                                "</div></div>"
+                            )
+                            st.markdown(box_html, unsafe_allow_html=True)
 
                     st.session_state["ana_ergebnis"] = ergebnis
                     st.session_state["vorabinfo"] = ""
