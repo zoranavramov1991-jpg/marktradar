@@ -694,7 +694,25 @@ with T[0]:
                         "Ich bin Händler (Kleinanzeigen,Vinted,Facebook,eBay,Flohmärkte)." + kat_k + "\n"
                         "Gebrauchsspuren: " + g_beschr + "\n"
                         "Defekt: " + d_beschr + extra + vorab_k + lern + "\n\n"
-                        "Analysiere JEDEN Artikel im Bild. Auf Deutsch. Sei Profi-Experte!\n\n"
+                        "WICHTIG — Erst prüfen: Ist das EIN einzelner Artikel oder ein KONVOLUT (viele Sachen, Kartons, Sammlung)?\n\n"
+                        "FALLS KONVOLUT (mehrere Kartons/viele Artikel):\n"
+                        "\U0001f4e6 KONVOLUT-ANALYSE:\n"
+                        "- Was ist drin? [Überblick: Geschirr, Kleidung, Elektronik, Gläser etc.]\n"
+                        "- Geschätzte Stückzahl: ca. X Teile\n"
+                        "- Allgemeiner Zustand: [gemischt/gut/abgenutzt]\n\n"
+                        "\U0001f4b0 PAKETPREIS (ganzes Konvolut auf einmal):\n"
+                        "- eBay (als Paket): \u20acX\n"
+                        "- Kleinanzeigen (als Paket): \u20acX\n"
+                        "- \U0001f3aa FLOHMARKT (ganzes Konvolut): \u20acX\n"
+                        "- Max. Ankauf für ganzes Paket: \u20acX\n\n"
+                        "\U0001f48e WERTVOLLSTE EINZELTEILE (Top 3-5 die man rausnehmen + einzeln verkaufen sollte):\n"
+                        "1. [Artikel]: einzeln \u20acX (besser als im Paket!)\n"
+                        "2. [Artikel]: einzeln \u20acX\n"
+                        "3. [Artikel]: einzeln \u20acX\n"
+                        "\U0001f4a1 STRATEGIE: [Komplett verkaufen ODER Rosinen rauspicken? Was bringt mehr?]\n"
+                        "\U0001f3c6 GESAMT-POTENZIAL: Paket \u20acX oder einzeln gesplittet \u20acX\n\n"
+                        "===================\n\n"
+                        "FALLS EINZELNER ARTIKEL: Analysiere ihn detailliert. Auf Deutsch. Sei Profi-Experte!\n\n"
                         "**Artikel: [Name]**\n"
                         "- Was genau? [Marke, Material, Modell]\n"
                         "- Alter: [Jahr/Epoche/Land/Antik?]\n"
@@ -823,8 +841,10 @@ with T[0]:
 
                     # FLOHMARKT-PREISE groß hervorheben (alle gefundenen!)
                     import re as _re
-                    # Finde ALLE Flohmarkt-Preise im Text
-                    floh_preise = _re.findall(r"FLOHMARKT[:\s]*\u20ac?\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
+                    # Prüfe ob Konvolut (Paketpreis) oder Einzelartikel
+                    ist_konvolut = "KONVOLUT" in ergebnis.upper() or "PAKETPREIS" in ergebnis.upper()
+                    # Finde Flohmarkt-Preise (auch "FLOHMARKT (ganzes Konvolut)")
+                    floh_preise = _re.findall(r"FLOHMARKT[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
                     if not floh_preise:
                         floh_preise = _re.findall(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis, _re.IGNORECASE)
                     # Finde Artikel-Namen
@@ -832,7 +852,20 @@ with T[0]:
 
                     if floh_preise:
                         anzahl_artikel = len(floh_preise)
-                        if anzahl_artikel == 1:
+                        if ist_konvolut:
+                            # KONVOLUT — Paketpreis ist der erste/wichtigste
+                            paket_preis = floh_preise[0]
+                            st.markdown(
+                                "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
+                                "padding:20px;border-radius:16px;text-align:center;margin:15px 0;"
+                                "box-shadow:0 8px 24px rgba(245,166,35,0.4)'>"
+                                "<div style='color:#fff;font-size:14px;font-weight:600'>\U0001f4e6 FLOHMARKT-PREIS (GANZES KONVOLUT)</div>"
+                                "<div style='color:#fff;font-size:42px;font-weight:900'>\u20ac" + paket_preis + "</div>"
+                                "<div style='color:#fff;font-size:12px'>Für das komplette Paket am Stand</div>"
+                                "</div>",
+                                unsafe_allow_html=True
+                            )
+                        elif anzahl_artikel == 1:
                             # EIN Artikel
                             st.markdown(
                                 "<div style='background:linear-gradient(135deg,#f5a623,#f7c948);"
