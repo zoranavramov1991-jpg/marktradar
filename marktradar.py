@@ -77,11 +77,11 @@ VISION_KETTE = [
     "google/gemma-4-31b-it:free",
     # Bezahlte Top-Modelle (zuverlässig, Guthaben vorhanden)
     "google/gemini-2.5-flash",
-    "google/gemini-2.0-flash-001",
+    "google/gemini-2.5-flash-lite",
     "openai/gpt-4o",
     "openai/gpt-4o-mini",
-    "google/gemini-1.5-flash",
-    "google/gemini-1.5-pro",
+    "google/gemini-flash-1.5",
+    "google/gemini-pro-1.5",
     "qwen/qwen-2.5-vl-72b-instruct",
 ]
 
