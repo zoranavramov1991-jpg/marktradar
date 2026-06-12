@@ -9,7 +9,7 @@ MarktRadar OS PRO — ULTIMATE EDITION v8.0
 • 18 Tabs alle mit Ensemble-KI
 """
 import streamlit as st
-import os, base64, urllib.parse, concurrent.futures
+import os, base64, urllib.parse, concurrent.futures, time
 from datetime import datetime
 import requests
 from openai import OpenAI
@@ -70,20 +70,14 @@ for k,v in {
 # KI ENGINE — ULTIMATE
 # ══════════════════════════════════════════════════════════════
 
-# Vision-Fallback-Kette (7 Modelle)
+# Vision-Fallback-Kette (6 Modelle, alle mit Guthaben zuverlässig)
 VISION_KETTE = [
-    # Bezahlte Top-Modelle (zuverlässig, Guthaben vorhanden) — zuerst, damit
-    # nicht jeder einzelne Call erst gegen das Free-Rate-Limit läuft
     "google/gemini-2.5-flash",
     "google/gemini-2.5-flash-lite",
     "openai/gpt-4o",
     "openai/gpt-4o-mini",
-    # Gemma 3 27B — anderes Produkt als Gemini-API, eigenes stabiles Hosting
     "google/gemma-3-27b-it",
     "qwen/qwen-2.5-vl-72b-instruct",
-    # KOSTENLOS — letzter Versuch. Error 429 "Provider returned error" =
-    # Free-Tier-Rate-Limit (20/min, 50-1000/Tag), kein totes Modell.
-    "google/gemma-4-31b-it:free",
 ]
 
 # Ensemble-Modelle (3 beste gleichzeitig)
@@ -168,18 +162,23 @@ def ki(prompt, bilder=None):
             bilder_k = [komprimiere(b) for b in bilder[:4]]
             letzter_fehler = ""
             for model in VISION_KETTE:
-                try:
-                    inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_k]
-                    inhalt.append({"type":"text","text":prompt})
-                    r = c.chat.completions.create(model=model,
-                        messages=[{"role":"user","content":inhalt}],
-                        max_tokens=2500, extra_headers=_hdrs())
-                    a = r.choices[0].message.content
-                    if a and len(a) > 80 and not any(v in a.lower() for v in verweigerungen):
-                        return a
-                except Exception as e:
-                    letzter_fehler = str(e)[:120]
-                    continue
+                for versuch in range(2):
+                    try:
+                        inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_k]
+                        inhalt.append({"type":"text","text":prompt})
+                        r = c.chat.completions.create(model=model,
+                            messages=[{"role":"user","content":inhalt}],
+                            max_tokens=2500, extra_headers=_hdrs())
+                        a = r.choices[0].message.content
+                        if a and len(a) > 80 and not any(v in a.lower() for v in verweigerungen):
+                            return a
+                        break
+                    except Exception as e:
+                        letzter_fehler = str(e)[:120]
+                        if "429" in str(e) and versuch == 0:
+                            time.sleep(2)
+                            continue
+                        break
             return "❌ Vision-Analyse fehlgeschlagen. Letzter Fehler: " + letzter_fehler + " (Tipp: API-Key prüfen oder kleineres Foto)"
         else:
             r = c.chat.completions.create(model="openai/gpt-4o-mini",
