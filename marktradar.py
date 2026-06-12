@@ -120,17 +120,40 @@ def baue_lern_kontext():
     return lern
 
 
-def komprimiere(b64):
+def komprimiere(b64, max_px=1024, q=80):
+    """Robuste Bildkomprimierung — auch für große Handy-Fotos (Samsung etc.)"""
     try:
-        from PIL import Image
+        from PIL import Image, ImageOps
         import io as _io
-        img = Image.open(_io.BytesIO(base64.b64decode(b64)))
-        if img.mode != "RGB": img = img.convert("RGB")
-        img.thumbnail((1024,1024), Image.Resampling.LANCZOS)
+        roh = base64.b64decode(b64)
+        img = Image.open(_io.BytesIO(roh))
+        # EXIF-Rotation korrigieren (Handy-Fotos sind oft gedreht)
+        try:
+            img = ImageOps.exif_transpose(img)
+        except Exception:
+            pass
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        # Auf max_px verkleinern
+        img.thumbnail((max_px, max_px), Image.Resampling.LANCZOS)
         buf = _io.BytesIO()
-        img.save(buf, format="JPEG", quality=80)
-        return base64.b64encode(buf.getvalue()).decode()
-    except: return b64
+        img.save(buf, format="JPEG", quality=q, optimize=True)
+        ergebnis = base64.b64encode(buf.getvalue()).decode()
+        return ergebnis
+    except Exception:
+        # Wenn Komprimierung fehlschlägt: versuche wenigstens kleiner zu machen
+        try:
+            from PIL import Image
+            import io as _io
+            img = Image.open(_io.BytesIO(base64.b64decode(b64)))
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            img.thumbnail((800, 800))
+            buf = _io.BytesIO()
+            img.save(buf, format="JPEG", quality=70)
+            return base64.b64encode(buf.getvalue()).decode()
+        except Exception:
+            return b64
 
 def ki(prompt, bilder=None):
     """Einzelne KI mit Fallback-Kette"""
@@ -140,6 +163,7 @@ def ki(prompt, bilder=None):
     try:
         if bilder:
             bilder_k = [komprimiere(b) for b in bilder[:4]]
+            letzter_fehler = ""
             for model in VISION_KETTE:
                 try:
                     inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_k]
@@ -148,10 +172,12 @@ def ki(prompt, bilder=None):
                         messages=[{"role":"user","content":inhalt}],
                         max_tokens=2500, extra_headers=_hdrs())
                     a = r.choices[0].message.content
-                    if a and ("€" in a or "eur" in a.lower() or len(a)>200) and not any(v in a.lower() for v in verweigerungen):
+                    if a and len(a) > 80 and not any(v in a.lower() for v in verweigerungen):
                         return a
-                except: continue
-            return "❌ Alle Vision-Modelle nicht verfügbar"
+                except Exception as e:
+                    letzter_fehler = str(e)[:120]
+                    continue
+            return "❌ Vision-Analyse fehlgeschlagen. Letzter Fehler: " + letzter_fehler + " (Tipp: API-Key prüfen oder kleineres Foto)"
         else:
             r = c.chat.completions.create(model="openai/gpt-4o-mini",
                 messages=[{"role":"user","content":prompt}],
@@ -450,7 +476,9 @@ with T[0]:
             if st.button("➕ Foto hinzufügen",type="primary",use_container_width=True,key="foto_add"):
                 if neu_foto:
                     neu_foto.seek(0)
-                    b64 = base64.b64encode(neu_foto.read()).decode()
+                    roh_b64 = base64.b64encode(neu_foto.read()).decode()
+                    # SOFORT komprimieren (große Handy-Fotos verkleinern!)
+                    b64 = komprimiere(roh_b64)
                     if b64 not in st.session_state.fotos:
                         st.session_state.fotos.append(b64)
                     st.session_state.fcnt += 1
