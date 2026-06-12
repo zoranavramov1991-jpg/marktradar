@@ -727,8 +727,9 @@ with T[0]:
                         "Defekt: " + d_beschr + extra + vorab_k + lern + "\n\n"
                         "Analysiere das Bild. Auf DEUTSCH. KEINE chinesischen Zeichen!\n\n"
 
-                        "GANZ WICHTIG — Beginne IMMER mit diesen 2 Kernwerten (eine konkrete Zahl, KEINE Spanne!):\n"
+                        "GANZ WICHTIG — Beginne IMMER mit diesen 3 Kernwerten (eine konkrete Zahl, KEINE Spanne!):\n"
                         "ONLINE-WERT: \u20acX  (realistischer Gesamt-Verkaufswert online, eBay/Kleinanzeigen)\n"
+                        "H\u00c4NDLERPREIS: \u20acX  (was ein anderer H\u00e4ndler/Wiederverk\u00e4ufer dir SOFORT bar zahlen w\u00fcrde, ca. 35-55% vom Online-Wert)\n"
                         "FLOHMARKT-WERT: \u20acX  (realistischer Gesamt-Erl\u00f6s am Flohmarkt-Stand)\n\n"
 
                         "Dann je nachdem:\n\n"
@@ -868,12 +869,15 @@ with T[0]:
                         or finde_preis(r"Flohmarkt[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                         or finde_preis(r"Flohmarkt[^\n]*?\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                     )
+                    haendler_wert = finde_preis(r"H\u00c4NDLER[- ]?PREIS[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", ergebnis)
                     # Objekt-Name + Kategorie extrahieren
                     obj_match = _re.search(r"Artikel[:\s]+([^\n(]+)", ergebnis)
                     obj_name = obj_match.group(1).strip()[:35] if obj_match else (st.session_state.get("auto_kat","") or "Artikel")
                     kat_name = st.session_state.get("auto_kat","Haushaltswaren")
 
                     if online_wert and floh_wert:
+                        if not haendler_wert:
+                            haendler_wert = round(online_wert * 0.45, 2)
                         quote = round((floh_wert / online_wert) * 100, 1) if online_wert > 0 else 0
                         wertverlust = round(online_wert * 0.01, 2)
                         schnell = round(floh_wert * 0.57, 2)
@@ -894,8 +898,8 @@ with T[0]:
                                 unsafe_allow_html=True)
 
                         st.markdown("")
-                        st.markdown("### 💰 Duale Preisschätzung (Zustandsbereinigt)")
-                        c1, c2, c3 = st.columns(3)
+                        st.markdown("### 💰 Preisschätzung (Zustandsbereinigt)")
+                        c1, c2, c3, c4 = st.columns(4)
                         with c1:
                             st.markdown(
                                 "<div style='color:#888;font-size:14px'>📈 Est. Online-Wert</div>"
@@ -903,10 +907,15 @@ with T[0]:
                                 unsafe_allow_html=True)
                         with c2:
                             st.markdown(
+                                "<div style='color:#888;font-size:14px'>🤝 Händlerpreis</div>"
+                                "<div style='color:#333;font-size:34px;font-weight:400'>" + f"{haendler_wert:.2f}".replace(".",",") + " €</div>",
+                                unsafe_allow_html=True)
+                        with c3:
+                            st.markdown(
                                 "<div style='color:#888;font-size:14px'>🎪 Est. Flohmarkt-Wert</div>"
                                 "<div style='color:#333;font-size:34px;font-weight:400'>" + f"{floh_wert:.2f}".replace(".",",") + " €</div>",
                                 unsafe_allow_html=True)
-                        with c3:
+                        with c4:
                             st.markdown(
                                 "<div style='color:#888;font-size:14px'>📉 Wertverlust durch Mängel</div>"
                                 "<div style='color:#333;font-size:34px;font-weight:400'>-" + f"{wertverlust:.2f}".replace(".",",") + " €</div>",
