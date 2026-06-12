@@ -72,6 +72,9 @@ for k,v in {
 
 # Vision-Fallback-Kette (9 Modelle)
 VISION_KETTE = [
+    # KOSTENLOS — $0/$0, Bild-Input bestätigt (OpenRouter, Stand 06/2026)
+    # Falls 404 "unavailable": Privacy-Settings auf openrouter.ai checken!
+    "google/gemma-4-31b-it:free",
     # Bezahlte Top-Modelle (zuverlässig, Guthaben vorhanden)
     "google/gemini-2.5-flash",
     "google/gemini-2.0-flash-001",
