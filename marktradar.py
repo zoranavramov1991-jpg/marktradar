@@ -70,7 +70,7 @@ for k,v in {
 # KI ENGINE — ULTIMATE
 # ══════════════════════════════════════════════════════════════
 
-# Vision-Fallback-Kette (9 Modelle)
+# Vision-Fallback-Kette (7 Modelle)
 VISION_KETTE = [
     # KOSTENLOS — $0/$0, Bild-Input bestätigt (OpenRouter, Stand 06/2026)
     # Falls 404 "unavailable": Privacy-Settings auf openrouter.ai checken!
@@ -80,8 +80,8 @@ VISION_KETTE = [
     "google/gemini-2.5-flash-lite",
     "openai/gpt-4o",
     "openai/gpt-4o-mini",
-    "google/gemini-flash-1.5",
-    "google/gemini-pro-1.5",
+    # Gemma 3 27B — anderes Produkt als Gemini-API, eigenes stabiles Hosting
+    "google/gemma-3-27b-it",
     "qwen/qwen-2.5-vl-72b-instruct",
 ]
 
