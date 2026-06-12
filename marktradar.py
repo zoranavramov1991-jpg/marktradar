@@ -72,10 +72,8 @@ for k,v in {
 
 # Vision-Fallback-Kette (7 Modelle)
 VISION_KETTE = [
-    # KOSTENLOS — $0/$0, Bild-Input bestätigt (OpenRouter, Stand 06/2026)
-    # Falls 404 "unavailable": Privacy-Settings auf openrouter.ai checken!
-    "google/gemma-4-31b-it:free",
-    # Bezahlte Top-Modelle (zuverlässig, Guthaben vorhanden)
+    # Bezahlte Top-Modelle (zuverlässig, Guthaben vorhanden) — zuerst, damit
+    # nicht jeder einzelne Call erst gegen das Free-Rate-Limit läuft
     "google/gemini-2.5-flash",
     "google/gemini-2.5-flash-lite",
     "openai/gpt-4o",
@@ -83,6 +81,9 @@ VISION_KETTE = [
     # Gemma 3 27B — anderes Produkt als Gemini-API, eigenes stabiles Hosting
     "google/gemma-3-27b-it",
     "qwen/qwen-2.5-vl-72b-instruct",
+    # KOSTENLOS — letzter Versuch. Error 429 "Provider returned error" =
+    # Free-Tier-Rate-Limit (20/min, 50-1000/Tag), kein totes Modell.
+    "google/gemma-4-31b-it:free",
 ]
 
 # Ensemble-Modelle (3 beste gleichzeitig)
