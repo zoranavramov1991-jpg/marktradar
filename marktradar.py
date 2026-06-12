@@ -72,29 +72,25 @@ for k,v in {
 
 # Vision-Fallback-Kette (9 Modelle)
 VISION_KETTE = [
-    # --- Bezahlte Top-Modelle (beste Qualität, brauchen Guthaben) ---
+    # Bezahlte Top-Modelle (zuverlässig, Guthaben vorhanden)
     "google/gemini-2.5-flash",
     "google/gemini-2.0-flash-001",
     "openai/gpt-4o",
+    "openai/gpt-4o-mini",
     "google/gemini-1.5-flash",
     "google/gemini-1.5-pro",
-    # --- KOSTENLOSE Modelle (Fallback wenn kein Guthaben!) ---
-    "meta-llama/llama-4-maverick:free",
-    "qwen/qwen2.5-vl-72b-instruct:free",
-    "qwen/qwen2.5-vl-32b-instruct:free",
-    "google/gemma-3-27b-it:free",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "anthropic/claude-3.5-sonnet",
+    "qwen/qwen-2.5-vl-72b-instruct",
 ]
 
 # Ensemble-Modelle (3 beste gleichzeitig)
 ENSEMBLE_VISION = [
-    ("google/gemini-3-flash-preview", "🥇 Gemini 3 Flash"),
-    ("google/gemini-2.5-flash",       "🥈 Gemini 2.5 Flash"),
-    ("anthropic/claude-sonnet-4-6",   "🥉 Claude Sonnet"),
+    ("google/gemini-2.5-flash",     "🥇 Gemini 2.5 Flash"),
+    ("google/gemini-2.0-flash-001", "🥈 Gemini 2.0 Flash"),
+    ("openai/gpt-4o",               "🥉 GPT-4o"),
 ]
 ENSEMBLE_TEXT = [
-    ("google/gemini-3-flash-preview", "🥇 Gemini 3"),
+    ("google/gemini-2.5-flash", "🥇 Gemini 2.5"),
     ("google/gemini-2.5-flash",       "🥈 Gemini 2.5"),
     ("openai/gpt-4o-mini",            "🥉 GPT-4o-mini"),
 ]
@@ -324,7 +320,7 @@ def preis_ensemble(artikel, zustand, web_daten):
         f"Bewerte: eBay €X | Kleinanzeigen €X | Flohmarkt €X | Empfehlung €X | Trend ↑↓→"
     )
     modelle_p = [
-        ("google/gemini-3-flash-preview", "G3"),
+        ("google/gemini-2.5-flash", "G2.5"),
         ("google/gemini-2.5-flash",       "G25"),
         ("openai/gpt-4o-mini",            "GPT"),
     ]
@@ -592,10 +588,10 @@ with T[0]:
                     if not schnell_modus:
                         st.write("🔭 4 Vision-KIs scannen gleichzeitig vor...")
                         scan_modelle = [
-                            ("google/gemini-3-flash-preview","Gemini 3"),
                             ("google/gemini-2.5-flash","Gemini 2.5"),
-                            ("anthropic/claude-sonnet-4-6","Claude Sonnet"),
+                            ("google/gemini-2.0-flash-001","Gemini 2.0"),
                             ("openai/gpt-4o","GPT-4o"),
+                            ("openai/gpt-4o-mini","GPT-4o mini"),
                         ]
                         bilder_vorab = [komprimiere(b) for b in st.session_state.fotos[:2]]
                         def vorab_scan(info):
@@ -770,9 +766,9 @@ with T[0]:
                     # 3 Experten-KIs analysieren GLEICHZEITIG
                     st.write("🚀 3 Top-Experten analysieren gleichzeitig...")
                     experten_modelle = [
-                        ("google/gemini-2.5-flash",     "🥇 Gemini 2.5", "meta-llama/llama-4-maverick:free"),
-                        ("openai/gpt-4o",               "🥈 GPT-4o",     "qwen/qwen2.5-vl-72b-instruct:free"),
-                        ("google/gemini-2.0-flash-001", "🥉 Gemini 2.0", "qwen/qwen2.5-vl-32b-instruct:free"),
+                        ("google/gemini-2.5-flash",     "🥇 Gemini 2.5", "google/gemini-1.5-flash"),
+                        ("openai/gpt-4o",               "🥈 GPT-4o",     "openai/gpt-4o-mini"),
+                        ("google/gemini-2.0-flash-001", "🥉 Gemini 2.0", "google/gemini-1.5-pro"),
                     ]
                     # Bilder VOR dem Thread vorbereiten (session_state geht nicht in Threads!)
                     bilder_fuer_experten = [komprimiere(b) for b in st.session_state.fotos[:3]] if hat_fotos else None
@@ -1025,7 +1021,7 @@ with T[0]:
                     "- Trend: ↑/↓/→ + kurze Begründung"
                 )
                 preis_modelle = [
-                    ("google/gemini-3-flash-preview", "Gemini 3"),
+                    ("google/gemini-2.5-flash", "Gemini 2.5"),
                     ("google/gemini-2.5-flash",       "Gemini 2.5"),
                     ("openai/gpt-4o-mini",            "GPT-4o"),
                 ]
