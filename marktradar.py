@@ -72,15 +72,19 @@ for k,v in {
 
 # Vision-Fallback-Kette (9 Modelle)
 VISION_KETTE = [
-    "google/gemini-3-flash-preview",
+    # --- Bezahlte Top-Modelle (beste Qualität, brauchen Guthaben) ---
     "google/gemini-2.5-flash",
-    "google/gemini-2.5-flash-lite",
-    "anthropic/claude-sonnet-4-6",
+    "google/gemini-2.0-flash-001",
+    "openai/gpt-4o",
     "google/gemini-1.5-flash",
     "google/gemini-1.5-pro",
-    "qwen/qwen-vl-plus",
+    # --- KOSTENLOSE Modelle (Fallback wenn kein Guthaben!) ---
+    "meta-llama/llama-4-maverick:free",
+    "qwen/qwen2.5-vl-72b-instruct:free",
+    "qwen/qwen2.5-vl-32b-instruct:free",
+    "google/gemma-3-27b-it:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
     "meta-llama/llama-3.2-11b-vision-instruct:free",
-    "openai/gpt-4o",
 ]
 
 # Ensemble-Modelle (3 beste gleichzeitig)
@@ -766,9 +770,9 @@ with T[0]:
                     # 3 Experten-KIs analysieren GLEICHZEITIG
                     st.write("🚀 3 Top-Experten analysieren gleichzeitig...")
                     experten_modelle = [
-                        ("google/gemini-2.5-flash",     "🥇 Gemini 2.5", "google/gemini-1.5-flash"),
-                        ("openai/gpt-4o",               "🥈 GPT-4o",     "openai/gpt-4o-mini"),
-                        ("google/gemini-2.0-flash-001", "🥉 Gemini 2.0", "google/gemini-1.5-pro"),
+                        ("google/gemini-2.5-flash",     "🥇 Gemini 2.5", "meta-llama/llama-4-maverick:free"),
+                        ("openai/gpt-4o",               "🥈 GPT-4o",     "qwen/qwen2.5-vl-72b-instruct:free"),
+                        ("google/gemini-2.0-flash-001", "🥉 Gemini 2.0", "qwen/qwen2.5-vl-32b-instruct:free"),
                     ]
                     # Bilder VOR dem Thread vorbereiten (session_state geht nicht in Threads!)
                     bilder_fuer_experten = [komprimiere(b) for b in st.session_state.fotos[:3]] if hat_fotos else None
