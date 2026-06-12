@@ -82,9 +82,9 @@ VISION_KETTE = [
 
 # Ensemble-Modelle (3 beste gleichzeitig)
 ENSEMBLE_VISION = [
-    ("google/gemini-2.5-flash",     "🥇 Gemini 2.5 Flash"),
-    ("google/gemini-2.0-flash-001", "🥈 Gemini 2.0 Flash"),
-    ("openai/gpt-4o",               "🥉 GPT-4o"),
+    ("google/gemini-2.5-flash",      "🥇 Gemini 2.5 Flash"),
+    ("google/gemini-2.5-flash-lite", "🥈 Gemini 2.5 Flash-Lite"),
+    ("openai/gpt-4o",                "🥉 GPT-4o"),
 ]
 ENSEMBLE_TEXT = [
     ("google/gemini-2.5-flash", "🥇 Gemini 2.5"),
@@ -591,7 +591,7 @@ with T[0]:
                         st.write("🔭 4 Vision-KIs scannen gleichzeitig vor...")
                         scan_modelle = [
                             ("google/gemini-2.5-flash","Gemini 2.5"),
-                            ("google/gemini-2.0-flash-001","Gemini 2.0"),
+                            ("google/gemini-2.5-flash-lite","Gemini 2.5 Lite"),
                             ("openai/gpt-4o","GPT-4o"),
                             ("openai/gpt-4o-mini","GPT-4o mini"),
                         ]
@@ -769,9 +769,9 @@ with T[0]:
                     # 3 Experten-KIs analysieren GLEICHZEITIG
                     st.write("🚀 3 Top-Experten analysieren gleichzeitig...")
                     experten_modelle = [
-                        ("google/gemini-2.5-flash",     "🥇 Gemini 2.5", "google/gemini-1.5-flash"),
-                        ("openai/gpt-4o",               "🥈 GPT-4o",     "openai/gpt-4o-mini"),
-                        ("google/gemini-2.0-flash-001", "🥉 Gemini 2.0", "google/gemini-1.5-pro"),
+                        ("google/gemini-2.5-flash",      "🥇 Gemini 2.5",      "google/gemini-2.5-flash-lite"),
+                        ("openai/gpt-4o",                "🥈 GPT-4o",          "openai/gpt-4o-mini"),
+                        ("google/gemini-2.5-flash-lite", "🥉 Gemini 2.5 Lite", "google/gemma-3-27b-it"),
                     ]
                     # Bilder VOR dem Thread vorbereiten (session_state geht nicht in Threads!)
                     bilder_fuer_experten = [komprimiere(b) for b in st.session_state.fotos[:3]] if hat_fotos else None
