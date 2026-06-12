@@ -79,7 +79,6 @@ VISION_KETTE = [
     "openai/gpt-4o-mini",
     "google/gemini-1.5-flash",
     "google/gemini-1.5-pro",
-    "anthropic/claude-3.5-sonnet",
     "qwen/qwen-2.5-vl-72b-instruct",
 ]
 
