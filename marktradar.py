@@ -369,9 +369,9 @@ ENSEMBLE_VISION = [
     ("openai/gpt-4o",                "🥉 GPT-4o"),
 ]
 ENSEMBLE_TEXT = [
-    ("google/gemini-2.5-flash", "🥇 Gemini 2.5"),
-    ("google/gemini-2.5-flash",       "🥈 Gemini 2.5"),
-    ("openai/gpt-4o-mini",            "🥉 GPT-4o-mini"),
+    ("google/gemini-2.5-flash",      "🥇 Gemini 2.5"),
+    ("google/gemini-2.5-flash-lite", "🥈 Gemini 2.5 Lite"),
+    ("openai/gpt-4o-mini",           "🥉 GPT-4o-mini"),
 ]
 
 def _client():
@@ -435,8 +435,20 @@ def komprimiere(b64, max_px=1024, q=80):
             return b64
 
 def ki(prompt, bilder=None):
-    """Einzelne KI mit Fallback-Kette"""
+    """Einzelne KI mit Fallback-Kette + Cache (spart Kosten beim Testen)"""
     if not OR_KEY: return "❌ Kein API-Key!"
+    # Cache: identische Anfragen wiederverwenden (gilt nur in dieser Session)
+    import hashlib as _hl
+    _bilder_sig = ""
+    if bilder:
+        try: _bilder_sig = "".join([(b[:60] if isinstance(b,str) else "") for b in bilder[:3]])
+        except: pass
+    _cache_key = _hl.md5((prompt[:500] + _bilder_sig).encode()).hexdigest()
+    if "_ki_cache" not in st.session_state:
+        st.session_state["_ki_cache"] = {}
+    _cached = st.session_state["_ki_cache"].get(_cache_key)
+    if _cached:
+        return _cached
     c = _client()
     verweigerungen = ["tut mir leid","kann nicht helfen","cannot assist","i'm sorry"]
     try:
@@ -450,9 +462,10 @@ def ki(prompt, bilder=None):
                         inhalt.append({"type":"text","text":prompt})
                         r = c.chat.completions.create(model=model,
                             messages=[{"role":"user","content":inhalt}],
-                            max_tokens=2500, temperature=0.2, extra_headers=_hdrs())
+                            max_tokens=1800, temperature=0.2, extra_headers=_hdrs())
                         a = r.choices[0].message.content
                         if a and len(a) > 80 and not any(v in a.lower() for v in verweigerungen):
+                            st.session_state["_ki_cache"][_cache_key] = a
                             return a
                         break
                     except Exception as e:
@@ -465,8 +478,11 @@ def ki(prompt, bilder=None):
         else:
             r = c.chat.completions.create(model="openai/gpt-4o-mini",
                 messages=[{"role":"user","content":prompt}],
-                max_tokens=2500, temperature=0.2, extra_headers=_hdrs())
-            return r.choices[0].message.content
+                max_tokens=1500, temperature=0.2, extra_headers=_hdrs())
+            _antwort = r.choices[0].message.content
+            if _antwort:
+                st.session_state["_ki_cache"][_cache_key] = _antwort
+            return _antwort
     except Exception as e:
         return f"❌ Fehler: {str(e)}"
 
@@ -1075,7 +1091,8 @@ with T[0]:
                             ("openai/gpt-4o","GPT-4o"),
                             ("openai/gpt-4o-mini","GPT-4o mini"),
                         ]
-                        bilder_vorab = [komprimiere(b) for b in st.session_state.fotos[:2]]
+                        # Stufe 1 = nur grobe Vorab-Erkennung → kleinere Bilder reichen (spart Kosten)
+                        bilder_vorab = [komprimiere(b, max_px=640, q=75) for b in st.session_state.fotos[:2]]
                         def vorab_scan(info):
                             mid, name = info
                             try:
