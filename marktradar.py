@@ -531,6 +531,33 @@ with T[0]:
     st.header("🔍 Artikel-Analyse — Ultimate Edition")
     st.markdown("**9 Vision-KIs · 3 Experten gleichzeitig · Google+Tavily+You.com · Richter-KI**")
 
+    # ── SUCH-SCHLÜSSEL TESTEN ──
+    with st.expander("🔧 Such-Schlüssel testen (falls 'keine Web-Daten')"):
+        st.caption("Prüft jeden Schlüssel einzeln. So siehst du, welcher funktioniert.")
+        if st.button("▶️ Jetzt alle 3 Suchmaschinen testen", key="test_keys"):
+            # Google
+            if not GOOGLE_KEY or not GOOGLE_CSE:
+                st.error("🔴 Google: kein Schlüssel/CSE in Streamlit eingetragen")
+            else:
+                g = google_suche("Stereoanlage gebraucht Preis")
+                if g: st.success("🟢 Google funktioniert!")
+                else: st.error("🔴 Google antwortet nicht — Tageslimit (100/Tag) erreicht oder Schlüssel ungültig")
+            # Tavily
+            if not TAVILY_KEY:
+                st.error("🔴 Tavily: kein Schlüssel in Streamlit eingetragen")
+            else:
+                t = tavily_suche("Stereoanlage gebraucht Preis")
+                if t: st.success("🟢 Tavily funktioniert!")
+                else: st.error("🔴 Tavily antwortet nicht — Monatslimit erreicht oder Schlüssel ungültig")
+            # You.com
+            if not YOU_KEY:
+                st.error("🔴 You.com: kein Schlüssel in Streamlit eingetragen")
+            else:
+                y = you_suche("Stereoanlage gebraucht Preis")
+                if y: st.success("🟢 You.com funktioniert!")
+                else: st.error("🔴 You.com antwortet nicht — Limit erreicht oder Schlüssel ungültig")
+            st.info("Tipp: Es reicht, wenn EINE Suchmaschine grün ist. Roter Google-Schlüssel = meist nur Tageslimit, morgen wieder ok.")
+
     # ── MODUS-WAHL ──
     modus = st.radio("⚡ Analyse-Modus:",
         ["🚀 Ultimate (3 Experten + Richter)", "⚡ Schnell (1 KI — schneller)"],
