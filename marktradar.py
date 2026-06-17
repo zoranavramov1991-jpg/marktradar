@@ -168,7 +168,7 @@ def ki(prompt, bilder=None):
                         inhalt.append({"type":"text","text":prompt})
                         r = c.chat.completions.create(model=model,
                             messages=[{"role":"user","content":inhalt}],
-                            max_tokens=2500, extra_headers=_hdrs())
+                            max_tokens=2500, temperature=0.2, extra_headers=_hdrs())
                         a = r.choices[0].message.content
                         if a and len(a) > 80 and not any(v in a.lower() for v in verweigerungen):
                             return a
@@ -183,7 +183,7 @@ def ki(prompt, bilder=None):
         else:
             r = c.chat.completions.create(model="openai/gpt-4o-mini",
                 messages=[{"role":"user","content":prompt}],
-                max_tokens=2500, extra_headers=_hdrs())
+                max_tokens=2500, temperature=0.2, extra_headers=_hdrs())
             return r.choices[0].message.content
     except Exception as e:
         return f"❌ Fehler: {str(e)}"
@@ -210,7 +210,7 @@ def ensemble_ki(prompt, bilder=None, zeige_status=False, max_tokens=1200):
             else:
                 msgs = [{"role":"user","content":prompt}]
             r = c2.chat.completions.create(model=model_id, messages=msgs,
-                max_tokens=max_tokens, extra_headers=_hdrs())
+                max_tokens=max_tokens, temperature=0.2, extra_headers=_hdrs())
             a = r.choices[0].message.content
             if a and len(a) > 30: return (name, a)
         except: pass
@@ -791,7 +791,7 @@ with T[0]:
                                     nachrichten = [{"role":"user","content":analyse_prompt}]
                                 antwort_obj = klient.chat.completions.create(
                                     model=versuch_id, messages=nachrichten,
-                                    max_tokens=1800, extra_headers=_hdrs()
+                                    max_tokens=1800, temperature=0.2, extra_headers=_hdrs()
                                 )
                                 antwort_text = antwort_obj.choices[0].message.content
                                 if antwort_text and len(antwort_text) > 100:
@@ -831,6 +831,31 @@ with T[0]:
                     else:
                         # Richter-KI fasst alle zusammen
                         st.write(f"⚖️ Richter-KI fasst {anzahl_experten} Experten zusammen...")
+
+                        # ECHTEN Median der Preise pro Experte per Code berechnen
+                        # (verhindert Schwankung — KI soll nicht 'im Kopf' mitteln)
+                        import re as _re_j, statistics as _stat
+                        def _zieh_preis(muster, txt):
+                            m = _re_j.search(muster, txt, _re_j.IGNORECASE)
+                            if m:
+                                try: return float(m.group(1).replace(".","").replace(",","."))
+                                except: return None
+                            return None
+                        _online, _haendler, _floh = [], [], []
+                        for _ant in experten_ergebnisse.values():
+                            o = _zieh_preis(r"ONLINE[- ]?WERT[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", _ant)
+                            h = _zieh_preis(r"H\u00c4NDLER[- ]?PREIS[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", _ant)
+                            f_ = _zieh_preis(r"FLOHMARKT[- ]?WERT[:\s]*\u20ac\s*(\d+(?:[.,]\d+)?)", _ant)
+                            if o: _online.append(o)
+                            if h: _haendler.append(h)
+                            if f_: _floh.append(f_)
+                        _vorgabe = ""
+                        if _online or _floh:
+                            _vorgabe = "\nVERBINDLICHE PREISE (exakt so \u00fcbernehmen, NICHT \u00e4ndern):\n"
+                            if _online:   _vorgabe += "ONLINE-WERT: \u20ac" + str(round(_stat.median(_online))) + "\n"
+                            if _haendler: _vorgabe += "H\u00c4NDLERPREIS: \u20ac" + str(round(_stat.median(_haendler))) + "\n"
+                            if _floh:     _vorgabe += "FLOHMARKT-WERT: \u20ac" + str(round(_stat.median(_floh))) + "\n"
+
                         experten_teile = []
                         for e_name, e_antwort in experten_ergebnisse.items():
                             experten_teile.append("==" + e_name + "==\n" + e_antwort[:800])
@@ -840,7 +865,7 @@ with T[0]:
                             + str(anzahl_experten) + " Experten haben den Artikel analysiert.\n"
                             + "Erstelle EINE perfekte, vollständige finale Antwort auf Deutsch.\n"
                             + "Nimm das Beste + Präziseste aus jeder Analyse.\n"
-                            + "Bei unterschiedlichen Preisen: nimm den Durchschnitt.\n"
+                            + _vorgabe
                             + "Behalte ALLE Abschnitte (Zustand, alle 5 Preise, Gewinn, Berlin-Märkte etc.)!\n\n"
                             + "Experten-Analysen:\n"
                             + experten_zusammen
