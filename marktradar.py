@@ -276,6 +276,40 @@ def ensemble_ki(prompt, bilder=None, zeige_status=False, max_tokens=1200):
     )
 
 # ── WEB-SUCHE ─────────────────────────────────────────────────
+def extrahiere_preise(text):
+    """Zieht echte Euro-Preise aus Web-Text und gibt eine Auswertung zurück.
+    Filtert Unsinn (zu billig/teuer) raus und liefert Spanne + Median."""
+    if not text:
+        return None
+    import re as _re_p, statistics as _stat_p
+    # Findet: 49€, € 49, 49 EUR, 49,90 €, 1.299 € usw.
+    roh = _re_p.findall(r"(?:€\s*)?(\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?)\s*(?:€|EUR|Euro)|(?:€|EUR)\s*(\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?)", text)
+    preise = []
+    for a, b in roh:
+        s = (a or b).replace(" ","").replace(".","").replace(",",".")
+        try:
+            p = float(s)
+            # Plausibel für Secondhand: 1€ bis 5000€
+            if 1 <= p <= 5000:
+                preise.append(p)
+        except Exception:
+            continue
+    if len(preise) < 2:
+        return None
+    preise.sort()
+    # Extreme Ausreißer kappen (oberste/unterste 10%)
+    n = len(preise)
+    if n >= 6:
+        schnitt = max(1, n // 10)
+        preise = preise[schnitt:n-schnitt]
+    median = round(_stat_p.median(preise))
+    return {
+        "median": median,
+        "min": round(min(preise)),
+        "max": round(max(preise)),
+        "anzahl": len(preise),
+    }
+
 def google_suche(query):
     if not GOOGLE_KEY or not GOOGLE_CSE: return None
     try:
@@ -285,8 +319,8 @@ def google_suche(query):
         data = r.json()
         if data.get("items"):
             teile = ["🔍 GOOGLE:"]
-            for item in data["items"][:4]:
-                teile.append("• " + item.get("title","") + ": " + item.get("snippet","")[:150])
+            for item in data["items"][:6]:
+                teile.append("• " + item.get("title","") + ": " + item.get("snippet","")[:300])
             return "\n".join(teile)
     except: pass
     return None
@@ -298,7 +332,7 @@ def tavily_suche(query):
         query_de = query + " Deutschland deutsch"
         r = requests.post("https://api.tavily.com/search",
             json={"api_key":TAVILY_KEY,"query":query_de,"search_depth":"advanced",
-                  "max_results":5,"include_answer":True,
+                  "max_results":8,"include_answer":True,
                   "include_domains":["kleinanzeigen.de","ebay.de","vinted.de",
                                      "mobile.de","markt.de","hood.de"]},
             timeout=15)
@@ -310,9 +344,9 @@ def tavily_suche(query):
             if any(w in antwort.lower() for w in ["euro","€","preis","kaufen","verkauf","deutschland"]):
                 teile.append(antwort)
         if data.get("results"):
-            for res in data["results"][:3]:
+            for res in data["results"][:6]:
                 titel = res.get("title","")
-                inhalt = res.get("content","")[:150]
+                inhalt = res.get("content","")[:300]
                 # Nur deutsche Quellen
                 url = res.get("url","")
                 if ".de" in url or "deutschland" in inhalt.lower() or "€" in inhalt:
@@ -1096,15 +1130,33 @@ with T[0]:
                 if tavily_r and passt_zum_artikel(tavily_r, suchbegriff):
                     web_text += "\n" + tavily_r
 
+                # ECHTE PREISE aus den Web-Treffern herausziehen und auswerten
+                preis_auswertung = extrahiere_preise(web_text)
+                web_preis_vorgabe = ""
+                if preis_auswertung:
+                    st.success(
+                        f"💶 **{preis_auswertung['anzahl']} echte Preise im Web gefunden:** "
+                        f"Median **€{preis_auswertung['median']}** "
+                        f"(Spanne €{preis_auswertung['min']}–€{preis_auswertung['max']})"
+                    )
+                    web_preis_vorgabe = (
+                        "\n\nECHTE GEFUNDENE PREISE (aus " + str(preis_auswertung['anzahl'])
+                        + " Web-Treffern): Median €" + str(preis_auswertung['median'])
+                        + ", Spanne €" + str(preis_auswertung['min']) + "–€" + str(preis_auswertung['max'])
+                        + ". Der ONLINE-WERT soll nahe am Median liegen!\n"
+                    )
+
                 # 3 Preis-Experten bewerten GLEICHZEITIG
                 st.write("⚖️ 3 Preis-Experten bewerten gleichzeitig...")
                 preis_prompt = (
                     "Preisexperte Secondhand Deutschland. Auf DEUTSCH antworten!\n"
                     "Artikel: " + suchbegriff + "\n"
                     "Zustand: " + g_beschr + "\n"
+                    + web_preis_vorgabe
                     + ("ECHTE MARKTDATEN AUS DEM WEB (nutze diese Zahlen als Hauptgrundlage, NICHT deine eigene Schätzung!):\n" + web_text[:1200] if web_text else "Keine Web-Daten gefunden — schätze konservativ aus Erfahrung, eher zu niedrig als zu hoch.") + "\n\n"
                     "Wenn echte Web-Preise vorliegen: richte dich nach diesen, nicht nach deinem Bauchgefühl.\n"
                     "Gib realistische Preise. NUR konkrete Einzelzahlen — KEINE Spannen! Auf glatte Zehner runden.\n"
+                    "Der Flohmarkt-Preis liegt erfahrungsgemäß bei 40-60% des Online-Werts (Barverkauf am Stand).\n"
                     "Format:\n"
                     "- eBay: €X\n"
                     "- Kleinanzeigen: €X\n"
