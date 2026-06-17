@@ -1417,6 +1417,137 @@ with T[0]:
                                             "</div>", unsafe_allow_html=True)
                                 st.markdown("")
 
+                        # ═══════════════════════════════════════════════════
+                        # 🎯 PROFI-EXTRAS (nutzen bereits berechnete Werte)
+                        # ═══════════════════════════════════════════════════
+                        import re as _re_x
+                        from datetime import datetime as _dt_x
+
+                        # --- 1. SCHNELL-EMPFEHLUNG: Lohnt sich der Einkauf? ---
+                        st.markdown("---")
+                        marge_floh = (floh_wert - (haendler_wert or 0)) if (floh_wert and haendler_wert) else 0
+                        if floh_wert and haendler_wert and online_wert:
+                            if marge_floh >= 20 and floh_wert >= haendler_wert * 1.5:
+                                _farbe = "linear-gradient(135deg,#3a7a3a,#5fa55f)"
+                                _emoji = "✅"
+                                _kern = "JA — KAUFEN"
+                                _detail = f"Max. €{haendler_wert:.0f} zahlen · Marge ca. €{marge_floh:.0f} bar am Stand"
+                            elif marge_floh >= 10:
+                                _farbe = "linear-gradient(135deg,#c8862a,#e8a93a)"
+                                _emoji = "🟡"
+                                _kern = "VIELLEICHT — verhandeln"
+                                _detail = f"Nur unter €{(haendler_wert*0.8):.0f} kaufen · Marge knapp"
+                            else:
+                                _farbe = "linear-gradient(135deg,#7a3a3a,#a55f5f)"
+                                _emoji = "❌"
+                                _kern = "NEIN — lohnt nicht"
+                                _detail = "Marge zu dünn — lass die Finger davon"
+                            st.markdown(
+                                f"<div style='background:{_farbe};padding:18px 22px;border-radius:16px;"
+                                f"color:#fff;box-shadow:0 10px 30px rgba(0,0,0,0.15);margin:8px 0'>"
+                                f"<div style='font-size:13px;letter-spacing:2px;opacity:0.85;font-weight:600'>SCHNELL-ENTSCHEIDUNG</div>"
+                                f"<div style='font-size:26px;font-weight:900;font-family:Playfair Display,serif;margin:4px 0'>"
+                                f"{_emoji} {_kern}</div>"
+                                f"<div style='font-size:14px;opacity:0.95'>{_detail}</div>"
+                                f"</div>", unsafe_allow_html=True)
+
+                        # --- 2. VERHANDLUNGS-TIPP + 4. SAISON + 6. RISIKO-AMPEL nebeneinander ---
+                        sp1, sp2, sp3 = st.columns(3)
+
+                        # VERHANDLUNGS-TIPP
+                        with sp1:
+                            _zielpreis = round((haendler_wert or floh_wert*0.6) * 0.75) if haendler_wert else 0
+                            st.markdown(
+                                "<div style='background:linear-gradient(180deg,#fffdf7,#fcf5e1);"
+                                "padding:16px;border-radius:14px;border:1px solid rgba(200,160,80,0.3);"
+                                "box-shadow:0 6px 20px rgba(60,45,20,0.06);height:100%'>"
+                                "<div style='color:#c8862a;font-size:11px;letter-spacing:1.5px;font-weight:700'>💬 VERHANDLUNG</div>"
+                                f"<div style='font-size:24px;font-weight:800;color:#7a5520;font-family:Playfair Display,serif;margin:6px 0'>€{_zielpreis}</div>"
+                                "<div style='font-size:12px;color:#5a4a30;line-height:1.5'>"
+                                "<b>Sag dem Verkäufer:</b><br>"
+                                f"„Funktion unklar, Risiko bei mir. Ich zahl dir €{_zielpreis} bar, deal?\"</div>"
+                                "</div>", unsafe_allow_html=True)
+
+                        # SAISON-HINWEIS
+                        with sp2:
+                            _monat = _dt_x.now().month
+                            _txt = ergebnis.lower()
+                            _saison_emoji = "🟢"
+                            _saison_titel = "JETZT VERKAUFEN"
+                            _saison_text = "Ganzjahres-Artikel — jederzeit absetzbar."
+                            # Sommer-Artikel (April-Sep)
+                            if any(w in _txt for w in ["sommer","strand","grill","garten","badminton","camping","fahrrad","ventilator","kühl","klima","sonnen"]):
+                                if 4 <= _monat <= 8:
+                                    _saison_emoji, _saison_titel, _saison_text = "🟢", "PEAK-SAISON", "Sommer-Artikel — JETZT raus damit, beste Zeit!"
+                                else:
+                                    _saison_emoji, _saison_titel, _saison_text = "🟡", "WARTEN", "Sommer-Artikel — bis April lagern, dann +30%."
+                            # Winter-Artikel
+                            elif any(w in _txt for w in ["winter","schnee","ski","schlitten","heizung","heizer","weihnacht","advent","wolle","skier"]):
+                                if _monat in [11,12,1,2]:
+                                    _saison_emoji, _saison_titel, _saison_text = "🟢", "PEAK-SAISON", "Winter-Artikel — Hochsaison, max. Preis!"
+                                else:
+                                    _saison_emoji, _saison_titel, _saison_text = "🟡", "WARTEN", "Winter-Artikel — bis November warten."
+                            # Vintage/Sammler
+                            elif any(w in _txt for w in ["vintage","retro","antik","sammler","alt","70er","80er","60er"]):
+                                _saison_emoji, _saison_titel, _saison_text = "🟢", "ZEITLOS", "Sammlerstück — Saison egal, Käufer warten."
+                            st.markdown(
+                                "<div style='background:linear-gradient(180deg,#fffdf7,#fcf5e1);"
+                                "padding:16px;border-radius:14px;border:1px solid rgba(200,160,80,0.3);"
+                                "box-shadow:0 6px 20px rgba(60,45,20,0.06);height:100%'>"
+                                "<div style='color:#c8862a;font-size:11px;letter-spacing:1.5px;font-weight:700'>🗓️ SAISON</div>"
+                                f"<div style='font-size:24px;font-weight:800;color:#7a5520;font-family:Playfair Display,serif;margin:6px 0'>{_saison_emoji} {_saison_titel}</div>"
+                                f"<div style='font-size:12px;color:#5a4a30;line-height:1.5'>{_saison_text}</div>"
+                                "</div>", unsafe_allow_html=True)
+
+                        # RISIKO-AMPEL
+                        with sp3:
+                            _risiko_punkte = 0
+                            _gruende = []
+                            _txt2 = ergebnis.lower()
+                            if "defekt" in _txt2 or "unklar" in _txt2 or "nicht getest" in _txt2:
+                                _risiko_punkte += 35; _gruende.append("Funktion unklar")
+                            if floh_wert and haendler_wert and floh_wert < haendler_wert * 1.4:
+                                _risiko_punkte += 25; _gruende.append("Marge dünn")
+                            if "selten" in _txt2 or "nische" in _txt2 or "spezial" in _txt2:
+                                _risiko_punkte += 20; _gruende.append("Nischen-Käufer")
+                            if online_wert and online_wert < 30:
+                                _risiko_punkte += 15; _gruende.append("Günstig-Segment")
+                            if not _gruende:
+                                _gruende.append("Solide Sache")
+                            if _risiko_punkte >= 50:
+                                _ri_emoji, _ri_titel = "🔴", "HOCH"
+                            elif _risiko_punkte >= 25:
+                                _ri_emoji, _ri_titel = "🟡", "MITTEL"
+                            else:
+                                _ri_emoji, _ri_titel = "🟢", "GERING"
+                            st.markdown(
+                                "<div style='background:linear-gradient(180deg,#fffdf7,#fcf5e1);"
+                                "padding:16px;border-radius:14px;border:1px solid rgba(200,160,80,0.3);"
+                                "box-shadow:0 6px 20px rgba(60,45,20,0.06);height:100%'>"
+                                "<div style='color:#c8862a;font-size:11px;letter-spacing:1.5px;font-weight:700'>⚠️ RISIKO</div>"
+                                f"<div style='font-size:24px;font-weight:800;color:#7a5520;font-family:Playfair Display,serif;margin:6px 0'>{_ri_emoji} {_ri_titel} ({_risiko_punkte}%)</div>"
+                                f"<div style='font-size:12px;color:#5a4a30;line-height:1.5'>"
+                                + " · ".join(_gruende[:3]) +
+                                "</div></div>", unsafe_allow_html=True)
+
+                        # --- 7. SPRACHAUSGABE: Browser-eigene Text-to-Speech, kein API-Call ---
+                        _kurz = f"{_kern if 'kern' in dir() or floh_wert else 'Analyse fertig'}. "
+                        if online_wert: _kurz += f"Online {online_wert:.0f} Euro. "
+                        if haendler_wert: _kurz += f"Händler {haendler_wert:.0f} Euro. "
+                        if floh_wert: _kurz += f"Flohmarkt {floh_wert:.0f} Euro. "
+                        _kurz_esc = _kurz.replace("'","").replace('"','').replace("\n"," ")
+                        st.markdown(
+                            "<div style='text-align:center;margin:16px 0 4px'>"
+                            f"<button onclick=\"var u=new SpeechSynthesisUtterance('{_kurz_esc}');"
+                            "u.lang='de-DE';u.rate=1.05;speechSynthesis.cancel();speechSynthesis.speak(u);\" "
+                            "style='background:linear-gradient(135deg,#1a1612,#2a2218);color:#f5d48a;"
+                            "border:1px solid rgba(232,169,58,0.4);border-radius:12px;padding:10px 24px;"
+                            "font-weight:600;cursor:pointer;font-size:13px;letter-spacing:1px;"
+                            "box-shadow:0 6px 18px rgba(28,22,18,0.2)'>"
+                            "🔊 ERGEBNIS VORLESEN</button></div>",
+                            unsafe_allow_html=True)
+                        st.markdown("---")
+
                         # Volltext-Analyse einklappbar
                         with st.expander("📄 Vollständige Detail-Analyse anzeigen"):
                             st.markdown(ergebnis)
