@@ -329,12 +329,12 @@ def tavily_suche(query):
     if not TAVILY_KEY: return None
     try:
         # Deutsch erzwingen durch deutsche Suchanfrage
-        query_de = query + " Deutschland deutsch"
+        query_de = query + " Deutschland deutsch Preis gebraucht"
+        # KEINE include_domains mehr — Tavily durchsucht das GANZE Web nach Preisen
+        # (eBay, Kleinanzeigen, Vinted, Etsy, Catawiki, Auktionshäuser, Foren, Shops ...)
         r = requests.post("https://api.tavily.com/search",
             json={"api_key":TAVILY_KEY,"query":query_de,"search_depth":"advanced",
-                  "max_results":8,"include_answer":True,
-                  "include_domains":["kleinanzeigen.de","ebay.de","vinted.de",
-                                     "mobile.de","markt.de","hood.de"]},
+                  "max_results":12,"include_answer":True},
             timeout=15)
         data = r.json()
         teile = []
@@ -344,12 +344,12 @@ def tavily_suche(query):
             if any(w in antwort.lower() for w in ["euro","€","preis","kaufen","verkauf","deutschland"]):
                 teile.append(antwort)
         if data.get("results"):
-            for res in data["results"][:6]:
+            for res in data["results"][:10]:
                 titel = res.get("title","")
                 inhalt = res.get("content","")[:300]
-                # Nur deutsche Quellen
+                # Alles mitnehmen was nach Preis/Deutschland aussieht (egal welche Seite)
                 url = res.get("url","")
-                if ".de" in url or "deutschland" in inhalt.lower() or "€" in inhalt:
+                if "€" in inhalt or "eur" in inhalt.lower() or "preis" in inhalt.lower() or ".de" in url:
                     teile.append("• " + titel + ": " + inhalt)
         return "\n".join(teile) if teile else None
     except: pass
@@ -1106,16 +1106,20 @@ with T[0]:
                 ka_url=f"https://www.kleinanzeigen.de/s-{urllib.parse.quote(suchbegriff)}/k0"
                 vi_url=f"https://www.vinted.de/catalog?search_text={urllib.parse.quote(suchbegriff)}"
                 fb_url=f"https://www.facebook.com/marketplace/search/?query={urllib.parse.quote(suchbegriff)}"
-                st.write(f"🌐 Suche echte Preise für: **{suchbegriff}**")
-                # Gezielte Suche - nur Google und Tavily mit gezieltem Query
+                st.write(f"🌐 Suche echte Preise für: **{suchbegriff}** — im GANZEN Web")
+                # 3 Suchmaschinen gleichzeitig, durchsuchen das ganze Web (nicht nur eBay/Kleinanzeigen)
                 def hole_gezielte_preise():
-                    # Nach TATSÄCHLICH erzielten Preisen suchen, nicht nach Wunsch-Angeboten
-                    query = suchbegriff + " verkauft Preis Euro Kleinanzeigen eBay Deutschland"
-                    g = google_suche(query)
-                    t = tavily_suche(suchbegriff + " gebraucht verkauft Marktpreis Deutschland Secondhand")
-                    return g, t
+                    query = suchbegriff + " gebraucht Preis Euro verkauft Deutschland"
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as _ex:
+                        _fg = _ex.submit(google_suche, query)
+                        _ft = _ex.submit(tavily_suche, suchbegriff + " gebraucht verkauft Marktpreis Secondhand")
+                        _fy = _ex.submit(you_suche, query)
+                        g = _fg.result()
+                        t = _ft.result()
+                        y = _fy.result()
+                    return g, t, y
 
-                google_r, tavily_r = hole_gezielte_preise()
+                google_r, tavily_r, you_r = hole_gezielte_preise()
 
                 # Prüfe ob Ergebnisse wirklich zum Artikel passen
                 def passt_zum_artikel(text, artikel):
@@ -1129,6 +1133,8 @@ with T[0]:
                     web_text += google_r
                 if tavily_r and passt_zum_artikel(tavily_r, suchbegriff):
                     web_text += "\n" + tavily_r
+                if you_r and passt_zum_artikel(you_r, suchbegriff):
+                    web_text += "\n" + you_r
 
                 # ECHTE PREISE aus den Web-Treffern herausziehen und auswerten
                 preis_auswertung = extrahiere_preise(web_text)
@@ -1153,7 +1159,7 @@ with T[0]:
                     "Artikel: " + suchbegriff + "\n"
                     "Zustand: " + g_beschr + "\n"
                     + web_preis_vorgabe
-                    + ("ECHTE MARKTDATEN AUS DEM WEB (nutze diese Zahlen als Hauptgrundlage, NICHT deine eigene Schätzung!):\n" + web_text[:1200] if web_text else "Keine Web-Daten gefunden — schätze konservativ aus Erfahrung, eher zu niedrig als zu hoch.") + "\n\n"
+                    + ("ECHTE MARKTDATEN AUS DEM WEB (nutze diese Zahlen als Hauptgrundlage, NICHT deine eigene Schätzung!):\n" + web_text[:2500] if web_text else "Keine Web-Daten gefunden — schätze konservativ aus Erfahrung, eher zu niedrig als zu hoch.") + "\n\n"
                     "Wenn echte Web-Preise vorliegen: richte dich nach diesen, nicht nach deinem Bauchgefühl.\n"
                     "Gib realistische Preise. NUR konkrete Einzelzahlen — KEINE Spannen! Auf glatte Zehner runden.\n"
                     "Der Flohmarkt-Preis liegt erfahrungsgemäß bei 40-60% des Online-Werts (Barverkauf am Stand).\n"
