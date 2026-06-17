@@ -995,7 +995,15 @@ with T[0]:
                         if not haendler_wert:
                             haendler_wert = round(online_wert * 0.45, 2)
                         quote = round((floh_wert / online_wert) * 100, 1) if online_wert > 0 else 0
-                        wertverlust = round(online_wert * 0.01, 2)
+                        # Wertverlust aus dem von der KI genannten Gebrauchsspuren-% ableiten
+                        _vp = _re.search(r"(\d{1,2})\s*%", ergebnis)
+                        _verlust_proz = (int(_vp.group(1)) / 100.0) if _vp else 0.10
+                        # Neuwert-Schätzung = Online-Wert / (1 - Verlust%), Verlust = Differenz
+                        if _verlust_proz < 0.9:
+                            _neuwert = online_wert / (1 - _verlust_proz)
+                            wertverlust = round(_neuwert - online_wert, 2)
+                        else:
+                            wertverlust = round(online_wert * 0.10, 2)
                         schnell = round(floh_wert * 0.57, 2)
                         mittel  = round(online_wert * 0.47, 2)
                         maximal = online_wert
@@ -1099,6 +1107,9 @@ with T[0]:
                     t=line.split(":")
                     if len(t)>1: suchbegriff=t[1].strip().strip("*[] ")[:40]
                     break
+            # Klammer-Zusätze entfernen (z.B. "Rosita Hi-Fi Anlage (Kompaktanlage)" → "Rosita Hi-Fi Anlage")
+            if "(" in suchbegriff:
+                suchbegriff = suchbegriff.split("(")[0].strip()
 
             # ── STUFE 3: PREIS-ENSEMBLE + WEB ──
             with st.status("📡 Stufe 3: Google+Tavily+You.com + 3 Preis-KIs...",expanded=True):
@@ -1121,12 +1132,25 @@ with T[0]:
 
                 google_r, tavily_r, you_r = hole_gezielte_preise()
 
-                # Prüfe ob Ergebnisse wirklich zum Artikel passen
+                # Diagnose: zeigen welche Suchmaschine geantwortet hat
+                _quellen = []
+                if google_r: _quellen.append("Google")
+                if tavily_r: _quellen.append("Tavily")
+                if you_r: _quellen.append("You.com")
+                if _quellen:
+                    st.caption("🔎 Antwort von: " + ", ".join(_quellen))
+                else:
+                    st.warning("⚠️ Keine Suchmaschine hat geantwortet — evtl. API-Schlüssel abgelaufen oder Limit erreicht. Preise sind dann reine KI-Schätzung.")
+
+                # Prüfe ob Ergebnisse brauchbar sind (locker: 1 passendes Wort ODER ein Preis reicht)
                 def passt_zum_artikel(text, artikel):
-                    if not text or not artikel: return False
+                    if not text: return False
+                    hat_preis = ("€" in text or "eur" in text.lower() or "preis" in text.lower())
+                    if not artikel: return hat_preis
                     woerter = [w for w in artikel.lower().split() if len(w) > 3]
                     treffer = sum(1 for w in woerter if w in text.lower())
-                    return treffer >= max(1, len(woerter) // 2)
+                    # Behalten wenn: mind. 1 Wort passt, ODER ein Preis drinsteht
+                    return treffer >= 1 or hat_preis
 
                 web_text = ""
                 if google_r and passt_zum_artikel(google_r, suchbegriff):
