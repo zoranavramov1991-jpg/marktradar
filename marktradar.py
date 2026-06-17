@@ -520,6 +520,77 @@ def ensemble_ki(prompt, bilder=None, zeige_status=False, max_tokens=1200):
     )
 
 # ── WEB-SUCHE ─────────────────────────────────────────────────
+def hole_anzeigen(suchbegriff, max_treffer=4):
+    """Sucht strukturierte Anzeigen-Treffer (Titel + URL + Snippet + Preis).
+    Gibt eine Liste von Dicts zurück, jeder mit: titel, url, preis, snippet, quelle.
+    Nutzt Tavily und DuckDuckGo, da beide URLs liefern (anders als Google CSE-Snippets)."""
+    if not suchbegriff:
+        return []
+    treffer = []
+    seen_urls = set()
+
+    def _preis_aus(text):
+        if not text: return None
+        m = _re_ha.search(r"(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:€|EUR|Euro)", text)
+        if not m: return None
+        try:
+            p = float(m.group(1).replace(",","."))
+            if 1 <= p <= 5000: return round(p)
+        except: pass
+        return None
+
+    import re as _re_ha
+    query = suchbegriff + " gebraucht Preis Deutschland"
+
+    # Tavily liefert {title, url, content}
+    try:
+        if TAVILY_KEY:
+            r = requests.post("https://api.tavily.com/search",
+                json={"api_key":TAVILY_KEY,"query":query,"search_depth":"basic",
+                      "max_results":8,"include_answer":False}, timeout=12)
+            data = r.json()
+            for res in (data.get("results") or [])[:8]:
+                url = res.get("url","")
+                if not url or url in seen_urls: continue
+                titel = (res.get("title") or "")[:90]
+                snippet = (res.get("content") or "")[:180]
+                preis = _preis_aus(snippet) or _preis_aus(titel)
+                # Quelle aus URL ableiten
+                quelle = "Web"
+                for q_name, q_dom in [("Kleinanzeigen","kleinanzeigen.de"),("eBay","ebay.de"),
+                                       ("Vinted","vinted.de"),("Markt.de","markt.de"),
+                                       ("Hood","hood.de"),("mobile.de","mobile.de"),
+                                       ("Catawiki","catawiki"),("Etsy","etsy.com")]:
+                    if q_dom in url.lower(): quelle = q_name; break
+                treffer.append({"titel":titel,"url":url,"preis":preis,"snippet":snippet,"quelle":quelle})
+                seen_urls.add(url)
+    except Exception: pass
+
+    # DuckDuckGo als Backup/Ergänzung (kein Key nötig)
+    if len(treffer) < max_treffer:
+        try:
+            from ddgs import DDGS
+            with DDGS() as d:
+                res = list(d.text(query, region="de-de", max_results=8))
+            for r in res[:8]:
+                url = r.get("href") or r.get("url","")
+                if not url or url in seen_urls: continue
+                titel = (r.get("title") or "")[:90]
+                snippet = (r.get("body") or "")[:180]
+                preis = _preis_aus(snippet) or _preis_aus(titel)
+                quelle = "Web"
+                for q_name, q_dom in [("Kleinanzeigen","kleinanzeigen.de"),("eBay","ebay.de"),
+                                       ("Vinted","vinted.de"),("Markt.de","markt.de"),
+                                       ("Hood","hood.de"),("mobile.de","mobile.de")]:
+                    if q_dom in url.lower(): quelle = q_name; break
+                treffer.append({"titel":titel,"url":url,"preis":preis,"snippet":snippet,"quelle":quelle})
+                seen_urls.add(url)
+        except Exception: pass
+
+    # Treffer MIT Preis nach vorne sortieren — die sind nützlicher
+    treffer.sort(key=lambda t: (0 if t["preis"] else 1, -(t["preis"] or 0)))
+    return treffer[:max_treffer]
+
 def extrahiere_preise(text):
     """Zieht echte Euro-Preise aus Web-Text und gibt eine Auswertung zurück.
     Filtert Unsinn (zu billig/teuer) raus und liefert Spanne + Median."""
@@ -1708,14 +1779,63 @@ with T[0]:
                     st.markdown("💰 **Preis-Konsens für " + suchbegriff + ":**\n" + pk)
                 else:
                     st.info("ℹ️ Preise siehe Stufe 2 (Hauptanalyse)")
-                st.markdown("**🔗 Direkt suchen:**")
-                c1,c2=st.columns(2)
-                with c1:
-                    st.markdown(f"🛒 [eBay →]({ebay_url})")
-                    st.markdown(f"📱 [Kleinanzeigen →]({ka_url})")
-                with c2:
-                    st.markdown(f"👗 [Vinted →]({vi_url})")
-                    st.markdown(f"👥 [Facebook →]({fb_url})")
+
+                # ═══════════════════════════════════════════════════
+                # 🔍 ÄHNLICHE ANZEIGEN — echte Treffer + Plattform-Buttons
+                # ═══════════════════════════════════════════════════
+                st.markdown("---")
+                st.markdown(
+                    "<div style='color:#c8862a;font-size:13px;letter-spacing:2px;font-weight:700;margin-bottom:8px'>"
+                    "🔍 ÄHNLICHE ANZEIGEN IM WEB</div>", unsafe_allow_html=True)
+
+                with st.spinner("Suche echte Anzeigen..."):
+                    anzeigen = hole_anzeigen(suchbegriff, max_treffer=4)
+
+                if anzeigen:
+                    st.caption(f"💡 {len(anzeigen)} ähnliche Anzeigen gefunden — klick zum Anschauen:")
+                    az_cols = st.columns(2)
+                    for i, az in enumerate(anzeigen):
+                        with az_cols[i % 2]:
+                            _preis_html = (
+                                f"<div style='background:linear-gradient(135deg,#f5d48a,#e8a93a);"
+                                f"color:#1a1612;padding:4px 10px;border-radius:8px;font-weight:800;"
+                                f"font-size:13px;display:inline-block'>€{az['preis']}</div>"
+                                if az['preis'] else
+                                "<div style='color:#888;font-size:12px;font-style:italic'>kein Preis sichtbar</div>"
+                            )
+                            st.markdown(
+                                "<div style='background:linear-gradient(180deg,#fffdf7,#fcf5e1);"
+                                "padding:14px;border-radius:14px;border:1px solid rgba(200,160,80,0.3);"
+                                "box-shadow:0 6px 18px rgba(60,45,20,0.06);margin-bottom:10px;height:160px;"
+                                "display:flex;flex-direction:column;justify-content:space-between'>"
+                                f"<div><div style='color:#c8862a;font-size:10px;letter-spacing:1.5px;font-weight:700;margin-bottom:4px'>"
+                                f"📍 {az['quelle'].upper()}</div>"
+                                f"<div style='font-weight:700;color:#2a2218;font-size:13px;line-height:1.3;margin-bottom:6px'>"
+                                f"{az['titel'][:65]}{'...' if len(az['titel'])>65 else ''}</div>"
+                                f"<div style='color:#666;font-size:11px;line-height:1.4'>"
+                                f"{az['snippet'][:90]}{'...' if len(az['snippet'])>90 else ''}</div></div>"
+                                f"<div style='display:flex;justify-content:space-between;align-items:center;margin-top:8px'>"
+                                f"{_preis_html}"
+                                f"<a href='{az['url']}' target='_blank' "
+                                f"style='background:#1a1612;color:#f5d48a;padding:5px 12px;border-radius:8px;"
+                                f"font-size:12px;font-weight:600;text-decoration:none'>ANSEHEN →</a>"
+                                f"</div></div>", unsafe_allow_html=True)
+                else:
+                    st.info("ℹ️ Keine direkten Anzeigen-Treffer — nutze die Plattform-Buttons unten.")
+
+                # Plattform-Suchbuttons (laufen IMMER, auch wenn echte Treffer fehlen)
+                st.markdown(
+                    "<div style='color:#c8862a;font-size:12px;letter-spacing:2px;font-weight:700;margin:14px 0 8px'>"
+                    "🛒 SELBST SUCHEN AUF DEN PLATTFORMEN</div>", unsafe_allow_html=True)
+                pb1, pb2, pb3, pb4 = st.columns(4)
+                with pb1:
+                    st.link_button("🛒 eBay verkauft", ebay_url, use_container_width=True)
+                with pb2:
+                    st.link_button("📱 Kleinanzeigen", ka_url, use_container_width=True)
+                with pb3:
+                    st.link_button("👗 Vinted", vi_url, use_container_width=True)
+                with pb4:
+                    st.link_button("👥 Facebook", fb_url, use_container_width=True)
 
             # ── STUFE 4: ZUSAMMENFASSUNG ──
             with st.status("✅ Stufe 4: Finale Zusammenfassung...",expanded=True):
