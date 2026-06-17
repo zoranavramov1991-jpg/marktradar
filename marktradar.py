@@ -371,6 +371,22 @@ def you_suche(query):
     except: pass
     return None
 
+def ddg_suche(query):
+    """DuckDuckGo — braucht KEINEN Schlüssel. Wird auf Servern oft gedrosselt,
+    daher nur als Bonus-Quelle. Schadet nie, kostet nichts."""
+    try:
+        from ddgs import DDGS
+        teile = ["🔍 DUCKDUCKGO:"]
+        with DDGS() as d:
+            res = list(d.text(query + " Preis Euro Deutschland", region="de-de", max_results=6))
+        for r in res[:5]:
+            titel = str(r.get("title",""))
+            body = str(r.get("body",""))[:250]
+            teile.append("• " + titel + ": " + body)
+        return "\n".join(teile) if len(teile) > 1 else None
+    except Exception:
+        return None
+
 def multi_suche(query):
     """Google + Tavily + You.com gleichzeitig"""
     ergebnisse = {}
@@ -556,6 +572,10 @@ with T[0]:
                 y = you_suche("Stereoanlage gebraucht Preis")
                 if y: st.success("🟢 You.com funktioniert!")
                 else: st.error("🔴 You.com antwortet nicht — Limit erreicht oder Schlüssel ungültig")
+            # DuckDuckGo (kein Schlüssel nötig)
+            dd = ddg_suche("Stereoanlage gebraucht")
+            if dd: st.success("🟢 DuckDuckGo funktioniert! (braucht keinen Schlüssel)")
+            else: st.error("🔴 DuckDuckGo antwortet nicht — wird auf Servern oft geblockt (normal)")
             st.info("Tipp: Es reicht, wenn EINE Suchmaschine grün ist. Roter Google-Schlüssel = meist nur Tageslimit, morgen wieder ok.")
 
     # ── MODUS-WAHL ──
@@ -1148,22 +1168,25 @@ with T[0]:
                 # 3 Suchmaschinen gleichzeitig, durchsuchen das ganze Web (nicht nur eBay/Kleinanzeigen)
                 def hole_gezielte_preise():
                     query = suchbegriff + " gebraucht Preis Euro verkauft Deutschland"
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as _ex:
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as _ex:
                         _fg = _ex.submit(google_suche, query)
                         _ft = _ex.submit(tavily_suche, suchbegriff + " gebraucht verkauft Marktpreis Secondhand")
                         _fy = _ex.submit(you_suche, query)
+                        _fd = _ex.submit(ddg_suche, suchbegriff + " gebraucht verkauft")
                         g = _fg.result()
                         t = _ft.result()
                         y = _fy.result()
-                    return g, t, y
+                        dd = _fd.result()
+                    return g, t, y, dd
 
-                google_r, tavily_r, you_r = hole_gezielte_preise()
+                google_r, tavily_r, you_r, ddg_r = hole_gezielte_preise()
 
                 # Diagnose: zeigen welche Suchmaschine geantwortet hat
                 _quellen = []
                 if google_r: _quellen.append("Google")
                 if tavily_r: _quellen.append("Tavily")
                 if you_r: _quellen.append("You.com")
+                if ddg_r: _quellen.append("DuckDuckGo")
                 if _quellen:
                     st.caption("🔎 Antwort von: " + ", ".join(_quellen))
                 else:
@@ -1186,6 +1209,8 @@ with T[0]:
                     web_text += "\n" + tavily_r
                 if you_r and passt_zum_artikel(you_r, suchbegriff):
                     web_text += "\n" + you_r
+                if ddg_r and passt_zum_artikel(ddg_r, suchbegriff):
+                    web_text += "\n" + ddg_r
 
                 # ECHTE PREISE aus den Web-Treffern herausziehen und auswerten
                 preis_auswertung = extrahiere_preise(web_text)
