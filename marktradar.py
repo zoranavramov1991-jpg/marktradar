@@ -1036,10 +1036,10 @@ with T[0]:
                 st.write(f"🌐 Suche echte Preise für: **{suchbegriff}**")
                 # Gezielte Suche - nur Google und Tavily mit gezieltem Query
                 def hole_gezielte_preise():
-                    # Sehr spezifische Suchanfrage
-                    query = suchbegriff + " kaufen Preis Euro Deutschland 2024 2025"
+                    # Nach TATSÄCHLICH erzielten Preisen suchen, nicht nach Wunsch-Angeboten
+                    query = suchbegriff + " verkauft Preis Euro Kleinanzeigen eBay Deutschland"
                     g = google_suche(query)
-                    t = tavily_suche(suchbegriff + " Preis Marktpreis Deutschland Secondhand")
+                    t = tavily_suche(suchbegriff + " gebraucht verkauft Marktpreis Deutschland Secondhand")
                     return g, t
 
                 google_r, tavily_r = hole_gezielte_preise()
@@ -1063,8 +1063,9 @@ with T[0]:
                     "Preisexperte Secondhand Deutschland. Auf DEUTSCH antworten!\n"
                     "Artikel: " + suchbegriff + "\n"
                     "Zustand: " + g_beschr + "\n"
-                    + ("Echte Marktdaten aus dem Web: " + web_text[:400] if web_text else "Keine Web-Daten — nutze Erfahrung.") + "\n\n"
-                    "Gib realistische Preise. NUR konkrete Einzelzahlen — KEINE Spannen!\n"
+                    + ("ECHTE MARKTDATEN AUS DEM WEB (nutze diese Zahlen als Hauptgrundlage, NICHT deine eigene Schätzung!):\n" + web_text[:1200] if web_text else "Keine Web-Daten gefunden — schätze konservativ aus Erfahrung, eher zu niedrig als zu hoch.") + "\n\n"
+                    "Wenn echte Web-Preise vorliegen: richte dich nach diesen, nicht nach deinem Bauchgefühl.\n"
+                    "Gib realistische Preise. NUR konkrete Einzelzahlen — KEINE Spannen! Auf glatte Zehner runden.\n"
                     "Format:\n"
                     "- eBay: €X\n"
                     "- Kleinanzeigen: €X\n"
@@ -1085,7 +1086,7 @@ with T[0]:
                         kl = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
                         r = kl.chat.completions.create(
                             model=m_id, messages=[{"role":"user","content":preis_prompt}],
-                            max_tokens=400, extra_headers=_hdrs()
+                            max_tokens=400, temperature=0.2, extra_headers=_hdrs()
                         )
                         a = r.choices[0].message.content
                         if a and "€" in a: return (m_name, a)
