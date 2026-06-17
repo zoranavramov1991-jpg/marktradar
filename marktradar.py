@@ -741,6 +741,11 @@ with T[0]:
                         "Analysiere das Bild. Auf DEUTSCH. KEINE chinesischen Zeichen!\n\n"
 
                         "GANZ WICHTIG — Beginne IMMER mit diesen 3 Kernwerten (eine konkrete Zahl, KEINE Spanne!):\n"
+                        "PREIS-REGELN (damit gleiche Artikel gleiche Preise bekommen):\n"
+                        "- Schätze NÜCHTERN den marktüblichen Durchschnittspreis, NICHT den Höchstpreis.\n"
+                        "- Runde auf glatte Zehner (z.B. 120, nicht 117).\n"
+                        "- Bei Unsicherheit: nimm die MITTE der realistischen Spanne, nicht das obere Ende.\n"
+                        "- ONLINE-WERT = typischer erzielbarer Verkaufspreis bei Kleinanzeigen/eBay in DE.\n\n"
                         "ONLINE-WERT: \u20acX  (realistischer Gesamt-Verkaufswert online, eBay/Kleinanzeigen)\n"
                         "H\u00c4NDLERPREIS: \u20acX  (was ein anderer H\u00e4ndler/Wiederverk\u00e4ufer dir SOFORT bar zahlen w\u00fcrde, ca. 35-55% vom Online-Wert)\n"
                         "FLOHMARKT-WERT: \u20acX  (realistischer Gesamt-Erl\u00f6s am Flohmarkt-Stand)\n\n"
