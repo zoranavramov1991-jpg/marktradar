@@ -9,11 +9,37 @@ MarktRadar OS PRO — ULTIMATE EDITION v8.0
 • 18 Tabs alle mit Ensemble-KI
 """
 import streamlit as st
-import os, base64, urllib.parse, concurrent.futures, time
+import os, base64, urllib.parse, concurrent.futures, time, json
 from datetime import datetime
 import requests
 from openai import OpenAI
 import openai as _oai
+
+# ── DAUERHAFTES SPEICHERN ─────────────────────────────────────
+# Lern-Daten überleben jetzt App-Neustarts (vorher nur RAM = nach Neustart weg)
+_SPEICHER_DATEI = "marktradar_lerndaten.json"
+_LERN_KEYS = ["mein_wissen","preis_korrekturen","verkauf_log","ki_korrekturen",
+              "kategorie_wissen","beste_zeiten","markt_notizen"]
+
+def lade_lerndaten():
+    """Lädt gespeicherte Lern-Daten von der Festplatte (falls vorhanden)."""
+    try:
+        if os.path.exists(_SPEICHER_DATEI):
+            with open(_SPEICHER_DATEI, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+def speichere_lerndaten():
+    """Speichert alle Lern-Daten dauerhaft auf die Festplatte."""
+    try:
+        daten = {k: st.session_state.get(k) for k in _LERN_KEYS}
+        with open(_SPEICHER_DATEI, "w", encoding="utf-8") as f:
+            json.dump(daten, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
 
 st.set_page_config(page_title="⚡ MarktRadar OS PRO", page_icon="⚡",
     layout="wide", initial_sidebar_state="collapsed")
@@ -69,6 +95,14 @@ _SESSION_DEFAULTS = {
 for k,v in _SESSION_DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = (v.copy() if isinstance(v,(list,dict)) else v)
+
+# Gespeicherte Lern-Daten von der Festplatte holen (nur einmal pro Session)
+if not st.session_state.get("_lerndaten_geladen"):
+    _gespeichert = lade_lerndaten()
+    for _k, _v in _gespeichert.items():
+        if _k in _LERN_KEYS and _v:
+            st.session_state[_k] = _v
+    st.session_state["_lerndaten_geladen"] = True
 
 # ══════════════════════════════════════════════════════════════
 # KI ENGINE — ULTIMATE
@@ -725,6 +759,11 @@ with T[0]:
                     vorab_k = ("\n\nVORAB:\n" + st.session_state.vorabinfo) if st.session_state.get("vorabinfo","") else ""
                     kat_k = ("\nErkannte Kategorie: " + st.session_state.get("auto_kat","")) if st.session_state.get("auto_kat") else ""
                     lern = ""
+                    # Eigene echte Flohmarkt-Verkäufe ZUERST und mit Nachdruck (wichtigste Datenquelle!)
+                    floh_verkaeufe = [v for v in st.session_state.get("verkauf_log",[]) if v.get("plattform")=="Flohmarkt"]
+                    if floh_verkaeufe:
+                        lern += "\n\n⚠️ MEINE ECHTEN FLOHMARKT-VERKÄUFE (das sind REALE Barpreise die ich am Stand bekommen habe — richte den FLOHMARKT-WERT NACH DIESEN, nicht nach Online-Preisen!):\n"
+                        lern += "\n".join([f"- {v['artikel']} ({v.get('zustand','?')}): €{v['vk']} bar in {v.get('tage','?')} Tagen verkauft" for v in floh_verkaeufe[-12:]])
                     if st.session_state.mein_wissen:
                         lern += "\n\nMein Wissen:\n" + "\n".join([f"- {w}" for w in st.session_state.mein_wissen[-10:]])
                     if st.session_state.preis_korrekturen:
@@ -1209,6 +1248,7 @@ with T[0]:
                         f"{fb_art}: KI sagte €{fb_ki}, echt war €{fb_echt} ({richtung} um €{abs(diff):.0f})"
                     )
                 st.success(f"✅ Gespeichert! KI lernt: {fb_art} auf {fb_pl} = €{fb_echt}")
+                speichere_lerndaten()
 
         if st.session_state.preis_korrekturen:
             st.markdown("**Gespeicherte Preise:**")
@@ -1222,6 +1262,7 @@ with T[0]:
         if st.button("💾 Wissen speichern", use_container_width=True, key="fb_ks"):
             if fb_k.strip():
                 st.session_state.mein_wissen.append(fb_k.strip())
+                speichere_lerndaten()
                 st.success("✅ Gespeichert! KI nutzt das ab sofort!")
         if st.session_state.mein_wissen:
             st.markdown("**Mein Wissen:**")
@@ -1232,6 +1273,7 @@ with T[0]:
                     idx = len(st.session_state.mein_wissen) - 5 + i
                     if 0 <= idx < len(st.session_state.mein_wissen):
                         st.session_state.mein_wissen.pop(idx)
+                    speichere_lerndaten()
                     st.rerun()
 
     with lern_tab3:
@@ -1263,6 +1305,7 @@ with T[0]:
                     f"{vk_art} ({vk_zust}) verkauft für €{vk_preis} auf {vk_pl} in {vk_tage} Tagen"
                 )
                 st.success(f"✅ Gespeichert! Gewinn: €{gewinn:.2f} | ROI: {roi:.0f}%")
+                speichere_lerndaten()
                 st.rerun()
 
         if st.session_state.verkauf_log:
@@ -1282,6 +1325,7 @@ with T[0]:
                     f"[{datetime.now().strftime('%d.%m.%Y')}] {corr_text.strip()}"
                 )
                 st.session_state.mein_wissen.append("KORREKTUR: " + corr_text.strip())
+                speichere_lerndaten()
                 st.success("✅ KI merkt sich das!")
 
         if st.session_state.ki_korrekturen:
