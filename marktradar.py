@@ -53,7 +53,9 @@ GOOGLE_KEY = secret("GOOGLE_API_KEY")
 GOOGLE_CSE = secret("GOOGLE_CSE_ID")
 
 # ── SESSION STATE ─────────────────────────────────────────────
-for k,v in {
+# Wird bei JEDEM Rerun geprüft — falls ein Key fehlt (z.B. nach Cloud-Neustart),
+# wird er wiederhergestellt statt mit AttributeError abzustürzen.
+_SESSION_DEFAULTS = {
     "lager":[],"sim":[],"gwlog":[],"fotos":[],"fcnt":0,
     "feedback_log":[],"analyse_history":[],"mein_wissen":[],
     "preis_korrekturen":{},"chat_history":[],"vorabinfo":"",
@@ -63,8 +65,10 @@ for k,v in {
     "beste_zeiten":{},       # Beste Verkaufszeiten
     "markt_notizen":{},      # Notizen zu Märkten
     "ki_korrekturen":[],     # Wo KI falsch lag
-}.items():
-    if k not in st.session_state: st.session_state[k]=v
+}
+for k,v in _SESSION_DEFAULTS.items():
+    if k not in st.session_state:
+        st.session_state[k] = (v.copy() if isinstance(v,(list,dict)) else v)
 
 # ══════════════════════════════════════════════════════════════
 # KI ENGINE — ULTIMATE
@@ -477,14 +481,23 @@ with T[0]:
         with c1:
             if st.button("➕ Foto hinzufügen",type="primary",use_container_width=True,key="foto_add"):
                 if neu_foto:
-                    neu_foto.seek(0)
-                    roh_b64 = base64.b64encode(neu_foto.read()).decode()
-                    # SOFORT komprimieren (große Handy-Fotos verkleinern!)
-                    b64 = komprimiere(roh_b64)
-                    if b64 not in st.session_state.fotos:
-                        st.session_state.fotos.append(b64)
-                    st.session_state.fcnt += 1
-                    st.rerun()
+                    try:
+                        if len(st.session_state.fotos) >= 8:
+                            st.warning("⚠️ Maximal 8 Fotos pro Analyse — das reicht der KI völlig. Erst analysieren oder löschen.")
+                        else:
+                            neu_foto.seek(0)
+                            roh_bytes = neu_foto.read()
+                            roh_b64 = base64.b64encode(roh_bytes).decode()
+                            del roh_bytes  # Roh-Foto sofort aus dem Speicher (S23-Fotos sind riesig)
+                            # SOFORT komprimieren (große Handy-Fotos verkleinern!)
+                            b64 = komprimiere(roh_b64)
+                            del roh_b64
+                            if b64 not in st.session_state.fotos:
+                                st.session_state.fotos.append(b64)
+                            st.session_state.fcnt += 1
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"⚠️ Foto konnte nicht verarbeitet werden — bitte erneut versuchen. ({str(e)[:60]})")
                 else: st.warning("Zuerst Foto auswählen!")
         with c2:
             if st.button("🗑️ Alle löschen",use_container_width=True,key="foto_clear"):
