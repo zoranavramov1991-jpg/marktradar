@@ -46,25 +46,269 @@ st.set_page_config(page_title="⚡ MarktRadar OS PRO", page_icon="⚡",
 
 # ── CSS ───────────────────────────────────────────────────────
 st.markdown("""<style>
-.stApp{background:linear-gradient(135deg,#f0f4ff 0%,#faf5ff 50%,#f0f9ff 100%)}
-.stTabs [data-baseweb="tab-list"]{gap:6px;background:rgba(255,255,255,0.7);border-radius:16px;padding:8px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,0.08);backdrop-filter:blur(10px)}
-.stTabs [data-baseweb="tab"]{background:transparent;border-radius:10px;color:#666;font-size:13px;font-weight:600;padding:7px 14px;border:none;transition:all 0.25s}
-.stTabs [aria-selected="true"]{background:linear-gradient(135deg,#6c47ff,#9b6dff)!important;color:#fff!important;font-weight:700!important;box-shadow:0 4px 15px rgba(108,71,255,0.4)!important;transform:translateY(-1px) scale(1.02)!important}
-.stTabs [data-baseweb="tab-panel"]{background:rgba(255,255,255,0.6);border-radius:16px;padding:1.5rem;border:0.5px solid rgba(255,255,255,0.9);margin-top:10px;box-shadow:0 8px 32px rgba(31,38,135,0.1);backdrop-filter:blur(12px)}
-.stButton>button{background:linear-gradient(135deg,#f5a623,#f7c948,#e8850a)!important;color:#fff!important;font-weight:700!important;border:none!important;border-radius:12px!important;padding:0.65rem 1.5rem!important;box-shadow:0 6px 20px rgba(245,166,35,0.35),inset 0 1px 0 rgba(255,255,255,0.3)!important;transition:all 0.2s!important}
-.stButton>button:hover{transform:perspective(500px) translateZ(6px) translateY(-2px)!important;box-shadow:0 10px 28px rgba(245,166,35,0.45)!important}
-[data-testid="metric-container"]{background:rgba(255,255,255,0.8)!important;border-radius:16px!important;padding:1.2rem!important;box-shadow:0 8px 24px rgba(31,38,135,0.08)!important}
-[data-testid="metric-container"] [data-testid="stMetricValue"]{color:#6c47ff!important;font-size:24px!important;font-weight:800!important}
-.stTextInput>div>div>input,.stTextArea>div>div>textarea,.stNumberInput>div>div>input{background:rgba(255,255,255,0.9)!important;border:1.5px solid rgba(108,71,255,0.15)!important;border-radius:12px!important}
-.stSelectbox>div>div{background:rgba(255,255,255,0.9)!important;border:1.5px solid rgba(108,71,255,0.15)!important;border-radius:12px!important}
-[data-testid="stFileUploader"]{background:rgba(255,255,255,0.7)!important;border:2px dashed rgba(108,71,255,0.3)!important;border-radius:16px!important}
-.stSlider [data-baseweb="thumb"]{background:linear-gradient(135deg,#6c47ff,#9b6dff)!important;border:2px solid white!important}
-.stSlider [data-baseweb="track"]>div:first-child{background:linear-gradient(90deg,#6c47ff,#f5a623)!important}
-.stRadio label{background:rgba(255,255,255,0.8)!important;border:1px solid rgba(108,71,255,0.15)!important;border-radius:10px!important;padding:6px 14px!important;cursor:pointer!important;transition:all 0.2s!important}
-.stRadio label:has(input:checked){background:linear-gradient(135deg,rgba(108,71,255,0.1),rgba(155,109,255,0.1))!important;border-color:#6c47ff!important;color:#6c47ff!important}
-.stAlert{border-radius:12px!important;border:none!important}
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:linear-gradient(#6c47ff,#f5a623);border-radius:10px}
-@media(max-width:768px){.stTabs [data-baseweb="tab"]{font-size:11px!important;padding:5px 8px!important}}
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* === LUXUS-HINTERGRUND === */
+.stApp{
+  background:
+    radial-gradient(ellipse 1200px 800px at 15% 0%, rgba(245,200,80,0.10) 0%, transparent 50%),
+    radial-gradient(ellipse 900px 700px at 90% 100%, rgba(108,71,255,0.07) 0%, transparent 50%),
+    linear-gradient(165deg, #fdfbf5 0%, #fbf8ef 40%, #f8f3e7 100%);
+  font-family:'Inter',-apple-system,sans-serif;
+}
+.stApp::before{
+  content:'';position:fixed;inset:0;pointer-events:none;
+  background-image:radial-gradient(circle at 1px 1px, rgba(180,140,40,0.06) 1px, transparent 0);
+  background-size:24px 24px;z-index:0;
+}
+.main .block-container{position:relative;z-index:1}
+h1,h2,h3{font-family:'Playfair Display','Inter',serif!important;letter-spacing:-0.02em}
+
+/* === EDLE TABS === */
+.stTabs [data-baseweb="tab-list"]{
+  gap:4px;
+  background:linear-gradient(135deg, rgba(28,25,23,0.96) 0%, rgba(45,40,35,0.96) 100%);
+  border-radius:18px;padding:10px;flex-wrap:wrap;
+  box-shadow:0 10px 40px rgba(28,25,23,0.25), inset 0 1px 0 rgba(245,200,80,0.15);
+  border:1px solid rgba(245,200,80,0.2);
+}
+.stTabs [data-baseweb="tab"]{
+  background:transparent;border-radius:11px;color:#c9bfa9;
+  font-size:13px;font-weight:600;padding:9px 16px;border:none;
+  transition:all 0.35s cubic-bezier(0.4,0,0.2,1);letter-spacing:0.02em;
+}
+.stTabs [data-baseweb="tab"]:hover{color:#f5d48a;background:rgba(245,200,80,0.08);transform:translateY(-1px)}
+.stTabs [aria-selected="true"]{
+  background:linear-gradient(135deg,#f5d48a 0%,#e8a93a 50%,#c8862a 100%)!important;
+  color:#1a1612!important;font-weight:700!important;
+  box-shadow:0 6px 20px rgba(232,169,58,0.45), inset 0 1px 0 rgba(255,235,180,0.6)!important;
+  transform:translateY(-2px) scale(1.04)!important;text-shadow:0 1px 0 rgba(255,235,180,0.4)!important;
+}
+.stTabs [data-baseweb="tab-panel"]{
+  background:linear-gradient(180deg, rgba(255,253,247,0.85) 0%, rgba(252,248,238,0.85) 100%);
+  border-radius:20px;padding:1.75rem;
+  border:1px solid rgba(200,160,80,0.2);margin-top:14px;
+  box-shadow:0 20px 60px rgba(60,45,20,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
+  backdrop-filter:blur(20px);
+  animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* === GOLD-BUTTONS MIT GLANZ === */
+.stButton>button{
+  background:linear-gradient(135deg,#f5d48a 0%,#e8a93a 45%,#c8862a 100%)!important;
+  color:#1a1612!important;font-weight:700!important;border:none!important;
+  border-radius:14px!important;padding:0.75rem 1.75rem!important;letter-spacing:0.02em!important;
+  box-shadow:0 8px 24px rgba(200,134,42,0.35), inset 0 1px 0 rgba(255,240,200,0.7), inset 0 -1px 0 rgba(120,80,20,0.2)!important;
+  transition:all 0.3s cubic-bezier(0.4,0,0.2,1)!important;
+  position:relative!important;overflow:hidden!important;
+  text-shadow:0 1px 0 rgba(255,235,180,0.5)!important;
+}
+.stButton>button::before{
+  content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent);
+  transition:left 0.6s ease;
+}
+.stButton>button:hover{
+  transform:translateY(-3px) scale(1.02)!important;
+  box-shadow:0 14px 36px rgba(200,134,42,0.5), inset 0 1px 0 rgba(255,240,200,0.8)!important;
+}
+.stButton>button:hover::before{left:100%}
+.stButton>button:active{transform:translateY(-1px) scale(1.01)!important}
+
+/* === METRIK-KARTEN (PREIS-BOX) === */
+[data-testid="metric-container"]{
+  background:linear-gradient(180deg, #ffffff 0%, #fdfaf2 100%)!important;
+  border-radius:18px!important;padding:1.4rem!important;
+  border:1px solid rgba(200,160,80,0.25)!important;
+  box-shadow:0 12px 32px rgba(60,45,20,0.08), 0 1px 0 rgba(255,255,255,0.9) inset!important;
+  transition:all 0.3s ease!important;
+}
+[data-testid="metric-container"]:hover{
+  transform:translateY(-4px)!important;
+  box-shadow:0 20px 48px rgba(200,134,42,0.18)!important;
+  border-color:rgba(232,169,58,0.5)!important;
+}
+[data-testid="metric-container"] [data-testid="stMetricValue"]{
+  background:linear-gradient(135deg,#c8862a 0%,#e8a93a 100%)!important;
+  -webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important;
+  background-clip:text!important;font-size:28px!important;font-weight:800!important;
+  font-family:'Playfair Display',serif!important;
+}
+
+/* === INPUTS EDEL === */
+.stTextInput>div>div>input,.stTextArea>div>div>textarea,.stNumberInput>div>div>input{
+  background:rgba(255,253,247,0.95)!important;
+  border:1.5px solid rgba(200,160,80,0.25)!important;
+  border-radius:12px!important;font-family:'Inter',sans-serif!important;
+  transition:all 0.25s ease!important;color:#2a2520!important;
+}
+.stTextInput>div>div>input:focus,.stTextArea>div>div>textarea:focus,.stNumberInput>div>div>input:focus{
+  border-color:#e8a93a!important;
+  box-shadow:0 0 0 4px rgba(232,169,58,0.15)!important;
+}
+.stSelectbox>div>div{
+  background:rgba(255,253,247,0.95)!important;
+  border:1.5px solid rgba(200,160,80,0.25)!important;border-radius:12px!important;
+}
+[data-testid="stFileUploader"]{
+  background:linear-gradient(135deg, rgba(255,253,247,0.9) 0%, rgba(252,245,225,0.9) 100%)!important;
+  border:2px dashed rgba(200,134,42,0.4)!important;border-radius:18px!important;
+  transition:all 0.3s ease!important;
+}
+[data-testid="stFileUploader"]:hover{
+  border-color:#e8a93a!important;
+  box-shadow:0 8px 24px rgba(232,169,58,0.15)!important;
+  transform:scale(1.005)!important;
+}
+
+/* === SLIDER GOLD === */
+.stSlider [data-baseweb="thumb"]{
+  background:linear-gradient(135deg,#f5d48a,#e8a93a)!important;
+  border:3px solid white!important;
+  box-shadow:0 4px 12px rgba(200,134,42,0.4)!important;
+}
+.stSlider [data-baseweb="track"]>div:first-child{
+  background:linear-gradient(90deg,#c8862a,#e8a93a,#f5d48a)!important;
+}
+
+/* === RADIO PILLS === */
+.stRadio label{
+  background:rgba(255,253,247,0.95)!important;
+  border:1.5px solid rgba(200,160,80,0.2)!important;
+  border-radius:12px!important;padding:8px 16px!important;
+  cursor:pointer!important;transition:all 0.25s ease!important;
+  font-weight:500!important;
+}
+.stRadio label:hover{
+  border-color:rgba(232,169,58,0.5)!important;
+  transform:translateY(-1px)!important;
+  box-shadow:0 4px 12px rgba(200,134,42,0.1)!important;
+}
+.stRadio label:has(input:checked){
+  background:linear-gradient(135deg, rgba(245,212,138,0.2), rgba(232,169,58,0.15))!important;
+  border-color:#e8a93a!important;color:#7a5520!important;font-weight:700!important;
+  box-shadow:0 4px 16px rgba(232,169,58,0.2)!important;
+}
+
+/* === ALERTS EDEL === */
+.stAlert{
+  border-radius:14px!important;border:none!important;
+  box-shadow:0 6px 20px rgba(60,45,20,0.08)!important;
+  backdrop-filter:blur(8px)!important;
+}
+
+/* === EXPANDER === */
+.streamlit-expanderHeader,[data-testid="stExpander"] summary{
+  background:linear-gradient(135deg, rgba(255,253,247,0.95), rgba(252,245,225,0.95))!important;
+  border-radius:12px!important;border:1px solid rgba(200,160,80,0.2)!important;
+  transition:all 0.25s ease!important;font-weight:600!important;
+}
+.streamlit-expanderHeader:hover,[data-testid="stExpander"] summary:hover{
+  border-color:rgba(232,169,58,0.5)!important;
+  box-shadow:0 4px 16px rgba(200,134,42,0.1)!important;
+}
+
+/* === PROGRESS BAR GOLD === */
+.stProgress > div > div > div{
+  background:linear-gradient(90deg,#c8862a,#e8a93a,#f5d48a)!important;
+}
+
+/* === SCROLLBAR GOLD === */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:rgba(252,248,238,0.5)}
+::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,#e8a93a,#c8862a);
+  border-radius:10px;border:1px solid rgba(255,255,255,0.3);
+}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#f5d48a,#e8a93a)}
+
+/* === SUBTILER PULS FÜR PRIMÄR-BUTTON === */
+@keyframes goldPulse{
+  0%,100%{box-shadow:0 8px 24px rgba(200,134,42,0.35), inset 0 1px 0 rgba(255,240,200,0.7)}
+  50%{box-shadow:0 8px 32px rgba(232,169,58,0.55), inset 0 1px 0 rgba(255,240,200,0.9)}
+}
+.stButton>button[kind="primary"]{animation:goldPulse 2.8s ease-in-out infinite}
+
+/* === SCHWEBENDE GOLD-PARTIKEL IM HINTERGRUND === */
+@keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,-30px)}}
+@keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-30px,40px)}}
+@keyframes float3{0%,100%{transform:translate(0,0)}50%{transform:translate(25px,25px)}}
+.stApp::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(circle 3px at 12% 18%, rgba(232,169,58,0.45), transparent),
+    radial-gradient(circle 2px at 88% 25%, rgba(245,212,138,0.6), transparent),
+    radial-gradient(circle 2px at 25% 75%, rgba(232,169,58,0.4), transparent),
+    radial-gradient(circle 3px at 75% 88%, rgba(245,212,138,0.5), transparent),
+    radial-gradient(circle 2px at 50% 50%, rgba(232,169,58,0.3), transparent),
+    radial-gradient(circle 2px at 95% 60%, rgba(245,212,138,0.4), transparent);
+  animation:float1 18s ease-in-out infinite;
+}
+
+/* === ERFOLGS-/WARN-/INFO-ALERTS MIT EDLEM AKZENT === */
+.stAlert[data-baseweb="notification"]{position:relative;overflow:hidden}
+.stAlert[data-baseweb="notification"]::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,#f5d48a,#e8a93a,#c8862a);
+}
+div[data-testid="stAlertContentSuccess"]{
+  background:linear-gradient(135deg,rgba(232,245,210,0.9) 0%,rgba(252,248,238,0.95) 100%)!important;
+  border-left:4px solid #8aa84a!important;
+}
+div[data-testid="stAlertContentWarning"]{
+  background:linear-gradient(135deg,rgba(252,238,210,0.9) 0%,rgba(255,253,247,0.95) 100%)!important;
+  border-left:4px solid #e8a93a!important;
+}
+div[data-testid="stAlertContentInfo"]{
+  background:linear-gradient(135deg,rgba(252,248,238,0.9) 0%,rgba(255,253,247,0.95) 100%)!important;
+  border-left:4px solid #c8862a!important;
+}
+div[data-testid="stAlertContentError"]{
+  background:linear-gradient(135deg,rgba(252,225,215,0.9) 0%,rgba(255,253,247,0.95) 100%)!important;
+  border-left:4px solid #c84a2a!important;
+}
+
+/* === KAPITÄLCHEN BEI TAB-LABELS === */
+.stTabs [data-baseweb="tab"]{text-transform:none;letter-spacing:0.03em}
+
+/* === EDLE HORIZONTAL-TRENNER === */
+hr{
+  border:none!important;height:1px!important;
+  background:linear-gradient(90deg,transparent,#e8a93a,transparent)!important;
+  margin:1.5rem 0!important;
+}
+
+/* === CHECKBOX/TOGGLE GOLD === */
+.stCheckbox label > div:first-child > div:first-child{
+  border-color:rgba(200,160,80,0.4)!important;
+}
+.stCheckbox label > div:first-child[data-checked="true"]{
+  background:linear-gradient(135deg,#f5d48a,#e8a93a)!important;
+  border-color:#c8862a!important;
+}
+
+/* === EDLER RAHMEN UM CODE-BLÖCKE === */
+code,.stCode{
+  background:rgba(28,22,18,0.04)!important;
+  border:1px solid rgba(200,160,80,0.2)!important;
+  border-radius:8px!important;color:#7a5520!important;
+}
+
+/* === KAFFEE-WARMES SELECTION === */
+::selection{background:rgba(245,212,138,0.5);color:#1a1612}
+
+/* === STARKE LINKS === */
+a{color:#c8862a!important;font-weight:600!important;text-decoration:none!important;
+  background:linear-gradient(90deg,#c8862a,#e8a93a) bottom/0 1.5px no-repeat!important;
+  transition:background-size 0.3s ease!important;padding-bottom:2px!important;}
+a:hover{background-size:100% 1.5px!important;color:#e8a93a!important}
+
+/* === MOBILE === */
+@media(max-width:768px){
+  .stTabs [data-baseweb="tab"]{font-size:11px!important;padding:6px 10px!important}
+  h1{font-size:1.6em!important}
+}
 </style>""", unsafe_allow_html=True)
 
 # ── SECRETS ──────────────────────────────────────────────────
@@ -518,18 +762,55 @@ def lade_bilder_von_url(url):
 
 # ── HEADER ────────────────────────────────────────────────────
 st.markdown("""
-<div style='background:rgba(255,255,255,0.7);padding:24px;border-radius:20px;
-margin-bottom:20px;text-align:center;border:0.5px solid rgba(255,255,255,0.95);
-box-shadow:0 20px 60px rgba(108,71,255,0.12);backdrop-filter:blur(20px);position:relative;overflow:hidden'>
-<div style="position:absolute;top:0;left:0;right:0;height:3px;
-background:linear-gradient(90deg,#6c47ff,#f5a623,#6c47ff);border-radius:20px 20px 0 0"></div>
-<div style='font-size:3em;margin-bottom:8px'>⚡</div>
-<h1 style='background:linear-gradient(135deg,#6c47ff,#f5a623);
--webkit-background-clip:text;-webkit-text-fill-color:transparent;
-background-clip:text;margin:0;font-size:2em;font-weight:900'>MarktRadar OS PRO</h1>
-<p style='color:#888;margin:10px 0 0;font-size:12px;letter-spacing:2px;font-weight:600'>
-KLEINANZEIGEN &nbsp;·&nbsp; VINTED &nbsp;·&nbsp; FACEBOOK &nbsp;·&nbsp; EBAY &nbsp;·&nbsp; FLOHMÄRKTE
-</p></div>""", unsafe_allow_html=True)
+<style>
+@keyframes shimmer{
+  0%{background-position:-200% center}
+  100%{background-position:200% center}
+}
+@keyframes crown{
+  0%,100%{transform:translateY(0) rotate(-2deg)}
+  50%{transform:translateY(-4px) rotate(2deg)}
+}
+.luxus-header{
+  background:linear-gradient(135deg, #1a1612 0%, #2a2218 50%, #1a1612 100%);
+  padding:32px 28px;border-radius:24px;margin-bottom:24px;text-align:center;
+  border:1px solid rgba(232,169,58,0.3);position:relative;overflow:hidden;
+  box-shadow:0 24px 60px rgba(28,22,18,0.25), inset 0 1px 0 rgba(245,212,138,0.15);
+}
+.luxus-header::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#f5d48a,#e8a93a,#f5d48a,transparent);
+}
+.luxus-header::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 400px 200px at 50% 0%, rgba(232,169,58,0.18) 0%, transparent 70%);
+}
+.luxus-crown{font-size:2.6em;display:inline-block;animation:crown 4s ease-in-out infinite;filter:drop-shadow(0 4px 12px rgba(232,169,58,0.5))}
+.luxus-title{
+  font-family:'Playfair Display',serif;
+  background:linear-gradient(90deg,#c8862a 0%,#f5d48a 25%,#fff4d6 50%,#f5d48a 75%,#c8862a 100%);
+  background-size:200% auto;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin:6px 0 0;font-size:2.4em;font-weight:900;letter-spacing:-0.02em;
+  animation:shimmer 6s linear infinite;
+}
+.luxus-sub{
+  color:#a89878;margin:14px 0 0;font-size:11px;letter-spacing:4px;font-weight:600;
+  text-transform:uppercase;
+}
+.luxus-sep{display:inline-block;margin:0 10px;color:#e8a93a}
+</style>
+<div class='luxus-header'>
+  <div class='luxus-crown'>👑</div>
+  <h1 class='luxus-title'>MarktRadar OS PRO</h1>
+  <p class='luxus-sub'>
+    Kleinanzeigen <span class='luxus-sep'>◆</span>
+    Vinted <span class='luxus-sep'>◆</span>
+    Facebook <span class='luxus-sep'>◆</span>
+    eBay <span class='luxus-sep'>◆</span>
+    Flohmärkte
+  </p>
+</div>""", unsafe_allow_html=True)
 
 # ── TABS ──────────────────────────────────────────────────────
 T = st.tabs([
