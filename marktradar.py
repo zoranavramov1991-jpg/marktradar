@@ -335,6 +335,7 @@ _SESSION_DEFAULTS = {
     "beste_zeiten":{},       # Beste Verkaufszeiten
     "markt_notizen":{},      # Notizen zu Märkten
     "ki_korrekturen":[],     # Wo KI falsch lag
+    "debatte_an":False,      # Multi-Agent-Debatte an/aus (kostet mehr)
 }
 for k,v in _SESSION_DEFAULTS.items():
     if k not in st.session_state:
@@ -488,25 +489,33 @@ def ki(prompt, bilder=None):
 
 def ensemble_ki(prompt, bilder=None, zeige_status=False, max_tokens=1200):
     """
-    ULTIMATE ENSEMBLE:
-    3 Top-Modelle arbeiten GLEICHZEITIG.
-    Richter-KI (GPT-4o) fasst zu EINER perfekten Antwort zusammen.
+    ULTIMATE ENSEMBLE mit optionaler MULTI-AGENT-DEBATTE:
+    - Debatte AUS: 3 Modelle gleichzeitig → Richter fasst zusammen (1 Runde, günstig)
+    - Debatte AN: zusätzlich sehen die Experten sich gegenseitig und dürfen
+      widersprechen/verteidigen (Runde 2), dann entscheidet der Richter.
+    Steuerung über st.session_state['debatte_an'].
     """
     if not OR_KEY: return ki(prompt, bilder=bilder)
 
     modelle = ENSEMBLE_VISION if bilder else ENSEMBLE_TEXT
+    debatte_an = False
+    try:
+        debatte_an = bool(st.session_state.get("debatte_an", False))
+    except Exception:
+        debatte_an = False
 
-    def ein_experte(info):
+    def ein_experte(info, zusatz=""):
         model_id, name = info
         try:
             c2 = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+            voller_prompt = prompt + zusatz
             if bilder:
                 bk = [komprimiere(b) for b in bilder[:3]]
                 inhalt = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bk]
-                inhalt.append({"type":"text","text":prompt})
+                inhalt.append({"type":"text","text":voller_prompt})
                 msgs = [{"role":"user","content":inhalt}]
             else:
-                msgs = [{"role":"user","content":prompt}]
+                msgs = [{"role":"user","content":voller_prompt}]
             r = c2.chat.completions.create(model=model_id, messages=msgs,
                 max_tokens=max_tokens, temperature=0.2, extra_headers=_hdrs())
             a = r.choices[0].message.content
@@ -514,7 +523,7 @@ def ensemble_ki(prompt, bilder=None, zeige_status=False, max_tokens=1200):
         except: pass
         return (name, None)
 
-    # Alle 3 gleichzeitig!
+    # ── RUNDE 1: Alle Experten gleichzeitig (unabhängig) ──
     antworten = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
         futures = {ex.submit(ein_experte, m): m for m in modelle}
@@ -525,13 +534,43 @@ def ensemble_ki(prompt, bilder=None, zeige_status=False, max_tokens=1200):
     if not antworten: return ki(prompt, bilder=bilder)
     if len(antworten) == 1: return list(antworten.values())[0]
 
-    # Richter-KI fasst zusammen
+    # ── RUNDE 2: DEBATTE (nur wenn eingeschaltet) ──
+    if debatte_an and len(antworten) >= 2:
+        if zeige_status:
+            try: st.write("🗣️ Debatte: Experten prüfen sich gegenseitig...")
+            except: pass
+        # Jedem Experten die Antworten der ANDEREN zeigen
+        andere_text = "\n\n".join([f"[{n} sagt]:\n{a[:600]}" for n,a in antworten.items()])
+        debatte_zusatz = (
+            "\n\n━━━ DEBATTE ━━━\n"
+            "Andere Experten haben das hier gesagt:\n" + andere_text + "\n\n"
+            "Prüfe ihre Einschätzungen KRITISCH. Wo haben sie recht, wo liegen sie falsch?\n"
+            "Bei Preisen: Ist ihre Schätzung zu hoch oder zu niedrig? Begründe!\n"
+            "Gib dann deine ÜBERARBEITETE, finale Einschätzung ab (Format wie vorher)."
+        )
+        modelle_mit_antwort = [(mid, n) for (mid, n) in modelle if n in antworten]
+        runde2 = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+            futures = {ex.submit(ein_experte, m, debatte_zusatz): m for m in modelle_mit_antwort}
+            for f in concurrent.futures.as_completed(futures):
+                name, a = f.result()
+                if a: runde2[name] = a
+        # Überarbeitete Antworten übernehmen, wo vorhanden
+        for n, a in runde2.items():
+            antworten[n] = a
+
+    # ── RICHTER: Finale Entscheidung ──
     experten_text = "\n\n".join([f"[{n}]:\n{a[:700]}" for n,a in antworten.items()])
+    richter_hinweis = (
+        "Die Experten haben in einer DEBATTE ihre Einschätzungen gegenseitig geprüft.\n"
+        if debatte_an else ""
+    )
     return ki(
         f"Du bist Chef-Experte. {len(antworten)} Experten haben analysiert.\n"
+        f"{richter_hinweis}"
         f"Erstelle EINE perfekte, vollständige finale Antwort auf Deutsch.\n"
         f"Nimm das Beste + Präziseste aus jeder Antwort.\n"
-        f"Bei Preis-Unterschieden: nimm den Durchschnitt.\n"
+        f"Bei Preis-Unterschieden: nimm den begründeten Konsens, nicht blind den Durchschnitt.\n"
         f"Experten-Analysen:\n{experten_text}\n\nFINALE ANTWORT:"
     )
 
@@ -921,6 +960,21 @@ st.markdown("""
     Flohmärkte
   </p>
 </div>""", unsafe_allow_html=True)
+
+# ── GLOBALER DEBATTE-SCHALTER (gilt für ALLE Bereiche) ──
+_ds1, _ds2 = st.columns([3,2])
+with _ds1:
+    st.session_state["debatte_an"] = st.toggle(
+        "🗣️ Multi-Agent-Debatte",
+        value=st.session_state.get("debatte_an", False),
+        help="AN: Die Experten-KIs prüfen sich gegenseitig in 2 Runden und widersprechen sich "
+             "(genauere Ergebnisse, aber ~doppelte Kosten). AUS: 1 Runde, günstiger. Gilt überall."
+    )
+with _ds2:
+    if st.session_state.get("debatte_an"):
+        st.caption("🟢 Debatte AN — gründlicher, teurer")
+    else:
+        st.caption("⚪ Debatte AUS — schnell & günstig")
 
 # ── TABS ──────────────────────────────────────────────────────
 T = st.tabs([
@@ -1352,6 +1406,49 @@ with T[0]:
                         st.success(f"🎯 Konfidenz: **75%** — 2 von 3 Experten einig!")
                     elif anzahl_experten == 1:
                         st.warning(f"🎯 Konfidenz: **50%** — Nur 1 Experte — Ergebnis prüfen!")
+
+                    # ── RUNDE 2: MULTI-AGENT-DEBATTE (nur wenn Schalter an) ──
+                    if st.session_state.get("debatte_an") and anzahl_experten >= 2:
+                        st.write("🗣️ **Debatte läuft** — Experten prüfen sich gegenseitig kritisch...")
+                        _andere = "\n\n".join([f"[{n} schätzt]:\n{a[:600]}" for n,a in experten_ergebnisse.items()])
+                        _debatte_prompt = (
+                            analyse_prompt +
+                            "\n\n━━━ DEBATTE-RUNDE ━━━\n"
+                            "Die anderen Experten haben das geschätzt:\n" + _andere + "\n\n"
+                            "Prüfe ihre PREISE kritisch: Zu hoch? Zu niedrig? Warum?\n"
+                            "Korrigiere dich selbst wo nötig und gib deine FINALE, überarbeitete "
+                            "Einschätzung im gleichen Format ab. Bei den Preisen: sei realistisch, "
+                            "nicht optimistisch."
+                        )
+                        def _debatte_experte(modell_info):
+                            primaer_id, modell_name, fallback_id = modell_info
+                            if modell_name not in experten_ergebnisse:
+                                return (modell_name, None)
+                            for versuch_id in [primaer_id, fallback_id]:
+                                try:
+                                    kl = _oai.OpenAI(api_key=OR_KEY, base_url="https://openrouter.ai/api/v1")
+                                    if hat_fotos:
+                                        inh = [{"type":"image_url","image_url":{"url":f"data:image/jpeg;base64,{b}"}} for b in bilder_fuer_experten]
+                                        inh.append({"type":"text","text":_debatte_prompt})
+                                        nach = [{"role":"user","content":inh}]
+                                    else:
+                                        nach = [{"role":"user","content":_debatte_prompt}]
+                                    ao = kl.chat.completions.create(
+                                        model=versuch_id, messages=nach,
+                                        max_tokens=1800, temperature=0.2, extra_headers=_hdrs())
+                                    at = ao.choices[0].message.content
+                                    if at and len(at) > 100:
+                                        return (modell_name, at)
+                                except Exception:
+                                    continue
+                            return (modell_name, None)
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex2:
+                            fm2 = {ex2.submit(_debatte_experte, m): m for m in experten_modelle}
+                            for fut in concurrent.futures.as_completed(fm2):
+                                n2, a2 = fut.result()
+                                if a2:
+                                    experten_ergebnisse[n2] = a2  # überarbeitete Antwort übernehmen
+                        st.success("🗣️ Debatte abgeschlossen — Experten haben sich abgeglichen!")
 
                     if anzahl_experten == 0:
                         # Fallback auf einzelne KI mit voller Fallback-Kette
