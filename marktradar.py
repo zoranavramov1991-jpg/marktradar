@@ -1695,12 +1695,13 @@ with T[0]:
                 st.write(f"🌐 Suche echte Preise für: **{suchbegriff}** — im GANZEN Web")
                 # 3 Suchmaschinen gleichzeitig, durchsuchen das ganze Web (nicht nur eBay/Kleinanzeigen)
                 def hole_gezielte_preise():
-                    query = suchbegriff + " gebraucht Preis Euro verkauft Deutschland"
+                    # Gezielt nach TATSÄCHLICH VERKAUFTEN Preisen suchen — das sind die realen Zahlen
+                    query = suchbegriff + " gebraucht verkauft Preis Euro Deutschland"
                     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as _ex:
-                        _fg = _ex.submit(google_suche, query)
-                        _ft = _ex.submit(tavily_suche, suchbegriff + " gebraucht verkauft Marktpreis Secondhand")
+                        _fg = _ex.submit(google_suche, suchbegriff + " gebraucht verkauft eBay Kleinanzeigen Preis")
+                        _ft = _ex.submit(tavily_suche, suchbegriff + " verkauft erzielter Preis gebraucht Secondhand")
                         _fy = _ex.submit(you_suche, query)
-                        _fd = _ex.submit(ddg_suche, suchbegriff + " gebraucht verkauft")
+                        _fd = _ex.submit(ddg_suche, suchbegriff + " gebraucht verkauft Preis")
                         g = _fg.result()
                         t = _ft.result()
                         y = _fy.result()
@@ -1743,18 +1744,59 @@ with T[0]:
                 # ECHTE PREISE aus den Web-Treffern herausziehen und auswerten
                 preis_auswertung = extrahiere_preise(web_text)
                 web_preis_vorgabe = ""
-                if preis_auswertung:
-                    st.success(
-                        f"💶 **{preis_auswertung['anzahl']} echte Preise im Web gefunden:** "
-                        f"Median **€{preis_auswertung['median']}** "
-                        f"(Spanne €{preis_auswertung['min']}–€{preis_auswertung['max']})"
-                    )
+
+                # ═══════════════════════════════════════════════════
+                # 🏷️ FETTES REAL / GESCHÄTZT-BANNER
+                # ═══════════════════════════════════════════════════
+                if preis_auswertung and preis_auswertung.get("anzahl",0) >= 3:
+                    # Genug echte Treffer → REAL
+                    st.markdown(
+                        "<div style='background:linear-gradient(135deg,#2d6a2d,#4a9a4a);"
+                        "padding:20px 24px;border-radius:18px;color:#fff;margin:10px 0;"
+                        "box-shadow:0 12px 32px rgba(45,106,45,0.3);text-align:center'>"
+                        "<div style='font-size:34px;font-weight:900;font-family:Playfair Display,serif;letter-spacing:1px'>"
+                        "✅ REALE PREISE</div>"
+                        f"<div style='font-size:15px;opacity:0.95;margin-top:6px'>"
+                        f"Aus <b>{preis_auswertung['anzahl']} echten Verkäufen/Anzeigen</b> im Web · "
+                        f"Median <b>€{preis_auswertung['median']}</b> · Spanne €{preis_auswertung['min']}–€{preis_auswertung['max']}</div>"
+                        "</div>", unsafe_allow_html=True)
                     web_preis_vorgabe = (
                         "\n\nECHTE GEFUNDENE PREISE (aus " + str(preis_auswertung['anzahl'])
                         + " Web-Treffern): Median €" + str(preis_auswertung['median'])
                         + ", Spanne €" + str(preis_auswertung['min']) + "–€" + str(preis_auswertung['max'])
-                        + ". Der ONLINE-WERT soll nahe am Median liegen!\n"
+                        + ". Der ONLINE-WERT MUSS nahe am Median liegen!\n"
                     )
+                    st.session_state["_preis_quelle"] = "real"
+                elif preis_auswertung and preis_auswertung.get("anzahl",0) >= 1:
+                    # Wenige Treffer → teilweise real
+                    st.markdown(
+                        "<div style='background:linear-gradient(135deg,#b8860b,#e8a93a);"
+                        "padding:20px 24px;border-radius:18px;color:#fff;margin:10px 0;"
+                        "box-shadow:0 12px 32px rgba(184,134,11,0.3);text-align:center'>"
+                        "<div style='font-size:34px;font-weight:900;font-family:Playfair Display,serif;letter-spacing:1px'>"
+                        "🟡 TEILWEISE REAL</div>"
+                        f"<div style='font-size:15px;opacity:0.95;margin-top:6px'>"
+                        f"Nur <b>{preis_auswertung['anzahl']} echte Treffer</b> gefunden (zu wenig für volle Sicherheit) · "
+                        f"Rest ist KI-Schätzung — selbst gegenprüfen!</div>"
+                        "</div>", unsafe_allow_html=True)
+                    web_preis_vorgabe = (
+                        "\n\nWenige echte Preise gefunden (Median €" + str(preis_auswertung['median'])
+                        + "). Orientiere dich daran, ergänze vorsichtig.\n"
+                    )
+                    st.session_state["_preis_quelle"] = "teilweise"
+                else:
+                    # Keine Treffer → GESCHÄTZT
+                    st.markdown(
+                        "<div style='background:linear-gradient(135deg,#8a3a3a,#b85a5a);"
+                        "padding:20px 24px;border-radius:18px;color:#fff;margin:10px 0;"
+                        "box-shadow:0 12px 32px rgba(138,58,58,0.3);text-align:center'>"
+                        "<div style='font-size:34px;font-weight:900;font-family:Playfair Display,serif;letter-spacing:1px'>"
+                        "⚠️ GESCHÄTZTE PREISE</div>"
+                        "<div style='font-size:15px;opacity:0.95;margin-top:6px'>"
+                        "<b>Keine echten Web-Daten gefunden</b> — das sind KI-Schätzungen. "
+                        "Vor dem Kauf selbst auf eBay/Kleinanzeigen prüfen!</div>"
+                        "</div>", unsafe_allow_html=True)
+                    st.session_state["_preis_quelle"] = "geschaetzt"
 
                 # 3 Preis-Experten bewerten GLEICHZEITIG
                 st.write("⚖️ 3 Preis-Experten bewerten gleichzeitig...")
