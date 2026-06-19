@@ -3,3 +3,5 @@ requests
 openai
 pillow
 ddgs
+beautifulsoup4
+lxml
