@@ -19,7 +19,7 @@ import openai as _oai
 # Lern-Daten überleben jetzt App-Neustarts (vorher nur RAM = nach Neustart weg)
 _SPEICHER_DATEI = "marktradar_lerndaten.json"
 _LERN_KEYS = ["mein_wissen","preis_korrekturen","verkauf_log","ki_korrekturen",
-              "kategorie_wissen","beste_zeiten","markt_notizen"]
+              "kategorie_wissen","beste_zeiten","markt_notizen","einkauf_liste"]
 
 def lade_lerndaten():
     """Lädt gespeicherte Lern-Daten von der Festplatte (falls vorhanden)."""
@@ -336,6 +336,7 @@ _SESSION_DEFAULTS = {
     "markt_notizen":{},      # Notizen zu Märkten
     "ki_korrekturen":[],     # Wo KI falsch lag
     "debatte_an":False,      # Multi-Agent-Debatte an/aus (kostet mehr)
+    "einkauf_liste":[],      # Blitz-Einkauf Merkliste (Stand)
 }
 for k,v in _SESSION_DEFAULTS.items():
     if k not in st.session_state:
@@ -990,6 +991,101 @@ T = st.tabs([
 # ════════════════════════════════════════════════════════════
 with T[0]:
     st.header("🔍 Artikel-Analyse — Ultimate Edition")
+
+    # ═══════════════════════════════════════════════════════════
+    # ⚡ BLITZ-EINKAUF — für Sekunden-Entscheidungen am Stand
+    # ═══════════════════════════════════════════════════════════
+    with st.expander("⚡ BLITZ-EINKAUF (Foto → max. Preis in Sekunden)", expanded=False):
+        st.caption("Für schnelle Entscheidungen: Foto knipsen, einen Druck, sofort den max. Einkaufspreis sehen.")
+        blitz_foto = st.camera_input("📸 Schnell knipsen", key="blitz_cam")
+        if not blitz_foto:
+            blitz_foto = st.file_uploader("oder Foto wählen", type=["jpg","jpeg","png"], key="blitz_up")
+
+        if st.button("⚡ BLITZ-CHECK", type="primary", use_container_width=True, key="blitz_go"):
+            if blitz_foto:
+                try:
+                    blitz_foto.seek(0)
+                    b64_roh = base64.b64encode(blitz_foto.read()).decode()
+                    b64_klein = komprimiere(b64_roh, max_px=700, q=75)
+                    with st.spinner("⚡ Blitz-Analyse..."):
+                        blitz_antwort = ki(
+                            "Du bist Flohmarkt-Einkaufsexperte. Schau das Foto an. "
+                            "Antworte NUR in genau diesem Format, NICHTS sonst:\n"
+                            "OBJEKT: [was ist es, max 4 Wörter]\n"
+                            "MAXEK: [maximaler Einkaufspreis in Euro als reine Zahl, den ein Händler zahlen sollte um Gewinn zu machen]\n"
+                            "VK: [realistischer Wiederverkaufspreis in Euro als reine Zahl]\n"
+                            "TIPP: [KAUFEN oder LASSEN, ein Wort]",
+                            bilder=[b64_klein]
+                        )
+                    import re as _re_b
+                    _obj = (_re_b.search(r"OBJEKT:\s*(.+)", blitz_antwort) or [None,"Artikel"])
+                    _obj = _obj[1].strip()[:40] if hasattr(_obj,"__getitem__") and _obj[1] else "Artikel"
+                    _mek = _re_b.search(r"MAXEK:\s*€?\s*(\d+)", blitz_antwort)
+                    _vk = _re_b.search(r"VK:\s*€?\s*(\d+)", blitz_antwort)
+                    _tipp = _re_b.search(r"TIPP:\s*(\w+)", blitz_antwort)
+                    _mek_v = int(_mek.group(1)) if _mek else 0
+                    _vk_v = int(_vk.group(1)) if _vk else 0
+                    _kaufen = bool(_tipp and "kauf" in _tipp.group(1).lower())
+                    _farbe = "linear-gradient(135deg,#2d6a2d,#4a9a4a)" if _kaufen else "linear-gradient(135deg,#8a3a3a,#b85a5a)"
+                    _wort = "✅ KAUFEN" if _kaufen else "❌ LASSEN"
+                    st.markdown(
+                        f"<div style='background:{_farbe};padding:28px;border-radius:20px;color:#fff;"
+                        f"text-align:center;box-shadow:0 14px 40px rgba(0,0,0,0.2);margin:12px 0'>"
+                        f"<div style='font-size:15px;opacity:0.9;letter-spacing:1px'>{_obj.upper()}</div>"
+                        f"<div style='font-size:14px;opacity:0.85;margin-top:10px'>MAX. EINKAUF</div>"
+                        f"<div style='font-size:64px;font-weight:900;font-family:Playfair Display,serif;line-height:1'>€{_mek_v}</div>"
+                        f"<div style='font-size:28px;font-weight:800;margin-top:8px'>{_wort}</div>"
+                        f"<div style='font-size:14px;opacity:0.85;margin-top:8px'>Wiederverkauf ca. €{_vk_v}</div>"
+                        f"</div>", unsafe_allow_html=True)
+                    # Für Merkliste merken
+                    st.session_state["_blitz_letzte"] = {"obj":_obj,"mek":_mek_v,"vk":_vk_v}
+                except Exception as e:
+                    st.error(f"⚠️ Blitz-Check fehlgeschlagen — nochmal versuchen. ({str(e)[:50]})")
+            else:
+                st.warning("Zuerst ein Foto knipsen!")
+
+        # ── SCHNELL-MERKLISTE ──
+        st.markdown("---")
+        st.markdown("**🛒 Schnell-Merkliste — was hast du gekauft?**")
+        _letzte = st.session_state.get("_blitz_letzte", {})
+        mk1, mk2, mk3 = st.columns([2,1,1])
+        with mk1:
+            mk_name = st.text_input("Artikel", value=_letzte.get("obj",""), key="mk_name", label_visibility="collapsed", placeholder="Artikel")
+        with mk2:
+            mk_ek = st.number_input("Gekauft €", min_value=0, value=0, key="mk_ek", label_visibility="collapsed")
+        with mk3:
+            if st.button("✅ Gekauft", use_container_width=True, key="mk_add"):
+                if mk_name:
+                    st.session_state.einkauf_liste.append({
+                        "artikel":mk_name,
+                        "ek":mk_ek,
+                        "vk_schaetz":_letzte.get("vk",0),
+                        "datum":datetime.now().strftime("%d.%m %H:%M")
+                    })
+                    speichere_lerndaten()
+                    st.session_state["_blitz_letzte"] = {}
+                    st.rerun()
+
+        if st.session_state.einkauf_liste:
+            _ges_ek = sum(x.get("ek",0) for x in st.session_state.einkauf_liste)
+            _ges_vk = sum(x.get("vk_schaetz",0) for x in st.session_state.einkauf_liste)
+            st.caption(f"📊 Heute: {len(st.session_state.einkauf_liste)} Sachen · Einkauf €{_ges_ek} · "
+                       f"geschätzter Wert €{_ges_vk} · möglicher Gewinn €{_ges_vk-_ges_ek}")
+            for _i, _e in enumerate(reversed(st.session_state.einkauf_liste[-8:])):
+                _gw = _e.get("vk_schaetz",0) - _e.get("ek",0)
+                _gwf = "#2d6a2d" if _gw > 0 else "#8a3a3a"
+                st.markdown(
+                    f"<div style='background:#fffdf7;padding:8px 12px;border-radius:10px;margin:4px 0;"
+                    f"border:1px solid rgba(200,160,80,0.2);display:flex;justify-content:space-between'>"
+                    f"<span style='font-weight:600;color:#2a2218'>{_e.get('artikel','?')[:30]}</span>"
+                    f"<span style='color:#666;font-size:13px'>EK €{_e.get('ek',0)} → ~€{_e.get('vk_schaetz',0)} "
+                    f"<b style='color:{_gwf}'>(+€{_gw})</b></span></div>",
+                    unsafe_allow_html=True)
+            if st.button("🗑️ Merkliste leeren", key="mk_clear"):
+                st.session_state.einkauf_liste = []
+                speichere_lerndaten()
+                st.rerun()
+
     st.markdown("**9 Vision-KIs · 3 Experten gleichzeitig · Google+Tavily+You.com · Richter-KI**")
 
     # ── SUCH-SCHLÜSSEL TESTEN ──
