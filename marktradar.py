@@ -776,16 +776,38 @@ def preis_ensemble(artikel, zustand, web_daten):
     )
 
 # ── URL LESEN ─────────────────────────────────────────────────
+_BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+}
+
 def lies_url(url):
-    try:
-        h = {"User-Agent":"Mozilla/5.0","Accept-Language":"de-DE,de;q=0.9"}
-        r = requests.get(url, headers=h, timeout=15)
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(r.text, "html.parser")
-        for t in soup(["script","style","nav","footer","header"]): t.decompose()
-        zeilen = [z.strip() for z in soup.get_text("\n").split("\n") if len(z.strip())>15]
-        return "\n".join(zeilen[:150])[:5000]
-    except Exception as e: return f"[URL-Fehler: {e}]"
+    """Lädt Text von URL — versucht 2× mit echtem Browser-Header."""
+    letzter_fehler = ""
+    for versuch in range(2):
+        try:
+            r = requests.get(url, headers=_BROWSER_HEADERS, timeout=20, allow_redirects=True)
+            if r.status_code == 200 and r.text:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(r.text, "html.parser")
+                for t in soup(["script","style","nav","footer","header"]): t.decompose()
+                zeilen = [z.strip() for z in soup.get_text("\n").split("\n") if len(z.strip())>15]
+                return "\n".join(zeilen[:150])[:5000]
+            else:
+                letzter_fehler = f"HTTP {r.status_code}"
+        except requests.exceptions.Timeout:
+            letzter_fehler = "Timeout"
+        except Exception as e:
+            letzter_fehler = str(e)[:80]
+        if versuch == 0:
+            time.sleep(1)
+    return f"[URL-Fehler: {letzter_fehler}]"
 
 # ── BILDER VON URL LADEN ─────────────────────────────────────
 def lade_bilder_von_url(url):
@@ -796,8 +818,9 @@ def lade_bilder_von_url(url):
     """
     bilder_b64 = []
     try:
-        h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        r = requests.get(url, headers=h, timeout=15)
+        r = requests.get(url, headers=_BROWSER_HEADERS, timeout=20, allow_redirects=True)
+        if r.status_code != 200:
+            return bilder_b64
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(r.text, "html.parser")
 
@@ -835,7 +858,7 @@ def lade_bilder_von_url(url):
 
         for bild_url in bild_urls:
             try:
-                br = requests.get(bild_url, headers=h, timeout=10)
+                br = requests.get(bild_url, headers=_BROWSER_HEADERS, timeout=10)
                 if br.status_code == 200 and len(br.content) > 1000:
                     b64 = base64.b64encode(br.content).decode()
                     bilder_b64.append(b64)
@@ -1052,7 +1075,12 @@ with T[0]:
 
                 if hat_url:
                     url_text = lies_url(url_inp)
-                    if url_text.startswith("[URL"): st.warning("⚠️ URL nicht erreichbar")
+                    if url_text.startswith("[URL"):
+                        _fehler_grund = url_text.replace("[URL-Fehler:","").replace("]","").strip()
+                        st.warning(
+                            f"⚠️ Webseite konnte nicht geladen werden ({_fehler_grund}). "
+                            "Die Analyse läuft trotzdem mit den Fotos weiter."
+                        )
                     else:
                         st.success(f"✅ {len(url_text)} Zeichen ausgelesen")
                         url_ki = ki("Secondhand-Experte. Extrahiere: Artikel, Preis, Zustand. Kurz Deutsch: " + url_text[:2000])
